@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -12,9 +13,18 @@ import {
   Headphones,
   ChevronLeft,
 } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+
+import { loginUser } from "../redux/slicer/userSlice";
 
 const Login = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  // Redux state
+  const { loading, error, success, message } = useSelector(
+    (state) => state.auth
+  );
 
   const [showPassword, setShowPassword] = useState(false);
 
@@ -24,7 +34,6 @@ const Login = () => {
   });
 
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
 
   /* =====================================================
      HANDLE INPUT CHANGE
@@ -53,7 +62,7 @@ const Login = () => {
     const newErrors = {};
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email or mobile number is required";
+      newErrors.email = "Email is required";
     }
 
     if (!formData.password) {
@@ -79,36 +88,20 @@ const Login = () => {
       return;
     }
 
+    const loginData = {
+      email: formData.email.trim().toLowerCase(),
+      password: formData.password,
+    };
+
     try {
-      setIsLoading(true);
+      const resultAction = await dispatch(loginUser(loginData));
 
-      /*
-       * Connect your login API here.
-       *
-       * Example:
-       *
-       * const response = await loginUser(formData);
-       *
-       * if (response?.success) {
-       *   navigate("/");
-       * }
-       */
-
-      console.log("Login Data:", formData);
-
-      // Temporary login simulation
-      setTimeout(() => {
-        setIsLoading(false);
+      if (loginUser.fulfilled.match(resultAction)) {
+        // Login successful
         navigate("/");
-      }, 800);
+      }
     } catch (error) {
       console.error("Login error:", error);
-
-      setIsLoading(false);
-
-      setErrors({
-        submit: "Invalid email or password. Please try again.",
-      });
     }
   };
 
@@ -123,9 +116,7 @@ const Login = () => {
   };
 
   return (
-    <div className=" overflow-hidden bg-slate-50">
-
-
+    <div className="overflow-hidden bg-slate-50">
       {/* =================================================
           MAIN
       ================================================== */}
@@ -138,7 +129,6 @@ const Login = () => {
           ================================================== */}
 
           <section className="relative hidden h-full min-h-0 overflow-hidden lg:block">
-
             {/* BACKGROUND IMAGE */}
             <img
               src="https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1400&q=85"
@@ -156,7 +146,6 @@ const Login = () => {
 
             {/* CONTENT */}
             <div className="relative z-10 flex h-full flex-col justify-between p-8 xl:p-10">
-
               {/* TOP */}
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-md">
@@ -207,8 +196,7 @@ const Login = () => {
           ================================================== */}
 
           <section className="h-full min-h-0 overflow-hidden">
-            <div className="flex  items-center justify-center px-5 py-5 sm:px-8 lg:px-9 xl:px-11">
-
+            <div className="flex items-center justify-center px-5 py-5 sm:px-8 lg:px-9 xl:px-11">
               <div className="w-full max-w-[390px]">
 
                 {/* MOBILE BACK */}
@@ -236,10 +224,24 @@ const Login = () => {
                   </p>
                 </div>
 
-                {/* ERROR */}
+                {/* REDUX ERROR */}
+                {error && (
+                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-600">
+                    {error}
+                  </div>
+                )}
+
+                {/* LOCAL ERROR */}
                 {errors.submit && (
                   <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-medium text-red-600">
                     {errors.submit}
+                  </div>
+                )}
+
+                {/* SUCCESS MESSAGE */}
+                {success && message && (
+                  <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-xs font-medium text-green-600">
+                    {message}
                   </div>
                 )}
 
@@ -251,14 +253,13 @@ const Login = () => {
                   onSubmit={handleSubmit}
                   className="mt-5 space-y-4"
                 >
-
                   {/* EMAIL */}
                   <div>
                     <label
                       htmlFor="email"
                       className="mb-1.5 block text-xs font-semibold text-slate-700"
                     >
-                      Email or mobile number
+                      Email
                     </label>
 
                     <div className="relative">
@@ -270,10 +271,10 @@ const Login = () => {
                       <input
                         id="email"
                         name="email"
-                        type="text"
+                        type="email"
                         value={formData.email}
                         onChange={handleChange}
-                        placeholder="Enter email or mobile number"
+                        placeholder="Enter your email"
                         className={`h-12 w-full rounded-xl border bg-white pl-10 pr-3.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 ${
                           errors.email
                             ? "border-red-400 focus:border-red-500 focus:ring-4 focus:ring-red-50"
@@ -316,11 +317,7 @@ const Login = () => {
                       <input
                         id="password"
                         name="password"
-                        type={
-                          showPassword
-                            ? "text"
-                            : "password"
-                        }
+                        type={showPassword ? "text" : "password"}
                         value={formData.password}
                         onChange={handleChange}
                         placeholder="Enter your password"
@@ -370,10 +367,10 @@ const Login = () => {
                   {/* LOGIN BUTTON */}
                   <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={loading}
                     className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/25 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {isLoading ? (
+                    {loading ? (
                       <>
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                         Logging in...

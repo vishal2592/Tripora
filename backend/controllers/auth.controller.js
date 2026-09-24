@@ -49,7 +49,7 @@ const registerUser = async (req, res) => {
 
     //response
     res.status(201).json({
-      succes: true,
+      success: true,
       message: "User registered Successfully",
       user: {
         id: user._id,
@@ -129,7 +129,7 @@ const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.loge("Login Error:", error);
+    console.error("Login Error:", error);
 
     res.status(500).json({
       success: false,
@@ -156,7 +156,7 @@ const getProfile = async (req, res) => {
       user,
     });
   } catch (error) {
-    console.loge("Get Profile Error:", error);
+    console.error("Get Profile Error:", error);
 
     return res.status(500).json({
       success: false,

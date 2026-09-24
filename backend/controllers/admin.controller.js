@@ -2,11 +2,14 @@ const bcrypt = require("bcryptjs");
 
 const jwt = require("jsonwebtoken");
 
-const Admin = require("../models/admin.model");
+const Admin = require("../models/user.model");
 
 const loginAdmin = async (req, res) => {
   try {
+
     const { email, password } = req.body;
+        console.log(email,password)
+
 
     //check fields
     if (!email || !password) {
@@ -73,7 +76,7 @@ const loginAdmin = async (req, res) => {
       },
     });
   } catch (error) {
-    console.loge("Admin Login Error", error);
+    console.error("Admin Login Error", error);
     res.status(500).json({
       success: false,
       message: "Server error",

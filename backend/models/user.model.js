@@ -57,11 +57,11 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      minlegth: 6,
+      minlength: 6,
     },
     role: {
       type: String,
-      enum: ["user"],
+      enum: ["user","admin"],
       default: "user",
     },
     isActive: {

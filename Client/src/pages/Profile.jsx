@@ -1,44 +1,61 @@
 
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
-  ArrowRight,
   Bell,
-  CalendarDays,
-  CheckCircle2,
+  Calendar,
   ChevronRight,
   Edit3,
   Heart,
-  HelpCircle,
+  Hotel,
   Lock,
   LogOut,
-  Mail,
   MapPin,
   Menu,
   Plane,
+  Search,
   Settings,
   ShieldCheck,
   Star,
   Ticket,
   User,
-  Users,
   Wallet,
   X,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+
+import {
+  getProfile,
+  logout,
+} from "../redux/slicer/userSlice";
 
 const Profile = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
+  // Redux auth data
+  const {
+    user: authUser,
+    token,
+    loading,
+    error,
+  } = useSelector((state) => state.auth);
+
+  // Menu
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const [user, setUser] = useState({
-    name: "Vishal Kumar",
-    email: "vishal@example.com",
-    mobile: "+91 98765 43210",
-    location: "Bihar, India",
-    dob: "15 August 2000",
-    gender: "Male",
+  // Edit modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Profile data used by UI
+  const [profileData, setProfileData] = useState({
+    name: "",
+    email: "",
+    mobile: "",
+    location: "",
+    dob: "",
+    gender: "",
     avatar: "",
     preferredDestination: "Dubai",
     travelType: "Leisure",
@@ -46,21 +63,102 @@ const Profile = () => {
     mealPreference: "Vegetarian",
   });
 
-  const [isEditing, setIsEditing] = useState(false);
-
+  // Edit form
   const [editForm, setEditForm] = useState({
-    name: user.name,
-    mobile: user.mobile,
-    location: user.location,
-    dob: user.dob,
-    gender: user.gender,
-    preferredDestination: user.preferredDestination,
-    travelType: user.travelType,
-    seatPreference: user.seatPreference,
-    mealPreference: user.mealPreference,
+    name: "",
+    email: "",
+    mobile: "",
+    location: "",
+    dob: "",
+    gender: "",
+    preferredDestination: "Dubai",
+    travelType: "Leisure",
+    seatPreference: "Window",
+    mealPreference: "Vegetarian",
   });
 
-  const handleInputChange = (e) => {
+  /*
+   * Get profile from backend when user is logged in
+   */
+  useEffect(() => {
+    if (token) {
+      dispatch(getProfile());
+    }
+  }, [dispatch, token]);
+
+  /*
+   * Convert backend user data into UI profile data
+   *
+   * Backend:
+   * fullName
+   * mobileNumber
+   *
+   * UI:
+   * name
+   * mobile
+   */
+  useEffect(() => {
+    if (!authUser) return;
+
+    setProfileData((prev) => ({
+      ...prev,
+
+      name: authUser.fullName || "",
+      email: authUser.email || "",
+      mobile: authUser.mobileNumber || "",
+    }));
+  }, [authUser]);
+
+  /*
+   * Update edit form when profile data changes
+   */
+  useEffect(() => {
+    setEditForm({
+      name: profileData.name,
+      email: profileData.email,
+      mobile: profileData.mobile,
+      location: profileData.location,
+      dob: profileData.dob,
+      gender: profileData.gender,
+      preferredDestination: profileData.preferredDestination,
+      travelType: profileData.travelType,
+      seatPreference: profileData.seatPreference,
+      mealPreference: profileData.mealPreference,
+    });
+  }, [profileData]);
+
+  /*
+   * Logout
+   */
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/login");
+  };
+
+  /*
+   * Open edit modal
+   */
+  const handleEditProfile = () => {
+    setEditForm({
+      name: profileData.name,
+      email: profileData.email,
+      mobile: profileData.mobile,
+      location: profileData.location,
+      dob: profileData.dob,
+      gender: profileData.gender,
+      preferredDestination: profileData.preferredDestination,
+      travelType: profileData.travelType,
+      seatPreference: profileData.seatPreference,
+      mealPreference: profileData.mealPreference,
+    });
+
+    setIsEditModalOpen(true);
+  };
+
+  /*
+   * Edit form input change
+   */
+  const handleEditChange = (e) => {
     const { name, value } = e.target;
 
     setEditForm((prev) => ({
@@ -69,924 +167,806 @@ const Profile = () => {
     }));
   };
 
-  const handleSaveProfile = () => {
-    setUser((prev) => ({
+  /*
+   * Save profile
+   *
+   * NOTE:
+   * Currently this updates frontend state only.
+   *
+   * Backend update API is not created yet.
+   */
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+
+    setProfileData((prev) => ({
       ...prev,
       ...editForm,
     }));
 
-    setIsEditing(false);
+    setIsEditModalOpen(false);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-
-    navigate("/login");
+  /*
+   * Close menu when clicking navigation item
+   */
+  const handleMenuNavigation = (path) => {
+    setIsMenuOpen(false);
+    navigate(path);
   };
+
+  /*
+   * Loading state
+   */
+  if (loading && !authUser) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+
+          <p className="text-slate-600 font-medium">
+            Loading profile...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
-
-      {/* =====================================================
-          MOBILE TOP BAR
-      ===================================================== */}
-
-      <div className="sticky top-0 z-40 border-b border-slate-200 bg-white lg:hidden">
-        <div className="flex h-16 items-center justify-between px-4">
-
+      {/* ================= MOBILE TOP BAR ================= */}
+      <div className="lg:hidden sticky top-0 z-40 bg-white border-b border-slate-200">
+        <div className="h-16 px-4 flex items-center justify-between">
           <button
-            type="button"
             onClick={() => navigate(-1)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100"
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100"
           >
             <ArrowLeft size={20} />
           </button>
 
-          <h1 className="text-base font-black text-slate-900">
+          <h1 className="text-lg font-bold text-slate-900">
             My Profile
           </h1>
 
           <button
-            type="button"
-            onClick={() => setIsMenuOpen((prev) => !prev)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100"
           >
-            {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
-
         </div>
 
-        {/* Mobile menu */}
-
+        {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="border-t border-slate-200 bg-white px-4 py-3">
+          <div className="border-t border-slate-200 bg-white shadow-lg">
+            <div className="p-3 space-y-1">
+              <button
+                onClick={() => handleMenuNavigation("/")}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-left"
+              >
+                <Plane size={18} />
+                <span>Home</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Home
-              <ChevronRight size={16} />
-            </button>
+              <button
+                onClick={() => handleMenuNavigation("/flights")}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-left"
+              >
+                <Ticket size={18} />
+                <span>Flights</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => navigate("/my-bookings")}
-              className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              My Bookings
-              <ChevronRight size={16} />
-            </button>
+              <button
+                onClick={() => handleMenuNavigation("/hotels")}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-left"
+              >
+                <Hotel size={18} />
+                <span>Hotels</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => navigate("/support")}
-              className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Help & Support
-              <ChevronRight size={16} />
-            </button>
-
+              <button
+                onClick={() => handleMenuNavigation("/bookings")}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-left"
+              >
+                <Calendar size={18} />
+                <span>My Bookings</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* =====================================================
-          MAIN CONTAINER
-      ===================================================== */}
-
-      <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-4 lg:px-8">
-
-        {/* ===================================================
-            DESKTOP BREADCRUMB
-        =================================================== */}
-
-        <div className="mb-5 hidden items-center gap-2 text-xs text-slate-500 lg:flex">
-
+      {/* ================= MAIN CONTAINER ================= */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+        {/* ================= BREADCRUMB ================= */}
+        <div className="hidden lg:flex items-center gap-2 text-sm text-slate-500 mb-6">
           <button
-            type="button"
             onClick={() => navigate("/")}
-            className="transition hover:text-blue-600"
+            className="hover:text-blue-600 transition"
           >
             Home
           </button>
 
-          <ChevronRight size={13} />
+          <ChevronRight size={16} />
 
-          <span className="font-semibold text-slate-700">
+          <span className="text-slate-900 font-medium">
             My Profile
           </span>
-
         </div>
 
-        {/* ===================================================
-            PROFILE HEADER
-        =================================================== */}
-
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-
-          {/* Blue Cover */}
-
-          <div className="relative h-32 overflow-hidden bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 sm:h-40">
-
-            <div className="absolute -right-10 -top-16 h-48 w-48 rounded-full bg-white/10" />
-
-            <div className="absolute right-20 top-10 h-24 w-24 rounded-full bg-white/10" />
-
-            <div className="absolute bottom-0 left-0 h-16 w-full bg-gradient-to-t from-black/10 to-transparent" />
-
+        {/* ================= PROFILE HEADER ================= */}
+        <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+          {/* Cover */}
+          <div className="h-32 sm:h-40 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 relative">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute w-72 h-72 rounded-full bg-white -top-40 -right-20" />
+              <div className="absolute w-56 h-56 rounded-full bg-white -bottom-40 left-20" />
+            </div>
           </div>
 
-          {/* Profile Info */}
-
-          <div className="relative px-5 pb-5 sm:px-7 sm:pb-6">
-
-            <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 sm:flex-row sm:items-end sm:justify-between">
-
-              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end">
-
+          {/* Profile Header Content */}
+          <div className="px-5 sm:px-8 pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12 relative">
                 {/* Avatar */}
-
-                <div className="relative">
-
-                  {user.avatar ? (
-                    <img
-                      src={user.avatar}
-                      alt={user.name}
-                      className="h-24 w-24 rounded-3xl border-4 border-white object-cover shadow-lg sm:h-28 sm:w-28"
-                    />
-                  ) : (
-                    <div className="flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-white bg-blue-100 text-3xl font-black text-blue-600 shadow-lg sm:h-28 sm:w-28">
-                      {user.name
-                        .split(" ")
-                        .map((name) => name[0])
-                        .join("")
-                        .slice(0, 2)
-                        .toUpperCase()}
-                    </div>
-                  )}
-
-                  <div className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white">
-                    <CheckCircle2 size={15} />
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white p-1.5 shadow-lg">
+                  <div className="w-full h-full rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+                    {profileData.avatar ? (
+                      <img
+                        src={profileData.avatar}
+                        alt={profileData.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-3xl font-bold text-blue-600">
+                        {profileData.name
+                          ? profileData.name.charAt(0).toUpperCase()
+                          : "U"}
+                      </span>
+                    )}
                   </div>
-
                 </div>
 
                 {/* Name */}
-
                 <div className="pb-1">
+                  <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                    {profileData.name || "User"}
+                  </h2>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm text-slate-500 mt-1">
+                    {profileData.email || "Email not available"}
+                  </p>
 
-                    <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">
-                      {user.name}
-                    </h1>
+                  <div className="flex items-center gap-1.5 text-sm text-slate-500 mt-1">
+                    <MapPin size={15} />
 
-                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-600">
-                      Traveller
+                    <span>
+                      {profileData.location || "Location not added"}
                     </span>
-
                   </div>
-
-                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 sm:text-sm">
-
-                    <span className="flex items-center gap-1.5">
-                      <Mail size={14} />
-                      {user.email}
-                    </span>
-
-                    <span className="flex items-center gap-1.5">
-                      <MapPin size={14} />
-                      {user.location}
-                    </span>
-
-                  </div>
-
                 </div>
-
               </div>
 
               {/* Edit Button */}
-
               <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
+                onClick={handleEditProfile}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
               >
-                <Edit3 size={16} />
+                <Edit3 size={17} />
                 Edit Profile
               </button>
-
             </div>
-
           </div>
+        </div>
 
-        </section>
+        {/* ================= ERROR ================= */}
+        {error && (
+          <div className="mt-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+            {error}
+          </div>
+        )}
 
-        {/* ===================================================
-            STATISTICS
-        =================================================== */}
-
-        <section className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-
+        {/* ================= STATS ================= */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
           <StatCard
-            icon={<Ticket size={19} />}
+            icon={<Ticket size={21} />}
+            title="Bookings"
             value="12"
-            label="Bookings"
-            onClick={() => navigate("/my-bookings")}
+            subtitle="Total bookings"
           />
 
           <StatCard
-            icon={<Heart size={19} />}
+            icon={<Heart size={21} />}
+            title="Saved Trips"
             value="8"
-            label="Saved Trips"
-            onClick={() => navigate("/saved")}
+            subtitle="Saved destinations"
           />
 
           <StatCard
-            icon={<Star size={19} />}
+            icon={<Star size={21} />}
+            title="Reviews"
             value="6"
-            label="Reviews"
-            onClick={() => navigate("/reviews")}
+            subtitle="Reviews given"
           />
 
           <StatCard
-            icon={<Wallet size={19} />}
+            icon={<Wallet size={21} />}
+            title="Wallet"
             value="₹2,450"
-            label="Wallet"
-            onClick={() => navigate("/wallet")}
+            subtitle="Available balance"
           />
+        </div>
 
-        </section>
-
-        {/* ===================================================
-            CONTENT
-        =================================================== */}
-
-        <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_350px]">
-
-          {/* =================================================
-              LEFT
-          ================================================= */}
-
-          <div className="space-y-5">
-
-            {/* PERSONAL INFORMATION */}
-
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-
-              <div className="flex items-start justify-between gap-4">
-
+        {/* ================= CONTENT GRID ================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+          {/* ================= LEFT CONTENT ================= */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Personal Information */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+              <div className="px-5 sm:px-6 py-5 border-b border-slate-200 flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-                    Account details
-                  </p>
-
-                  <h2 className="mt-1 text-xl font-black text-slate-900">
+                  <h3 className="text-lg font-bold text-slate-900">
                     Personal Information
-                  </h2>
+                  </h3>
 
-                  <p className="mt-1 text-xs text-slate-500">
-                    Your basic personal information
+                  <p className="text-sm text-slate-500 mt-1">
+                    Your personal details
                   </p>
                 </div>
 
                 <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="hidden items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold text-blue-600 transition hover:bg-blue-50 sm:flex"
+                  onClick={handleEditProfile}
+                  className="text-blue-600 hover:text-blue-700"
                 >
-                  <Edit3 size={14} />
-                  Edit
+                  <Edit3 size={18} />
                 </button>
-
               </div>
 
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-
+              <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <ProfileField
-                  icon={<User size={17} />}
+                  icon={<User size={18} />}
                   label="Full Name"
-                  value={user.name}
+                  value={profileData.name || "Not added"}
                 />
 
                 <ProfileField
-                  icon={<Mail size={17} />}
+                  icon={<Search size={18} />}
                   label="Email Address"
-                  value={user.email}
+                  value={profileData.email || "Not added"}
                 />
 
                 <ProfileField
                   icon={<PhoneIcon />}
                   label="Mobile Number"
-                  value={user.mobile}
+                  value={profileData.mobile || "Not added"}
                 />
 
                 <ProfileField
-                  icon={<CalendarDays size={17} />}
-                  label="Date of Birth"
-                  value={user.dob}
-                />
-
-                <ProfileField
-                  icon={<Users size={17} />}
-                  label="Gender"
-                  value={user.gender}
-                />
-
-                <ProfileField
-                  icon={<MapPin size={17} />}
-                  label="Location"
-                  value={user.location}
-                />
-
-              </div>
-
-            </section>
-
-            {/* TRAVEL PREFERENCES */}
-
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-                  Your travel style
-                </p>
-
-                <h2 className="mt-1 text-xl font-black text-slate-900">
-                  Travel Preferences
-                </h2>
-
-                <p className="mt-1 text-xs text-slate-500">
-                  We'll use these preferences to improve your travel experience.
-                </p>
-              </div>
-
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-
-                <PreferenceCard
                   icon={<MapPin size={18} />}
-                  label="Preferred Destination"
-                  value={user.preferredDestination}
+                  label="Location"
+                  value={profileData.location || "Not added"}
                 />
 
-                <PreferenceCard
-                  icon={<Plane size={18} />}
-                  label="Travel Type"
-                  value={user.travelType}
+                <ProfileField
+                  icon={<Calendar size={18} />}
+                  label="Date of Birth"
+                  value={profileData.dob || "Not added"}
                 />
 
-                <PreferenceCard
-                  icon={<Users size={18} />}
-                  label="Seat Preference"
-                  value={user.seatPreference}
+                <ProfileField
+                  icon={<User size={18} />}
+                  label="Gender"
+                  value={profileData.gender || "Not added"}
                 />
+              </div>
+            </div>
 
-                <PreferenceCard
-                  icon={<CheckCircle2 size={18} />}
-                  label="Meal Preference"
-                  value={user.mealPreference}
-                />
+            {/* Travel Preferences */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+              <div className="px-5 sm:px-6 py-5 border-b border-slate-200">
+                <h3 className="text-lg font-bold text-slate-900">
+                  Travel Preferences
+                </h3>
 
+                <p className="text-sm text-slate-500 mt-1">
+                  Customize your travel experience
+                </p>
               </div>
 
-            </section>
+              <div className="p-5 sm:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <PreferenceCard
+                  icon={<MapPin size={19} />}
+                  title="Preferred Destination"
+                  value={profileData.preferredDestination}
+                />
 
-            {/* TRAVELER BENEFITS */}
+                <PreferenceCard
+                  icon={<Plane size={19} />}
+                  title="Travel Type"
+                  value={profileData.travelType}
+                />
 
-            <section className="rounded-3xl border border-blue-100 bg-blue-50 p-5 sm:p-6">
+                <PreferenceCard
+                  icon={<Ticket size={19} />}
+                  title="Seat Preference"
+                  value={profileData.seatPreference}
+                />
 
-              <div className="flex items-start gap-4">
+                <PreferenceCard
+                  icon={<HotelIcon />}
+                  title="Meal Preference"
+                  value={profileData.mealPreference}
+                />
+              </div>
+            </div>
 
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm">
-                  <ShieldCheck size={22} />
-                </div>
+            {/* Account Protection */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+              <div className="px-5 sm:px-6 py-5 border-b border-slate-200">
+                <h3 className="text-lg font-bold text-slate-900">
+                  Account Protection
+                </h3>
 
-                <div>
-                  <h2 className="text-base font-black text-slate-900">
-                    Your Tripora account is protected
-                  </h2>
-
-                  <p className="mt-1 text-xs leading-5 text-slate-600">
-                    Your personal information and booking details are securely
-                    stored and protected.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate("/privacy")}
-                    className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700"
-                  >
-                    Learn more
-                    <ArrowRight size={13} />
-                  </button>
-                </div>
-
+                <p className="text-sm text-slate-500 mt-1">
+                  Manage your account security
+                </p>
               </div>
 
-            </section>
+              <div className="p-5 sm:p-6 space-y-4">
+                <ActionItem
+                  icon={<Lock size={19} />}
+                  title="Change Password"
+                  subtitle="Update your account password"
+                  onClick={() => navigate("/change-password")}
+                />
 
+                <ActionItem
+                  icon={<ShieldCheck size={19} />}
+                  title="Security"
+                  subtitle="Manage account security settings"
+                  onClick={() => navigate("/security")}
+                />
+              </div>
+            </div>
           </div>
 
-          {/* =================================================
-              RIGHT SIDEBAR
-          ================================================= */}
-
-          <aside className="space-y-5">
-
-            {/* QUICK ACTIONS */}
-
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-                  Manage your trips
-                </p>
-
-                <h2 className="mt-1 text-xl font-black text-slate-900">
+          {/* ================= RIGHT CONTENT ================= */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+              <div className="px-5 py-5 border-b border-slate-200">
+                <h3 className="text-lg font-bold text-slate-900">
                   Quick Actions
-                </h2>
+                </h3>
               </div>
 
-              <div className="mt-5 space-y-2">
-
+              <div className="p-3">
                 <ActionItem
-                  icon={<Ticket size={18} />}
+                  icon={<Ticket size={19} />}
                   title="My Bookings"
-                  subtitle="View your upcoming trips"
-                  onClick={() => navigate("/my-bookings")}
+                  subtitle="View your bookings"
+                  onClick={() => navigate("/bookings")}
                 />
 
                 <ActionItem
-                  icon={<Heart size={18} />}
+                  icon={<Heart size={19} />}
                   title="Saved Trips"
-                  subtitle="Your saved hotels & destinations"
-                  onClick={() => navigate("/saved")}
+                  subtitle="Your saved destinations"
+                  onClick={() => navigate("/saved-trips")}
                 />
 
                 <ActionItem
-                  icon={<Plane size={18} />}
-                  title="Find Flights"
-                  subtitle="Search and book flights"
-                  onClick={() => navigate("/flights")}
+                  icon={<Wallet size={19} />}
+                  title="Wallet"
+                  subtitle="Manage your wallet"
+                  onClick={() => navigate("/wallet")}
                 />
 
                 <ActionItem
-                  icon={<HotelIcon />}
-                  title="Find Hotels"
-                  subtitle="Discover your next stay"
-                  onClick={() => navigate("/hotels")}
+                  icon={<Star size={19} />}
+                  title="My Reviews"
+                  subtitle="View your reviews"
+                  onClick={() => navigate("/reviews")}
                 />
-
               </div>
+            </div>
 
-            </section>
-
-            {/* ACCOUNT SETTINGS */}
-
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-                  Account
-                </p>
-
-                <h2 className="mt-1 text-xl font-black text-slate-900">
+            {/* Settings */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
+              <div className="px-5 py-5 border-b border-slate-200">
+                <h3 className="text-lg font-bold text-slate-900">
                   Settings
-                </h2>
+                </h3>
               </div>
 
-              <div className="mt-5 space-y-1">
-
+              <div className="p-3">
                 <SettingItem
-                  icon={<Bell size={17} />}
+                  icon={<Bell size={19} />}
                   title="Notifications"
-                  onClick={() => navigate("/settings/notifications")}
+                  onClick={() => navigate("/notifications")}
                 />
 
                 <SettingItem
-                  icon={<Lock size={17} />}
-                  title="Password & Security"
-                  onClick={() => navigate("/settings/security")}
-                />
-
-                <SettingItem
-                  icon={<Settings size={17} />}
-                  title="Account Settings"
+                  icon={<Settings size={19} />}
+                  title="Preferences"
                   onClick={() => navigate("/settings")}
                 />
 
                 <SettingItem
-                  icon={<HelpCircle size={17} />}
-                  title="Help & Support"
-                  onClick={() => navigate("/support")}
+                  icon={<ShieldCheck size={19} />}
+                  title="Privacy & Security"
+                  onClick={() => navigate("/privacy")}
                 />
+              </div>
+            </div>
 
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              className="w-full bg-white border border-red-200 rounded-2xl p-4 flex items-center gap-3 text-red-600 hover:bg-red-50 transition shadow-sm"
+            >
+              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+                <LogOut size={19} />
               </div>
 
-            </section>
+              <div className="text-left">
+                <p className="font-semibold">
+                  Logout
+                </p>
 
-            {/* LOGOUT */}
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-white px-4 py-3.5 text-sm font-bold text-red-600 shadow-sm transition hover:bg-red-50"
-            >
-              <LogOut size={17} />
-              Logout
+                <p className="text-xs text-red-400 mt-0.5">
+                  Sign out from your account
+                </p>
+              </div>
             </button>
-
-          </aside>
-
+          </div>
         </div>
+      </div>
 
-      </main>
-
-      {/* =====================================================
-          EDIT PROFILE MODAL
-      ===================================================== */}
-
-      {isEditing && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-
-          <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-3xl">
-
+      {/* ================= EDIT PROFILE MODAL ================= */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Modal Header */}
-
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
-
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-5 sm:px-6 py-4 flex items-center justify-between z-10">
               <div>
-                <h2 className="text-lg font-black text-slate-900">
+                <h3 className="text-xl font-bold text-slate-900">
                   Edit Profile
-                </h2>
+                </h3>
 
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Update your personal and travel information.
+                <p className="text-sm text-slate-500 mt-1">
+                  Update your profile information
                 </p>
               </div>
 
               <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100"
+                onClick={() => setIsEditModalOpen(false)}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100"
               >
-                <X size={19} />
+                <X size={20} />
               </button>
-
             </div>
 
-            {/* Modal Content */}
+            {/* Modal Form */}
+            <form
+              onSubmit={handleSaveProfile}
+              className="p-5 sm:p-6"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <InputField
+                  label="Full Name"
+                  name="name"
+                  value={editForm.name}
+                  onChange={handleEditChange}
+                  placeholder="Enter your full name"
+                />
 
-            <div className="space-y-5 p-5 sm:p-6">
+                <InputField
+                  label="Email Address"
+                  name="email"
+                  type="email"
+                  value={editForm.email}
+                  onChange={handleEditChange}
+                  placeholder="Enter your email"
+                />
 
-              {/* Personal */}
+                <InputField
+                  label="Mobile Number"
+                  name="mobile"
+                  value={editForm.mobile}
+                  onChange={handleEditChange}
+                  placeholder="Enter mobile number"
+                />
 
-              <div>
+                <InputField
+                  label="Location"
+                  name="location"
+                  value={editForm.location}
+                  onChange={handleEditChange}
+                  placeholder="Bihar, India"
+                />
 
-                <h3 className="mb-3 text-sm font-black text-slate-900">
-                  Personal Information
-                </h3>
+                <InputField
+                  label="Date of Birth"
+                  name="dob"
+                  value={editForm.dob}
+                  onChange={handleEditChange}
+                  placeholder="15 August 2000"
+                />
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField
+                  label="Gender"
+                  name="gender"
+                  value={editForm.gender}
+                  onChange={handleEditChange}
+                  options={[
+                    "Male",
+                    "Female",
+                    "Other",
+                    "Prefer not to say",
+                  ]}
+                />
 
-                  <InputField
-                    label="Full Name"
-                    name="name"
-                    value={editForm.name}
-                    onChange={handleInputChange}
-                  />
+                <SelectField
+                  label="Preferred Destination"
+                  name="preferredDestination"
+                  value={editForm.preferredDestination}
+                  onChange={handleEditChange}
+                  options={[
+                    "Dubai",
+                    "Paris",
+                    "Singapore",
+                    "Bali",
+                    "Maldives",
+                    "Switzerland",
+                    "Thailand",
+                    "Kashmir",
+                    "Goa",
+                  ]}
+                />
 
-                  <InputField
-                    label="Mobile Number"
-                    name="mobile"
-                    value={editForm.mobile}
-                    onChange={handleInputChange}
-                  />
+                <SelectField
+                  label="Travel Type"
+                  name="travelType"
+                  value={editForm.travelType}
+                  onChange={handleEditChange}
+                  options={[
+                    "Leisure",
+                    "Business",
+                    "Adventure",
+                    "Family",
+                    "Honeymoon",
+                    "Solo",
+                  ]}
+                />
 
-                  <InputField
-                    label="Date of Birth"
-                    name="dob"
-                    value={editForm.dob}
-                    onChange={handleInputChange}
-                  />
+                <SelectField
+                  label="Seat Preference"
+                  name="seatPreference"
+                  value={editForm.seatPreference}
+                  onChange={handleEditChange}
+                  options={[
+                    "Window",
+                    "Aisle",
+                    "Middle",
+                  ]}
+                />
 
-                  <SelectField
-                    label="Gender"
-                    name="gender"
-                    value={editForm.gender}
-                    onChange={handleInputChange}
-                    options={["Male", "Female", "Other"]}
-                  />
-
-                  <div className="sm:col-span-2">
-                    <InputField
-                      label="Location"
-                      name="location"
-                      value={editForm.location}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-
-                </div>
-
+                <SelectField
+                  label="Meal Preference"
+                  name="mealPreference"
+                  value={editForm.mealPreference}
+                  onChange={handleEditChange}
+                  options={[
+                    "Vegetarian",
+                    "Non-Vegetarian",
+                    "Vegan",
+                    "Jain",
+                  ]}
+                />
               </div>
 
-              {/* Travel Preferences */}
+              {/* Buttons */}
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-7">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
 
-              <div>
-
-                <h3 className="mb-3 text-sm font-black text-slate-900">
-                  Travel Preferences
-                </h3>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-
-                  <SelectField
-                    label="Preferred Destination"
-                    name="preferredDestination"
-                    value={editForm.preferredDestination}
-                    onChange={handleInputChange}
-                    options={[
-                      "Dubai",
-                      "Bali",
-                      "Maldives",
-                      "Paris",
-                      "Singapore",
-                      "Thailand",
-                      "Switzerland",
-                      "Goa",
-                      "Kashmir",
-                      "Manali",
-                    ]}
-                  />
-
-                  <SelectField
-                    label="Travel Type"
-                    name="travelType"
-                    value={editForm.travelType}
-                    onChange={handleInputChange}
-                    options={[
-                      "Leisure",
-                      "Adventure",
-                      "Family",
-                      "Honeymoon",
-                      "Business",
-                      "Luxury",
-                    ]}
-                  />
-
-                  <SelectField
-                    label="Seat Preference"
-                    name="seatPreference"
-                    value={editForm.seatPreference}
-                    onChange={handleInputChange}
-                    options={[
-                      "Window",
-                      "Aisle",
-                      "Middle",
-                      "No Preference",
-                    ]}
-                  />
-
-                  <SelectField
-                    label="Meal Preference"
-                    name="mealPreference"
-                    value={editForm.mealPreference}
-                    onChange={handleInputChange}
-                    options={[
-                      "Vegetarian",
-                      "Non-Vegetarian",
-                      "Vegan",
-                      "No Preference",
-                    ]}
-                  />
-
-                </div>
-
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                >
+                  Save Changes
+                </button>
               </div>
-
-            </div>
-
-            {/* Modal Footer */}
-
-            <div className="sticky bottom-0 flex gap-3 border-t border-slate-200 bg-white p-4 sm:justify-end sm:px-6">
-
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="flex-1 rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 sm:flex-none"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                className="flex-1 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700 sm:flex-none"
-              >
-                Save Changes
-              </button>
-
-            </div>
-
+            </form>
           </div>
-
         </div>
       )}
-
     </div>
   );
 };
 
-/* =========================================================
-   STAT CARD
-========================================================= */
+/* ================= STAT CARD ================= */
 
-const StatCard = ({ icon, value, label, onClick }) => {
+const StatCard = ({
+  icon,
+  title,
+  value,
+  subtitle,
+}) => {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
-    >
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm text-slate-500">
+            {title}
+          </p>
 
-      <div className="flex items-center justify-between">
+          <h3 className="text-2xl font-bold text-slate-900 mt-1">
+            {value}
+          </h3>
 
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-          {icon}
+          <p className="text-xs text-slate-400 mt-1">
+            {subtitle}
+          </p>
         </div>
 
-        <ArrowRight
-          size={15}
-          className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-600"
-        />
-
-      </div>
-
-      <p className="mt-3 text-xl font-black text-slate-900">
-        {value}
-      </p>
-
-      <p className="mt-0.5 text-xs font-medium text-slate-500">
-        {label}
-      </p>
-
-    </button>
-  );
-};
-
-/* =========================================================
-   PROFILE FIELD
-========================================================= */
-
-const ProfileField = ({ icon, label, value }) => {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-
-      <div className="flex items-center gap-2">
-
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-blue-600 shadow-sm">
+        <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
           {icon}
         </div>
-
-        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-          {label}
-        </span>
-
       </div>
-
-      <p className="mt-3 truncate text-sm font-bold text-slate-800">
-        {value}
-      </p>
-
     </div>
   );
 };
 
-/* =========================================================
-   PREFERENCE CARD
-========================================================= */
+/* ================= PROFILE FIELD ================= */
 
-const PreferenceCard = ({ icon, label, value }) => {
+const ProfileField = ({
+  icon,
+  label,
+  value,
+}) => {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4">
-
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+    <div className="flex items-start gap-3">
+      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
         {icon}
       </div>
 
       <div className="min-w-0">
-
-        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+        <p className="text-xs text-slate-400">
           {label}
         </p>
 
-        <p className="mt-1 truncate text-sm font-bold text-slate-800">
+        <p className="text-sm font-semibold text-slate-800 mt-1 break-words">
           {value}
         </p>
-
       </div>
-
     </div>
   );
 };
 
-/* =========================================================
-   ACTION ITEM
-========================================================= */
+/* ================= PREFERENCE CARD ================= */
 
-const ActionItem = ({ icon, title, subtitle, onClick }) => {
+const PreferenceCard = ({
+  icon,
+  title,
+  value,
+}) => {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex w-full items-center gap-3 rounded-2xl p-3 text-left transition hover:bg-blue-50"
-    >
-
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
+    <div className="border border-slate-200 rounded-xl p-4 flex items-center gap-3">
+      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
         {icon}
       </div>
 
-      <div className="min-w-0 flex-1">
-
-        <h3 className="text-sm font-bold text-slate-900">
+      <div className="min-w-0">
+        <p className="text-xs text-slate-400">
           {title}
-        </h3>
-
-        <p className="mt-0.5 truncate text-xs text-slate-500">
-          {subtitle}
         </p>
 
+        <p className="text-sm font-semibold text-slate-800 mt-1 truncate">
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+/* ================= ACTION ITEM ================= */
+
+const ActionItem = ({
+  icon,
+  title,
+  subtitle,
+  onClick,
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition text-left"
+    >
+      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+        {icon}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-slate-800">
+          {title}
+        </p>
+
+        <p className="text-xs text-slate-400 mt-0.5 truncate">
+          {subtitle}
+        </p>
       </div>
 
       <ChevronRight
-        size={16}
-        className="shrink-0 text-slate-400 group-hover:text-blue-600"
+        size={17}
+        className="text-slate-400 shrink-0"
       />
-
     </button>
   );
 };
 
-/* =========================================================
-   SETTING ITEM
-========================================================= */
+/* ================= SETTING ITEM ================= */
 
-const SettingItem = ({ icon, title, onClick }) => {
+const SettingItem = ({
+  icon,
+  title,
+  onClick,
+}) => {
   return (
     <button
-      type="button"
       onClick={onClick}
-      className="group flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left transition hover:bg-slate-50"
+      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition text-left"
     >
-
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-blue-50 group-hover:text-blue-600">
+      <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
         {icon}
       </div>
 
-      <span className="flex-1 text-sm font-semibold text-slate-700">
+      <span className="flex-1 text-sm font-semibold text-slate-800">
         {title}
       </span>
 
       <ChevronRight
-        size={15}
-        className="text-slate-300 group-hover:text-blue-600"
+        size={17}
+        className="text-slate-400"
       />
-
     </button>
   );
 };
 
-/* =========================================================
-   INPUT FIELD
-========================================================= */
+/* ================= INPUT FIELD ================= */
 
-const InputField = ({ label, name, value, onChange }) => {
+const InputField = ({
+  label,
+  name,
+  type = "text",
+  value,
+  onChange,
+  placeholder,
+}) => {
   return (
-    <label className="block">
-
-      <span className="mb-1.5 block text-xs font-bold text-slate-700">
+    <div>
+      <label className="block text-sm font-semibold text-slate-700 mb-2">
         {label}
-      </span>
+      </label>
 
       <input
-        type="text"
+        type={type}
         name={name}
         value={value}
         onChange={onChange}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        placeholder={placeholder}
+        className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
       />
-
-    </label>
+    </div>
   );
 };
 
-/* =========================================================
-   SELECT FIELD
-========================================================= */
+/* ================= SELECT FIELD ================= */
 
 const SelectField = ({
   label,
@@ -996,43 +976,59 @@ const SelectField = ({
   options,
 }) => {
   return (
-    <label className="block">
-
-      <span className="mb-1.5 block text-xs font-bold text-slate-700">
+    <div>
+      <label className="block text-sm font-semibold text-slate-700 mb-2">
         {label}
-      </span>
+      </label>
 
       <select
         name={name}
         value={value}
         onChange={onChange}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
       >
+        <option value="">
+          Select {label}
+        </option>
+
         {options.map((option) => (
-          <option key={option} value={option}>
+          <option
+            key={option}
+            value={option}
+          >
             {option}
           </option>
         ))}
       </select>
-
-    </label>
+    </div>
   );
 };
 
-/* =========================================================
-   SMALL ICON HELPERS
-========================================================= */
+/* ================= PHONE ICON ================= */
 
 const PhoneIcon = () => {
   return (
-    <span className="text-[15px] font-black">
-      ☎
-    </span>
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.63a2 2 0 0 1-.45 2.11L8 9.73a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.85.29 1.73.5 2.63.62A2 2 0 0 1 22 16.92z" />
+    </svg>
   );
 };
 
+/* ================= HOTEL ICON ================= */
+
 const HotelIcon = () => {
-  return <span className="text-[15px]">🏨</span>;
+  return (
+    <Hotel size={19} />
+  );
 };
 
 export default Profile;
