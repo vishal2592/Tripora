@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -12,27 +13,51 @@ import {
   Plane,
   ShieldCheck,
   User,
+  Phone,
 } from "lucide-react";
+
+import { useDispatch, useSelector } from "react-redux";
+import {
+  registerUser,
+  clearAuthMessage,
+} from "../redux/slicer/userSlice";
 
 const Register = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  // =========================
+  // REDUX STATE
+  // =========================
+
+  const { loading, error, success, message } = useSelector(
+    (state) => state.auth
+  );
+
+  // =========================
+  // FORM STATE
+  // =========================
 
   const [formData, setFormData] = useState({
-    name: "",
+    fullName: "",
     email: "",
+    mobileNumber: "",
     password: "",
     confirmPassword: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState(false);
+
   const [agreeTerms, setAgreeTerms] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+
   const [errors, setErrors] = useState({});
 
   // =========================
   // INPUT CHANGE
   // =========================
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -41,42 +66,72 @@ const Register = () => {
       [name]: value,
     }));
 
+    // Clear field error
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
         [name]: "",
       }));
     }
+
+    // Clear backend error
+    if (error) {
+      dispatch(clearAuthMessage());
+    }
   };
 
   // =========================
   // VALIDATION
   // =========================
+
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Full name is required";
+    // Full name
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = "Full name is required";
     }
 
+    // Email
     if (!formData.email.trim()) {
-      newErrors.email = "Email or mobile number is required";
+      newErrors.email = "Email is required";
+    } else if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+    ) {
+      newErrors.email = "Please enter a valid email";
     }
 
+    // Mobile
+    if (!formData.mobileNumber.trim()) {
+      newErrors.mobileNumber = "Mobile number is required";
+    } else if (!/^[0-9]{10}$/.test(formData.mobileNumber)) {
+      newErrors.mobileNumber =
+        "Mobile number must be 10 digits";
+    }
+
+    // Password
     if (!formData.password) {
       newErrors.password = "Password is required";
     } else if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password =
+        "Password must be at least 8 characters";
     }
 
+    // Confirm password
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword =
+        "Please confirm your password";
+    } else if (
+      formData.password !== formData.confirmPassword
+    ) {
+      newErrors.confirmPassword =
+        "Passwords do not match";
     }
 
+    // Terms
     if (!agreeTerms) {
-      newErrors.terms = "Please accept the terms and conditions";
+      newErrors.terms =
+        "Please accept the terms and conditions";
     }
 
     setErrors(newErrors);
@@ -87,39 +142,62 @@ const Register = () => {
   // =========================
   // SUBMIT
   // =========================
-  const handleSubmit = (e) => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Clear previous backend message
+    dispatch(clearAuthMessage());
+
+    // Frontend validation
     const isValid = validateForm();
 
     if (!isValid) return;
 
-    setIsLoading(true);
+    // Send only backend-required fields
+    const userData = {
+      fullName: formData.fullName.trim(),
+      email: formData.email.trim().toLowerCase(),
+      mobileNumber: formData.mobileNumber.trim(),
+      password: formData.password,
+    };
 
-    // Temporary registration
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate("/login");
-    }, 800);
+    try {
+      const resultAction = await dispatch(
+        registerUser(userData)
+      );
+
+      // Registration successful
+      if (registerUser.fulfilled.match(resultAction)) {
+        // Small delay so user can see success message
+        setTimeout(() => {
+          navigate("/");
+        }, 400);
+      }
+    } catch (error) {
+      console.error("Register Error:", error);
+    }
   };
 
   // =========================
   // GOOGLE
   // =========================
+
   const handleGoogleRegister = () => {
     console.log("Google register clicked");
   };
 
   return (
     <div className="h-screen overflow-hidden bg-slate-50 pt-6">
-     
       {/* =====================================================
           MAIN
       ====================================================== */}
+
       <main className="flex h-[calc(100vh-60px)] items-center justify-center overflow-hidden px-3 py-3 sm:px-5 lg:px-6">
         {/* =================================================
             MAIN CARD
         ================================================== */}
+
         <div
           className="
             grid
@@ -140,8 +218,8 @@ const Register = () => {
           {/* =================================================
               LEFT IMAGE SECTION
           ================================================== */}
+
           <section className="relative hidden overflow-hidden lg:block">
-            {/* IMAGE */}
             <img
               src="https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1400&q=85"
               alt="Beautiful travel destination"
@@ -149,28 +227,35 @@ const Register = () => {
             />
 
             {/* OVERLAY */}
+
             <div className="absolute inset-0 bg-gradient-to-b from-slate-950/10 via-slate-950/35 to-slate-950/90" />
 
             {/* CONTENT */}
+
             <div className="relative flex h-full flex-col justify-between p-8 xl:p-9">
               {/* TOP CONTENT */}
+
               <div>
                 {/* BADGE */}
+
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-medium text-white backdrop-blur-md">
                   <Plane size={12} />
                   Start your journey
                 </div>
 
                 {/* HEADING */}
+
                 <h2 className="mt-6 max-w-[340px] text-[36px] font-bold leading-[1.08] tracking-[-0.035em] text-white">
                   Travel more.
                   <br />
+
                   <span className="text-blue-200">
                     Worry less.
                   </span>
                 </h2>
 
                 {/* DESCRIPTION */}
+
                 <p className="mt-4 max-w-[330px] text-[12px] leading-5 text-white/70">
                   Create your account and discover a simpler
                   way to plan, compare and book your next
@@ -179,8 +264,10 @@ const Register = () => {
               </div>
 
               {/* BENEFITS */}
+
               <div className="space-y-4">
                 {/* BENEFIT 1 */}
+
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-md">
                     <BadgeIndianRupee
@@ -201,6 +288,7 @@ const Register = () => {
                 </div>
 
                 {/* BENEFIT 2 */}
+
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-md">
                     <ShieldCheck
@@ -221,6 +309,7 @@ const Register = () => {
                 </div>
 
                 {/* BENEFIT 3 */}
+
                 <div className="flex items-center gap-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur-md">
                     <Headphones
@@ -241,6 +330,7 @@ const Register = () => {
                 </div>
 
                 {/* DIVIDER */}
+
                 <div className="h-px bg-white/15" />
 
                 <p className="text-[10px] leading-4 text-white/45">
@@ -254,6 +344,7 @@ const Register = () => {
           {/* =================================================
               RIGHT FORM SECTION
           ================================================== */}
+
           <section
             className="
               flex
@@ -268,13 +359,15 @@ const Register = () => {
               xl:px-14
             "
           >
-            <div className="w-full max-w-[390px]">
+            <div className="w-full max-w-[390px] py-4">
               {/* =================================================
                   HEADING
               ================================================== */}
-              <div className="mb-4">
+
+              <div className="mb-1 pt-4">
                 {/* MOBILE ICON */}
-                <div className="mb-2.5 flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 lg:hidden">
+
+                <div className="mb-1.5 flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 lg:hidden">
                   <Plane size={17} />
                 </div>
 
@@ -289,13 +382,35 @@ const Register = () => {
               </div>
 
               {/* =================================================
+                  SUCCESS MESSAGE
+              ================================================== */}
+
+              {success && (
+                <div className="mb-1 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-medium text-emerald-700">
+                  {message || "Account created successfully!"}
+                </div>
+              )}
+
+              {/* =================================================
+                  BACKEND ERROR
+              ================================================== */}
+
+              {error && (
+                <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-medium text-red-600">
+                  {error}
+                </div>
+              )}
+
+              {/* =================================================
                   FORM
               ================================================== */}
+
               <form
                 onSubmit={handleSubmit}
-                className="space-y-2.5"
+                className="space-y-2"
               >
                 {/* ================= FULL NAME ================= */}
+
                 <div>
                   <label className="mb-1 block text-[11px] font-semibold text-slate-700">
                     Full name
@@ -310,8 +425,8 @@ const Register = () => {
 
                     <input
                       type="text"
-                      name="name"
-                      value={formData.name}
+                      name="fullName"
+                      value={formData.fullName}
                       onChange={handleChange}
                       placeholder="Enter your full name"
                       autoComplete="name"
@@ -329,7 +444,7 @@ const Register = () => {
                         placeholder:text-slate-400
                         transition
                         ${
-                          errors.name
+                          errors.fullName
                             ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-100"
                             : "border-slate-200 hover:border-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                         }
@@ -337,17 +452,18 @@ const Register = () => {
                     />
                   </div>
 
-                  {errors.name && (
+                  {errors.fullName && (
                     <p className="mt-0.5 text-[9px] font-medium text-red-500">
-                      {errors.name}
+                      {errors.fullName}
                     </p>
                   )}
                 </div>
 
                 {/* ================= EMAIL ================= */}
+
                 <div>
                   <label className="mb-1 block text-[11px] font-semibold text-slate-700">
-                    Email or mobile number
+                    Email
                   </label>
 
                   <div className="relative">
@@ -358,7 +474,7 @@ const Register = () => {
                     />
 
                     <input
-                      type="text"
+                      type="email"
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
@@ -393,7 +509,59 @@ const Register = () => {
                   )}
                 </div>
 
+                {/* ================= MOBILE NUMBER ================= */}
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold text-slate-700">
+                    Mobile number
+                  </label>
+
+                  <div className="relative">
+                    <Phone
+                      size={16}
+                      strokeWidth={1.8}
+                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+
+                    <input
+                      type="tel"
+                      name="mobileNumber"
+                      value={formData.mobileNumber}
+                      onChange={handleChange}
+                      placeholder="Enter 10 digit mobile number"
+                      autoComplete="tel"
+                      maxLength={10}
+                      className={`
+                        h-[44px]
+                        w-full
+                        rounded-xl
+                        border
+                        bg-white
+                        pl-10
+                        pr-3
+                        text-[13px]
+                        text-slate-800
+                        outline-none
+                        placeholder:text-slate-400
+                        transition
+                        ${
+                          errors.mobileNumber
+                            ? "border-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-100"
+                            : "border-slate-200 hover:border-slate-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                        }
+                      `}
+                    />
+                  </div>
+
+                  {errors.mobileNumber && (
+                    <p className="mt-0.5 text-[9px] font-medium text-red-500">
+                      {errors.mobileNumber}
+                    </p>
+                  )}
+                </div>
+
                 {/* ================= PASSWORD ================= */}
+
                 <div>
                   <label className="mb-1 block text-[11px] font-semibold text-slate-700">
                     Password
@@ -408,7 +576,9 @@ const Register = () => {
 
                     <input
                       type={
-                        showPassword ? "text" : "password"
+                        showPassword
+                          ? "text"
+                          : "password"
                       }
                       name="password"
                       value={formData.password}
@@ -461,6 +631,7 @@ const Register = () => {
                 </div>
 
                 {/* ================= CONFIRM PASSWORD ================= */}
+
                 <div>
                   <label className="mb-1 block text-[11px] font-semibold text-slate-700">
                     Confirm password
@@ -523,6 +694,7 @@ const Register = () => {
                   </div>
 
                   {/* PASSWORD MATCH */}
+
                   {formData.confirmPassword &&
                     formData.password ===
                       formData.confirmPassword && (
@@ -540,6 +712,7 @@ const Register = () => {
                 </div>
 
                 {/* ================= TERMS ================= */}
+
                 <div className="pt-0.5">
                   <label className="flex cursor-pointer items-start gap-2">
                     <input
@@ -585,9 +758,10 @@ const Register = () => {
                 </div>
 
                 {/* ================= CREATE ACCOUNT ================= */}
+
                 <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={loading}
                   className="
                     group
                     flex
@@ -608,7 +782,7 @@ const Register = () => {
                     disabled:opacity-60
                   "
                 >
-                  {isLoading ? (
+                  {loading ? (
                     <>
                       <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                       Creating account...
@@ -616,9 +790,10 @@ const Register = () => {
                   ) : (
                     <>
                       Create account
+
                       <ArrowRight
                         size={15}
-                        className="transition-transform group-hover:translate-x-0.5"
+                        className="transition-transform group-hover:translate-x-0.5 "
                       />
                     </>
                   )}
@@ -628,6 +803,7 @@ const Register = () => {
               {/* =================================================
                   DIVIDER
               ================================================== */}
+
               <div className="my-3.5 flex items-center gap-3">
                 <div className="h-px flex-1 bg-slate-200" />
 
@@ -641,6 +817,7 @@ const Register = () => {
               {/* =================================================
                   GOOGLE BUTTON
               ================================================== */}
+
               <button
                 type="button"
                 onClick={handleGoogleRegister}
@@ -663,7 +840,6 @@ const Register = () => {
                   hover:bg-slate-50
                 "
               >
-                {/* GOOGLE ICON */}
                 <span className="flex h-5 w-5 items-center justify-center rounded-full text-[14px] font-bold text-blue-600">
                   G
                 </span>
@@ -674,6 +850,7 @@ const Register = () => {
               {/* =================================================
                   LOGIN LINK
               ================================================== */}
+
               <p className="mt-3 text-center text-[10px] text-slate-500">
                 Already have an account?{" "}
                 <Link
@@ -687,6 +864,7 @@ const Register = () => {
               {/* =================================================
                   SECURITY
               ================================================== */}
+
               <div className="mt-3 flex items-center justify-center gap-1.5 text-[9px] text-slate-400">
                 <ShieldCheck size={11} />
                 Your information is securely protected
@@ -700,3 +878,4 @@ const Register = () => {
 };
 
 export default Register;
+

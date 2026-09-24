@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,9 +13,29 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { loginAdmin } from "../../../redux/slicer/adminSlice";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  // =========================================================
+  // REDUX ADMIN STATE
+  // =========================================================
+
+  const {
+    admin,
+    token,
+    loading,
+    error,
+    success,
+    message,
+  } = useSelector((state) => state.admin);
+
+  // =========================================================
+  // FORM STATE
+  // =========================================================
 
   const [formData, setFormData] = useState({
     email: "",
@@ -27,11 +48,10 @@ const AdminLogin = () => {
   const [errors, setErrors] = useState({});
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
 
-  /* =========================================================
-     HANDLE INPUT
-  ========================================================= */
+  // =========================================================
+  // HANDLE INPUT
+  // =========================================================
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -50,9 +70,9 @@ const AdminLogin = () => {
     setSuccessMessage("");
   };
 
-  /* =========================================================
-     VALIDATION
-  ========================================================= */
+  // =========================================================
+  // VALIDATION
+  // =========================================================
 
   const validateForm = () => {
     const newErrors = {};
@@ -69,7 +89,8 @@ const AdminLogin = () => {
     if (!password) {
       newErrors.password = "Password is required.";
     } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters.";
+      newErrors.password =
+        "Password must be at least 6 characters.";
     }
 
     setErrors(newErrors);
@@ -77,9 +98,9 @@ const AdminLogin = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  /* =========================================================
-     LOGIN
-  ========================================================= */
+  // =========================================================
+  // ADMIN LOGIN
+  // =========================================================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -87,97 +108,55 @@ const AdminLogin = () => {
     setErrorMessage("");
     setSuccessMessage("");
 
+    // Validate form
     if (!validateForm()) {
       return;
     }
 
-    setIsLoading(true);
-
     try {
-      /*
-       * =====================================================
-       * DEMO LOGIN
-       * =====================================================
-       *
-       * Replace this section with your actual admin API.
-       *
-       * Example:
-       *
-       * const response = await api.post("/admin/login", formData);
-       *
-       * const token = response.data?.token;
-       *
-       * if (token) {
-       *   localStorage.setItem("adminToken", token);
-       * }
-       */
+      // =====================================================
+      // CALL ADMIN LOGIN API THROUGH REDUX
+      // =====================================================
 
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const result = await dispatch(
+        loginAdmin({
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password,
+        })
+      ).unwrap();
 
-      /*
-       * Demo credentials
-       *
-       * Email:
-       * admin@tripora.com
-       *
-       * Password:
-       * admin123
-       */
+      // =====================================================
+      // LOGIN SUCCESS
+      // =====================================================
 
-      const demoEmail = "admin@tripora.com";
-      const demoPassword = "admin123";
+      setSuccessMessage(
+        result.message || "Login successful. Redirecting..."
+      );
 
-      if (
-        formData.email.trim().toLowerCase() !== demoEmail ||
-        formData.password !== demoPassword
-      ) {
-        setErrorMessage(
-          "Invalid admin email or password. Please check your credentials."
-        );
-        return;
-      }
-
-      const adminData = {
-        id: "ADM001",
-        name: "Vishal Kumar Rai",
-        email: demoEmail,
-        role: "Super Admin",
-      };
-
-      if (rememberMe) {
-        localStorage.setItem(
-          "triporaAdmin",
-          JSON.stringify(adminData)
-        );
-      } else {
-        sessionStorage.setItem(
-          "triporaAdmin",
-          JSON.stringify(adminData)
-        );
-      }
-
-      setSuccessMessage("Login successful. Redirecting...");
-
+      // Redirect to admin dashboard
       setTimeout(() => {
         navigate("/admin");
       }, 700);
     } catch (error) {
+      // =====================================================
+      // LOGIN ERROR
+      // =====================================================
+
       console.error("Admin login error:", error);
 
       setErrorMessage(
-        "Something went wrong. Please try again."
+        error || "Invalid admin email or password."
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  /* =========================================================
-     FORGOT PASSWORD
-  ========================================================= */
+  // =========================================================
+  // FORGOT PASSWORD
+  // =========================================================
 
   const handleForgotPassword = () => {
     setErrorMessage("");
+
     setSuccessMessage(
       "Password reset feature will be available soon."
     );
@@ -210,10 +189,7 @@ const AdminLogin = () => {
           <div className="mb-6 text-center sm:mb-8">
             <div className="mx-auto flex w-fit items-center gap-2.5">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
-                <Plane
-                  size={22}
-                  strokeWidth={2.4}
-                />
+                <Plane size={22} strokeWidth={2.4} />
               </div>
 
               <div className="text-left">
@@ -257,14 +233,14 @@ const AdminLogin = () => {
                 ERROR MESSAGE
             ================================================= */}
 
-            {errorMessage && (
+            {(errorMessage || error) && (
               <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3 text-sm text-red-700">
                 <AlertCircle
                   size={18}
                   className="mt-0.5 shrink-0"
                 />
 
-                <span>{errorMessage}</span>
+                <span>{errorMessage || error}</span>
               </div>
             )}
 
@@ -272,14 +248,16 @@ const AdminLogin = () => {
                 SUCCESS MESSAGE
             ================================================= */}
 
-            {successMessage && (
+            {(successMessage || (success && message)) && (
               <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-green-100 bg-green-50 px-3.5 py-3 text-sm text-green-700">
                 <CheckCircle2
                   size={18}
                   className="mt-0.5 shrink-0"
                 />
 
-                <span>{successMessage}</span>
+                <span>
+                  {successMessage || message}
+                </span>
               </div>
             )}
 
@@ -312,7 +290,7 @@ const AdminLogin = () => {
                     onChange={handleChange}
                     placeholder="Enter admin email"
                     autoComplete="email"
-                    disabled={isLoading}
+                    disabled={loading}
                     className={`h-12 w-full rounded-xl border bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50 ${
                       errors.email
                         ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
@@ -352,7 +330,7 @@ const AdminLogin = () => {
                     onChange={handleChange}
                     placeholder="Enter your password"
                     autoComplete="current-password"
-                    disabled={isLoading}
+                    disabled={loading}
                     className={`h-12 w-full rounded-xl border bg-white pl-11 pr-12 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50 ${
                       errors.password
                         ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100"
@@ -365,7 +343,7 @@ const AdminLogin = () => {
                     onClick={() =>
                       setShowPassword((prev) => !prev)
                     }
-                    disabled={isLoading}
+                    disabled={loading}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600 disabled:cursor-not-allowed"
                     aria-label={
                       showPassword
@@ -398,7 +376,7 @@ const AdminLogin = () => {
                     onChange={(e) =>
                       setRememberMe(e.target.checked)
                     }
-                    disabled={isLoading}
+                    disabled={loading}
                     className="h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 accent-blue-600 focus:ring-blue-500"
                   />
 
@@ -410,7 +388,7 @@ const AdminLogin = () => {
                 <button
                   type="button"
                   onClick={handleForgotPassword}
-                  disabled={isLoading}
+                  disabled={loading}
                   className="text-xs font-semibold text-blue-600 transition hover:text-blue-700 disabled:cursor-not-allowed sm:text-sm"
                 >
                   Forgot Password?
@@ -421,10 +399,10 @@ const AdminLogin = () => {
 
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={loading}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {isLoading ? (
+                {loading ? (
                   <>
                     <Loader2
                       size={18}
@@ -499,3 +477,4 @@ const AdminLogin = () => {
 };
 
 export default AdminLogin;
+
