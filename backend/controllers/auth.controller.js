@@ -4,11 +4,10 @@ const User = require("../models/user.model");
 
 const registerUser = async (req, res) => {
   try {
-    const { fullName, email, mobileNumber, password, confirmPassword } =
-      req.body;
+    const { fullName, email, mobileNumber, password } = req.body;
 
     // missing fileds check
-    if (!fullName || !email || !mobileNumber || !password || !confirmPassword) {
+    if (!fullName || !email || !mobileNumber || !password) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",

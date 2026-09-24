@@ -7,6 +7,7 @@ const {
   getAllDestination,
   getSingleDestinationById,
   updateDestination,
+  deleteDestination,
 } = require("../controllers/destination.controller");
 
 const adminAuth = require("../middleware/adminAuth.middleware");
@@ -19,5 +20,7 @@ router.get("/:id", getSingleDestinationById);
 router.post("/", adminAuth, createDestination);
 //update destination
 router.put("/:id", adminAuth, updateDestination);
+// Delete Destination
+router.delete("/:id", adminAuth, deleteDestination);
 
 module.exports = router;
