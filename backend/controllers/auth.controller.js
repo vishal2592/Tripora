@@ -4,10 +4,11 @@ const User = require("../models/user.model");
 
 const registerUser = async (req, res) => {
   try {
-    const { fullName, email, mobileNumber, password } = req.body;
+    const { fullName, email, mobileNumber, password, confirmPassword } =
+      req.body;
 
     // missing fileds check
-    if (!fullName || !email || !mobileNumber || !password) {
+    if (!fullName || !email || !mobileNumber || !password || !confirmPassword) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -164,8 +165,122 @@ const getProfile = async (req, res) => {
   }
 };
 
+// update profile
+
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const {
+      name,
+      mobile,
+      location,
+      dob,
+      gender,
+      avatar,
+      preferredDestination,
+      travelType,
+      seatPreference,
+      mealPreference,
+    } = req.body;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message,
+      });
+    }
+
+    if (mobile && mobile !== user.mobileNumber) {
+      const existingUser = await User.findOne({
+        mobileNumber: mobile,
+        _id: { $ne: userId },
+      });
+
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: "Mobile number is already registered",
+        });
+      }
+
+      user.mobileNumber = mobile;
+    }
+
+    // Update profile fields
+    if (name !== undefined) {
+      user.fullName = name.trim();
+    }
+
+    if (location !== undefined) {
+      user.location = location.trim();
+    }
+
+    if (dob !== undefined) {
+      user.dob = dob;
+    }
+
+    if (gender !== undefined) {
+      user.gender = gender;
+    }
+
+    if (avatar !== undefined) {
+      user.avatar = avatar;
+    }
+
+    if (preferredDestination !== undefined) {
+      user.preferredDestination = preferredDestination;
+    }
+
+    if (travelType !== undefined) {
+      user.travelType = travelType;
+    }
+
+    if (seatPreference !== undefined) {
+      user.seatPreference = seatPreference;
+    }
+
+    if (mealPreference !== undefined) {
+      user.mealPreference = mealPreference;
+    }
+
+    const updatedUser = await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: {
+        id: updatedUser._id,
+        fullName: updatedUser.fullName,
+        email: updatedUser.email,
+        mobileNumber: updatedUser.mobileNumber,
+        location: updatedUser.location,
+        dob: updatedUser.dob,
+        gender: updatedUser.gender,
+        avatar: updatedUser.avatar,
+        preferredDestination: updatedUser.preferredDestination,
+        travelType: updatedUser.travelType,
+        seatPreference: updatedUser.seatPreference,
+        mealPreference: updatedUser.mealPreference,
+        role: updatedUser.role,
+        isActive: updatedUser.isActive,
+      },
+    });
+  } catch (error) {
+    console.error("Update Profile Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   getProfile,
+  updateProfile,
 };

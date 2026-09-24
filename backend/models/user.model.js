@@ -21,6 +21,39 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+
+    location: {
+      type: String,
+      trim: true,
+    },
+    dob: {
+      type: Date,
+    },
+
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+      trim: true,
+    },
+
+    avatar: {
+      type: String,
+      trim: true,
+    },
+    preferredDestination: {
+      type: String,
+      trim: true,
+    },
+
+    travelType: {
+      type: String,
+      trim: true,
+    },
+
+    seatPreference: {
+      type: String,
+      trim: true,
+    },
     password: {
       type: String,
       required: true,

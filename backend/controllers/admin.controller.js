@@ -23,7 +23,7 @@ const loginAdmin = async (req, res) => {
     if (!admin) {
       return res.status(404).json({
         success: false,
-        message: "Admin not fount",
+        message: "Admin not found",
       });
     }
 
