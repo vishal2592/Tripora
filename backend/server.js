@@ -6,7 +6,7 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/auth.route");
 const adminRoutes = require("./routes/admin.route");
 const destinationRoutes = require("./routes/destination.route");
-
+const hotelRoutes = require("./routes/hotel.route");
 const app = express();
 
 //middlewares
@@ -21,6 +21,7 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/destinations", destinationRoutes);
+app.use("/api/hotels", hotelRoutes);
 //test route
 app.get("/", (req, res) => {
   res.json({
