@@ -38,7 +38,7 @@ export const getAdminProfile = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message ||
-          "Failed to get admin profile"
+        "Failed to get admin profile"
       );
     }
   }
@@ -103,6 +103,11 @@ const adminSlice = createSlice({
         state.admin = action.payload.admin;
         state.token = action.payload.token;
         state.isAuthenticated = true;
+
+        localStorage.setItem(
+          "triporaAdminToken",
+          action.payload.token
+        );
 
         state.message =
           action.payload.message || "Admin login successful";
