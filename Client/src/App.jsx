@@ -4,6 +4,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import ScrollToTop from './components/ScrollToTop'
 import Footer from './components/Footer'
+import PrivateRoute from './components/PrivateRoute'
 
 import Home from './pages/Home'
 import Login from './pages/Login'
@@ -85,21 +86,57 @@ function App() {
             CLIENT SIDE ROUTES
         ===================================================== */}
 
-        <Route path='/' element={<Home />} />
+        {/* ================= USER HOME ================= */}
 
-        <Route path='/login' element={<Login />} />
+        <Route element={<PrivateRoute role="user" />}>
 
-        <Route path='/register' element={<Register />} />
+          <Route
+            path='/'
+            element={<Home />}
+          />
 
-        <Route path='/flights' element={<Flight />} />
+        </Route>
 
-        <Route path='/hotels' element={<Hotels />} />
 
-        <Route path='/packages' element={<Packages />} />
+        {/* ================= AUTH ================= */}
 
-        <Route path='/destinations' element={<Destination />} />
+        <Route
+          path='/login'
+          element={<Login />}
+        />
 
-        <Route path='/offers' element={<Offers />} />
+        <Route
+          path='/register'
+          element={<Register />}
+        />
+
+
+        {/* ================= CLIENT PAGES ================= */}
+
+        <Route
+          path='/flights'
+          element={<Flight />}
+        />
+
+        <Route
+          path='/hotels'
+          element={<Hotels />}
+        />
+
+        <Route
+          path='/packages'
+          element={<Packages />}
+        />
+
+        <Route
+          path='/destinations'
+          element={<Destination />}
+        />
+
+        <Route
+          path='/offers'
+          element={<Offers />}
+        />
 
         <Route
           path='/termsandconditions'
@@ -244,31 +281,87 @@ function App() {
             ADMIN SIDE ROUTES
         ===================================================== */}
 
-        <Route
-          path='/admin'
-          element={<AdminLayout />}
-        >
+        <Route element={<PrivateRoute role="admin" />}>
 
           <Route
-            index
-            element={<Dashboard />  }
-          />
+            path='/admin'
+            element={<AdminLayout />}
+          >
 
-          <Route path='bookings' element={<Bookings />} />
-          <Route path='adminflight' element={<AdminFlight />} />
-          <Route path='adminhotel' element={<AdminHotel />} />
-          <Route path='adminpackage' element={<AdminPackages />} />
-          <Route path='admindestination' element={<AdminDestination />} />
-          <Route path='adminoffers' element={<AdminOffers />} />
-          <Route path='adminusers' element={<AdminUsers />} />
-          <Route path='adminpayment' element={<AdminPayment />} />
-          <Route path='adminreview' element={<AdminReview />} />
-          <Route path='adminprofile' element={<AdminProfile />} />
-          <Route path='content' element={<Content />} />
-        
+            <Route
+              index
+              element={<Dashboard />}
+            />
+
+            <Route
+              path='bookings'
+              element={<Bookings />}
+            />
+
+            <Route
+              path='adminflight'
+              element={<AdminFlight />}
+            />
+
+            <Route
+              path='adminhotel'
+              element={<AdminHotel />}
+            />
+
+            <Route
+              path='adminpackage'
+              element={<AdminPackages />}
+            />
+
+            <Route
+              path='admindestination'
+              element={<AdminDestination />}
+            />
+
+            <Route
+              path='adminoffers'
+              element={<AdminOffers />}
+            />
+
+            <Route
+              path='adminusers'
+              element={<AdminUsers />}
+            />
+
+            <Route
+              path='adminpayment'
+              element={<AdminPayment />}
+            />
+
+            <Route
+              path='adminreview'
+              element={<AdminReview />}
+            />
+
+            <Route
+              path='adminprofile'
+              element={<AdminProfile />}
+            />
+
+            <Route
+              path='content'
+              element={<Content />}
+            />
+
+          </Route>
+
         </Route>
 
-        <Route path='/admin/adminlogin' element={<AdminLogin />} /> 
+
+        {/* =====================================================
+            ADMIN LOGIN
+            This route must remain PUBLIC
+        ===================================================== */}
+
+        <Route
+          path='/admin/adminlogin'
+          element={<AdminLogin />}
+        />
 
       </Routes>
 
