@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import {
   Plane,
@@ -21,12 +20,7 @@ import {
   Heart,
   LogOut,
 } from "lucide-react";
-import {
-  Link,
-  NavLink,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 import { logout } from "../redux/slicer/userSlice";
@@ -46,9 +40,7 @@ const Navbar = () => {
 
   // ================= REDUX AUTH =================
 
-  const { user, isAuthenticated } = useSelector(
-    (state) => state.auth
-  );
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
 
   // ================= CLOSE MENUS ON ROUTE CHANGE =================
 
@@ -149,13 +141,9 @@ const Navbar = () => {
 
       <header className="sticky top-0 z-50 w-full border-b border-slate-100 bg-white/95 shadow-[0_2px_15px_rgba(15,23,42,0.05)] backdrop-blur-md">
         <div className="mx-auto flex h-[64px] max-w-[90rem] items-center justify-between px-4 sm:px-6 lg:px-8">
-
           {/* ================= LOGO ================= */}
 
-          <Link
-            to="/"
-            className="group flex shrink-0 items-center gap-2"
-          >
+          <Link to="/" className="group flex shrink-0 items-center gap-2">
             {/* Logo Mark */}
             <div className="relative flex h-11 w-11 items-center justify-center">
               <div className="absolute inset-1 rotate-[-25deg] rounded-full border-[5px] border-blue-600 border-r-transparent border-t-transparent" />
@@ -217,9 +205,7 @@ const Navbar = () => {
                           size={21}
                           strokeWidth={isActive ? 2.5 : 2}
                           className={`mb-1.5 transition-transform duration-200 ${
-                            isActive
-                              ? "scale-105"
-                              : "group-hover:scale-105"
+                            isActive ? "scale-105" : "group-hover:scale-105"
                           }`}
                         />
 
@@ -231,11 +217,7 @@ const Navbar = () => {
                             absolute bottom-0 left-1/2 h-[3px]
                             -translate-x-1/2 rounded-t-full
                             bg-blue-600 transition-all duration-200
-                            ${
-                              isActive
-                                ? "w-10 opacity-100"
-                                : "w-0 opacity-0"
-                            }
+                            ${isActive ? "w-10 opacity-100" : "w-0 opacity-0"}
                           `}
                         />
                       </>
@@ -251,7 +233,6 @@ const Navbar = () => {
           ===================================================== */}
 
           <div className="hidden items-center gap-2 xl:flex">
-
             {/* ================= CURRENCY ================= */}
 
             <div className="relative">
@@ -315,7 +296,6 @@ const Navbar = () => {
 
             {isAuthenticated && user ? (
               <div className="relative ml-1">
-
                 {/* User Icon Button */}
                 <button
                   type="button"
@@ -344,11 +324,9 @@ const Navbar = () => {
 
                 {userMenuOpen && (
                   <div className="absolute right-0 top-[52px] z-50 w-72 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl">
-
                     {/* User Information */}
                     <div className="border-b border-slate-100 bg-slate-50 px-4 py-4">
                       <div className="flex items-center gap-3">
-
                         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
                           <UserRound size={20} />
                         </div>
@@ -367,13 +345,10 @@ const Navbar = () => {
 
                     {/* Menu Items */}
                     <div className="p-2">
-
                       {/* Profile */}
                       <button
                         type="button"
-                        onClick={() =>
-                          handleUserNavigation("/profile")
-                        }
+                        onClick={() => handleUserNavigation("/profile")}
                         className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-blue-50"
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -399,9 +374,7 @@ const Navbar = () => {
                       {/* Book Flight */}
                       <button
                         type="button"
-                        onClick={() =>
-                          handleUserNavigation("/flights")
-                        }
+                        onClick={() => handleUserNavigation("/flights")}
                         className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-blue-50"
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -427,9 +400,7 @@ const Navbar = () => {
                       {/* Book Hotel */}
                       <button
                         type="button"
-                        onClick={() =>
-                          handleUserNavigation("/hotels")
-                        }
+                        onClick={() => handleUserNavigation("/hotels")}
                         className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-blue-50"
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -455,9 +426,7 @@ const Navbar = () => {
                       {/* My Bookings */}
                       <button
                         type="button"
-                        onClick={() =>
-                          handleUserNavigation("/bookings")
-                        }
+                        onClick={() => handleUserNavigation("/my-bookings")}
                         className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-blue-50"
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -483,9 +452,7 @@ const Navbar = () => {
                       {/* Saved Trips */}
                       <button
                         type="button"
-                        onClick={() =>
-                          handleUserNavigation("/saved-trips")
-                        }
+                        onClick={() => handleUserNavigation("/saved-trips")}
                         className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-blue-50"
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -521,9 +488,7 @@ const Navbar = () => {
                         </span>
 
                         <div>
-                          <p className="text-sm font-semibold">
-                            Logout
-                          </p>
+                          <p className="text-sm font-semibold">Logout</p>
 
                           <p className="text-xs text-red-400">
                             Sign out from Tripora
@@ -587,18 +552,12 @@ const Navbar = () => {
           fixed right-0 top-0 z-[70] flex h-full w-[320px]
           max-w-[88vw] flex-col bg-white shadow-2xl
           transition-transform duration-300 ease-out xl:hidden
-          ${
-            mobileMenuOpen
-              ? "translate-x-0"
-              : "translate-x-full"
-          }
+          ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"}
         `}
       >
-
         {/* ================= MOBILE HEADER ================= */}
 
         <div className="flex h-[76px] shrink-0 items-center justify-between border-b border-slate-100 px-5">
-
           <Link
             to="/"
             onClick={() => setMobileMenuOpen(false)}
@@ -643,12 +602,10 @@ const Navbar = () => {
         {/* ================= MOBILE NAVIGATION ================= */}
 
         <div className="flex-1 overflow-y-auto px-4 py-5">
-
           {/* Logged in User */}
           {isAuthenticated && user && (
             <div className="mb-5 rounded-2xl bg-blue-50 p-4">
               <div className="flex items-center gap-3">
-
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white">
                   <UserRound size={20} />
                 </div>
@@ -720,19 +677,15 @@ const Navbar = () => {
 
           {isAuthenticated && user && (
             <div className="mt-6 border-t border-slate-100 pt-5">
-
               <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
                 My Tripora
               </p>
 
               <div className="space-y-1">
-
                 {/* Profile */}
                 <button
                   type="button"
-                  onClick={() =>
-                    handleUserNavigation("/profile")
-                  }
+                  onClick={() => handleUserNavigation("/profile")}
                   className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left hover:bg-slate-50"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -747,9 +700,7 @@ const Navbar = () => {
                 {/* Book Flight */}
                 <button
                   type="button"
-                  onClick={() =>
-                    handleUserNavigation("/flights")
-                  }
+                  onClick={() => handleUserNavigation("/flights")}
                   className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left hover:bg-slate-50"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -764,9 +715,7 @@ const Navbar = () => {
                 {/* Book Hotel */}
                 <button
                   type="button"
-                  onClick={() =>
-                    handleUserNavigation("/hotels")
-                  }
+                  onClick={() => handleUserNavigation("/hotels")}
                   className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left hover:bg-slate-50"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -781,9 +730,7 @@ const Navbar = () => {
                 {/* My Bookings */}
                 <button
                   type="button"
-                  onClick={() =>
-                    handleUserNavigation("/bookings")
-                  }
+                  onClick={() => handleUserNavigation("/bookings")}
                   className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left hover:bg-slate-50"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -798,9 +745,7 @@ const Navbar = () => {
                 {/* Saved Trips */}
                 <button
                   type="button"
-                  onClick={() =>
-                    handleUserNavigation("/saved-trips")
-                  }
+                  onClick={() => handleUserNavigation("/saved-trips")}
                   className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left hover:bg-slate-50"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
@@ -822,9 +767,7 @@ const Navbar = () => {
                     <LogOut size={18} />
                   </span>
 
-                  <span className="text-sm font-semibold">
-                    Logout
-                  </span>
+                  <span className="text-sm font-semibold">Logout</span>
                 </button>
               </div>
             </div>
@@ -833,22 +776,18 @@ const Navbar = () => {
           {/* ================= MOBILE PREFERENCES ================= */}
 
           <div className="mt-6 border-t border-slate-100 pt-5">
-
             <p className="mb-3 px-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
               Preferences
             </p>
 
             <div className="grid grid-cols-2 gap-2">
-
               {/* Currency */}
               <button
                 type="button"
                 onClick={() => {
-                  const currentIndex =
-                    currencies.indexOf(currency);
+                  const currentIndex = currencies.indexOf(currency);
 
-                  const nextIndex =
-                    (currentIndex + 1) % currencies.length;
+                  const nextIndex = (currentIndex + 1) % currencies.length;
 
                   setCurrency(currencies[nextIndex]);
                 }}
@@ -862,11 +801,9 @@ const Navbar = () => {
               <button
                 type="button"
                 onClick={() => {
-                  const currentIndex =
-                    languages.indexOf(language);
+                  const currentIndex = languages.indexOf(language);
 
-                  const nextIndex =
-                    (currentIndex + 1) % languages.length;
+                  const nextIndex = (currentIndex + 1) % languages.length;
 
                   setLanguage(languages[nextIndex]);
                 }}
@@ -875,7 +812,6 @@ const Navbar = () => {
                 <Languages size={17} />
                 {language}
               </button>
-
             </div>
           </div>
         </div>
@@ -892,7 +828,6 @@ const Navbar = () => {
               className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
             >
               <UserRound size={19} />
-
               Login / Register
             </Link>
           </div>
@@ -904,7 +839,6 @@ const Navbar = () => {
               className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-red-50 text-sm font-semibold text-red-600 transition hover:bg-red-100"
             >
               <LogOut size={19} />
-
               Logout
             </button>
           </div>
@@ -915,4 +849,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
