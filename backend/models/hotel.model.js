@@ -114,6 +114,11 @@ const hotelSchema = new mongoose.Schema(
       trim: true,
     },
 
+    imageDeleteUrl: {
+      type: String,
+      trim: true,
+    },
+
     images: {
       type: [String],
       default: [],

@@ -8,6 +8,7 @@ const adminRoutes = require("./routes/admin.route");
 const destinationRoutes = require("./routes/destination.route");
 const hotelRoutes = require("./routes/hotel.route");
 const hotelBookingRoutes = require("./routes/hotelBooking.route");
+const savedHotelRoutes = require("./routes/savedHotel.route");
 const app = express();
 
 //middlewares
@@ -24,6 +25,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/destinations", destinationRoutes);
 app.use("/api/hotels", hotelRoutes);
 app.use("/api/hotel-bookings", hotelBookingRoutes);
+app.use("/api/saved-hotels", savedHotelRoutes);
 //test route
 app.get("/", (req, res) => {
   res.json({

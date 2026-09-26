@@ -1,5 +1,5 @@
-const { model } = require("mongoose");
 const Hotel = require("../models/hotel.model");
+const { uploadToImgBB, deleteFromImgBB } = require("../utils/imgbb");
 
 const createHotel = async (req, res) => {
   try {
@@ -22,18 +22,32 @@ const createHotel = async (req, res) => {
       price,
       amenities,
       status,
-      image,
-      images,
     } = req.body;
 
-    // check fields
+    // Check required fields
     if (!hotelName || !city || !address || !rooms || !price) {
       return res.status(400).json({
         success: false,
-        message: "hotelName,city,address,rooms & price are required",
+        message: "hotelName, city, address, rooms & price are required",
       });
     }
 
+    // Image URL
+    let imageUrl = "";
+    let imageDeleteUrl = "";
+
+    // If image is uploaded
+    if (req.file) {
+      const uploadResult = await uploadToImgBB(
+        req.file.buffer,
+        req.file.originalname,
+      );
+
+      imageUrl = uploadResult.data.url;
+      imageDeleteUrl = uploadResult.data.deleteUrl;
+    }
+
+    // Create hotel
     const hotel = await Hotel.create({
       hotelName,
       propertyType,
@@ -53,11 +67,11 @@ const createHotel = async (req, res) => {
       price,
       amenities,
       status,
-      image,
-      images,
+      image: imageUrl,
+      imageDeleteUrl: imageDeleteUrl,
     });
 
-    // success response
+    // Success response
     return res.status(201).json({
       success: true,
       message: "Hotel created successfully",
@@ -126,7 +140,6 @@ const getSignleHotel = async (req, res) => {
 };
 
 //update hotel
-
 const updateHotel = async (req, res) => {
   try {
     const { id } = req.params;
@@ -150,19 +163,19 @@ const updateHotel = async (req, res) => {
       price,
       amenities,
       status,
-      image,
-      images,
     } = req.body;
 
-    //check required fields
+    // Check required fields
     if (!hotelName || !city || !address || !rooms || !price) {
       return res.status(400).json({
         success: false,
-        message: "hotelName,city,address,rooms & price are required",
+        message: "hotelName, city, address, rooms & price are required",
       });
     }
-    // check hotel exist
+
+    // Check hotel exists
     const hotel = await Hotel.findById(id);
+
     if (!hotel) {
       return res.status(404).json({
         success: false,
@@ -170,11 +183,11 @@ const updateHotel = async (req, res) => {
       });
     }
 
-    // Update hotel
-
+    // Update hotel fields
     hotel.hotelName = hotelName;
     hotel.propertyType = propertyType;
     hotel.starRating = starRating;
+    hotel.reviews = reviews;
     hotel.email = email;
     hotel.phone = phone;
     hotel.city = city;
@@ -189,12 +202,34 @@ const updateHotel = async (req, res) => {
     hotel.price = price;
     hotel.amenities = amenities;
     hotel.status = status;
-    hotel.image = image;
-    hotel.images = images;
 
+    // -----------------------------------------
+    // If new image is uploaded
+    // -----------------------------------------
+    if (req.file) {
+      // Save old delete URL before replacing it
+      const oldDeleteUrl = hotel.imageDeleteUrl;
+
+      // Upload new image to ImgBB
+      const uploadResult = await uploadToImgBB(
+        req.file.buffer,
+        req.file.originalname,
+      );
+
+      // Update image URLs
+      hotel.image = uploadResult.data.url;
+      hotel.imageDeleteUrl = uploadResult.data.deleteUrl;
+
+      // Delete old image from ImgBB
+      if (oldDeleteUrl) {
+        await deleteFromImgBB(oldDeleteUrl);
+      }
+    }
+
+    // Save updated hotel
     await hotel.save();
 
-    //success response
+    // Success response
     return res.status(200).json({
       success: true,
       message: "Hotel updated successfully",
@@ -202,6 +237,7 @@ const updateHotel = async (req, res) => {
     });
   } catch (error) {
     console.error("Update Hotel Error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Server error",
