@@ -34,6 +34,7 @@ import {
   X,
 } from "lucide-react";
 
+
 const HotelDetails = () => {
   const { id } = useParams();
 

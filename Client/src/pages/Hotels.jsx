@@ -1,5 +1,4 @@
-
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   BedDouble,
@@ -16,15 +15,17 @@ import {
   SlidersHorizontal,
   Star,
   Users,
-  Utensils,
   Waves,
   Wifi,
   X,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { getAllHotel } from "../redux/slicer/hotelSlice";
 
 /* =========================================================
    POPULAR DESTINATIONS
+   STATIC DATA - NOT CHANGED
 ========================================================= */
 
 const popularDestinations = [
@@ -63,152 +64,8 @@ const popularDestinations = [
 ];
 
 /* =========================================================
-   HOTEL DATA
-========================================================= */
-
-const hotelData = [
-  {
-    id: 1,
-    name: "The Grand Palace",
-    location: "Downtown Dubai",
-    city: "Dubai",
-    country: "UAE",
-    image:
-      "https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1000&q=80",
-    rating: 4.8,
-    reviews: 1240,
-    stars: 5,
-    price: 4999,
-    oldPrice: 6999,
-    taxes: 850,
-    propertyType: "Hotel",
-    amenities: ["Free WiFi", "Pool", "Breakfast"],
-    freeCancellation: true,
-    breakfast: true,
-    pool: true,
-    wifi: true,
-    parking: true,
-    featured: true,
-  },
-  {
-    id: 2,
-    name: "Ocean View Resort",
-    location: "North Goa",
-    city: "Goa",
-    country: "India",
-    image:
-      "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1000&q=80",
-    rating: 4.7,
-    reviews: 865,
-    stars: 5,
-    price: 3899,
-    oldPrice: 5299,
-    taxes: 650,
-    propertyType: "Resort",
-    amenities: ["Pool", "Free WiFi", "Breakfast"],
-    freeCancellation: true,
-    breakfast: true,
-    pool: true,
-    wifi: true,
-    parking: true,
-    featured: true,
-  },
-  {
-    id: 3,
-    name: "Royal Heritage Hotel",
-    location: "City Center",
-    city: "Jaipur",
-    country: "India",
-    image:
-      "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1000&q=80",
-    rating: 4.6,
-    reviews: 642,
-    stars: 4,
-    price: 2899,
-    oldPrice: 3999,
-    taxes: 480,
-    propertyType: "Hotel",
-    amenities: ["Free WiFi", "Breakfast", "Parking"],
-    freeCancellation: true,
-    breakfast: true,
-    pool: false,
-    wifi: true,
-    parking: true,
-    featured: false,
-  },
-  {
-    id: 4,
-    name: "Paradise Beach Villa",
-    location: "Seminyak",
-    city: "Bali",
-    country: "Indonesia",
-    image:
-      "https://images.unsplash.com/photo-1602002418082-a4443e081dd1?auto=format&fit=crop&w=1000&q=80",
-    rating: 4.9,
-    reviews: 512,
-    stars: 5,
-    price: 6499,
-    oldPrice: 8299,
-    taxes: 1050,
-    propertyType: "Villa",
-    amenities: ["Pool", "Free WiFi", "Breakfast"],
-    freeCancellation: true,
-    breakfast: true,
-    pool: true,
-    wifi: true,
-    parking: false,
-    featured: true,
-  },
-  {
-    id: 5,
-    name: "City Lights Hotel",
-    location: "Central Paris",
-    city: "Paris",
-    country: "France",
-    image:
-      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1000&q=80",
-    rating: 4.5,
-    reviews: 734,
-    stars: 4,
-    price: 7199,
-    oldPrice: 8999,
-    taxes: 1200,
-    propertyType: "Hotel",
-    amenities: ["Free WiFi", "Breakfast", "Parking"],
-    freeCancellation: false,
-    breakfast: true,
-    pool: false,
-    wifi: true,
-    parking: true,
-    featured: false,
-  },
-  {
-    id: 6,
-    name: "Palm Garden Resort",
-    location: "Kuta Beach",
-    city: "Bali",
-    country: "Indonesia",
-    image:
-      "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1000&q=80",
-    rating: 4.7,
-    reviews: 923,
-    stars: 5,
-    price: 4299,
-    oldPrice: 5799,
-    taxes: 720,
-    propertyType: "Resort",
-    amenities: ["Pool", "Free WiFi", "Breakfast"],
-    freeCancellation: true,
-    breakfast: true,
-    pool: true,
-    wifi: true,
-    parking: true,
-    featured: false,
-  },
-];
-
-/* =========================================================
    HOTEL TYPES
+   STATIC DATA - NOT CHANGED
 ========================================================= */
 
 const hotelTypes = [
@@ -236,6 +93,7 @@ const hotelTypes = [
 
 /* =========================================================
    DEALS
+   STATIC DATA - NOT CHANGED
 ========================================================= */
 
 const hotelDeals = [
@@ -273,6 +131,126 @@ const hotelDeals = [
 ========================================================= */
 
 const Hotels = () => {
+  const dispatch = useDispatch();
+
+  /* =======================================================
+     REDUX HOTEL STATE
+  ======================================================== */
+
+  const {
+    hotels = [],
+    loading,
+    error,
+  } = useSelector((state) => state.hotel);
+
+  /* =======================================================
+     GET ALL HOTELS
+  ======================================================== */
+
+  useEffect(() => {
+    dispatch(getAllHotel());
+  }, [dispatch]);
+
+  /* =======================================================
+     CONVERT BACKEND DATA TO EXISTING UI FORMAT
+  ======================================================== */
+
+  const hotelData = useMemo(() => {
+    return hotels.map((hotel) => {
+      const amenities = Array.isArray(hotel.amenities)
+        ? hotel.amenities
+        : [];
+
+      const hasAmenity = (keyword) => {
+        return amenities.some((item) =>
+          String(item)
+            .toLowerCase()
+            .includes(keyword.toLowerCase())
+        );
+      };
+
+      return {
+        id: hotel._id,
+
+        name: hotel.hotelName || "Unnamed Hotel",
+
+        location:
+          hotel.address ||
+          [hotel.city, hotel.state, hotel.country]
+            .filter(Boolean)
+            .join(", ") ||
+          "Location unavailable",
+
+        city: hotel.city || "",
+
+        country: hotel.country || "",
+
+        image:
+          hotel.image ||
+          (Array.isArray(hotel.images)
+            ? hotel.images[0]
+            : "") ||
+          "",
+
+        rating: Number(
+          hotel.rating || hotel.guestRating || 0
+        ),
+
+        reviews: Number(hotel.reviews || 0),
+
+        stars: Number(
+          hotel.starRating || hotel.stars || 0
+        ),
+
+        price: Number(
+          hotel.pricePerNight ||
+            hotel.price ||
+            hotel.roomPrice ||
+            0
+        ),
+
+        oldPrice: Number(
+          hotel.oldPrice ||
+            hotel.originalPrice ||
+            hotel.pricePerNight ||
+            hotel.price ||
+            0
+        ),
+
+        taxes: Number(hotel.taxes || 0),
+
+        propertyType:
+          hotel.propertyType || "Hotel",
+
+        amenities,
+
+        freeCancellation:
+          hotel.freeCancellation ?? true,
+
+        breakfast:
+          hotel.breakfast ??
+          hasAmenity("breakfast"),
+
+        pool:
+          hotel.pool ??
+          hasAmenity("pool"),
+
+        wifi:
+          hotel.wifi ??
+          hasAmenity("wifi"),
+
+        parking:
+          hotel.parking ??
+          hasAmenity("parking"),
+
+        featured:
+          hotel.featured ??
+          hotel.isFeatured ??
+          false,
+      };
+    });
+  }, [hotels]);
+
   /* =======================================================
      SEARCH STATE
   ======================================================== */
@@ -298,16 +276,20 @@ const Hotels = () => {
   const [selectedPropertyTypes, setSelectedPropertyTypes] =
     useState([]);
 
-  const [selectedRatings, setSelectedRatings] = useState([]);
+  const [selectedRatings, setSelectedRatings] =
+    useState([]);
 
   const [selectedAmenities, setSelectedAmenities] =
     useState([]);
 
-  const [activeSort, setActiveSort] = useState("recommended");
+  const [activeSort, setActiveSort] =
+    useState("recommended");
 
-  const [expandedHotel, setExpandedHotel] = useState(null);
+  const [expandedHotel, setExpandedHotel] =
+    useState(null);
 
-  const [savedHotels, setSavedHotels] = useState([]);
+  const [savedHotels, setSavedHotels] =
+    useState([]);
 
   /* =======================================================
      SEARCH CHANGE
@@ -385,28 +367,31 @@ const Hotels = () => {
   ======================================================== */
 
   const filteredHotels = useMemo(() => {
-    let hotels = [...hotelData];
+    let hotelsList = [...hotelData];
 
     /* PRICE */
 
-    hotels = hotels.filter(
+    hotelsList = hotelsList.filter(
       (hotel) => hotel.price <= priceRange
     );
 
     /* PROPERTY TYPE */
 
     if (selectedPropertyTypes.length > 0) {
-      hotels = hotels.filter((hotel) =>
-        selectedPropertyTypes.includes(hotel.propertyType)
+      hotelsList = hotelsList.filter((hotel) =>
+        selectedPropertyTypes.includes(
+          hotel.propertyType
+        )
       );
     }
 
     /* RATING */
 
     if (selectedRatings.length > 0) {
-      hotels = hotels.filter((hotel) =>
+      hotelsList = hotelsList.filter((hotel) =>
         selectedRatings.some(
-          (rating) => hotel.rating >= Number(rating)
+          (rating) =>
+            hotel.rating >= Number(rating)
         )
       );
     }
@@ -414,12 +399,18 @@ const Hotels = () => {
     /* AMENITIES */
 
     if (selectedAmenities.length > 0) {
-      hotels = hotels.filter((hotel) =>
+      hotelsList = hotelsList.filter((hotel) =>
         selectedAmenities.every((amenity) => {
           if (amenity === "WiFi") return hotel.wifi;
-          if (amenity === "Breakfast") return hotel.breakfast;
-          if (amenity === "Pool") return hotel.pool;
-          if (amenity === "Parking") return hotel.parking;
+
+          if (amenity === "Breakfast")
+            return hotel.breakfast;
+
+          if (amenity === "Pool")
+            return hotel.pool;
+
+          if (amenity === "Parking")
+            return hotel.parking;
 
           return true;
         })
@@ -429,15 +420,19 @@ const Hotels = () => {
     /* SORT */
 
     if (activeSort === "cheapest") {
-      hotels.sort((a, b) => a.price - b.price);
+      hotelsList.sort(
+        (a, b) => a.price - b.price
+      );
     }
 
     if (activeSort === "rating") {
-      hotels.sort((a, b) => b.rating - a.rating);
+      hotelsList.sort(
+        (a, b) => b.rating - a.rating
+      );
     }
 
     if (activeSort === "recommended") {
-      hotels.sort((a, b) => {
+      hotelsList.sort((a, b) => {
         if (a.featured === b.featured) {
           return b.rating - a.rating;
         }
@@ -446,8 +441,9 @@ const Hotels = () => {
       });
     }
 
-    return hotels;
+    return hotelsList;
   }, [
+    hotelData,
     priceRange,
     selectedPropertyTypes,
     selectedRatings,
@@ -535,8 +531,12 @@ const Hotels = () => {
             >
               <input
                 type="checkbox"
-                checked={selectedPropertyTypes.includes(type)}
-                onChange={() => togglePropertyType(type)}
+                checked={selectedPropertyTypes.includes(
+                  type
+                )}
+                onChange={() =>
+                  togglePropertyType(type)
+                }
                 className="h-4 w-4 accent-blue-600"
               />
 
@@ -565,8 +565,12 @@ const Hotels = () => {
             >
               <input
                 type="checkbox"
-                checked={selectedRatings.includes(value)}
-                onChange={() => toggleRating(value)}
+                checked={selectedRatings.includes(
+                  value
+                )}
+                onChange={() =>
+                  toggleRating(value)
+                }
                 className="h-4 w-4 accent-blue-600"
               />
 
@@ -596,8 +600,12 @@ const Hotels = () => {
             >
               <input
                 type="checkbox"
-                checked={selectedAmenities.includes(value)}
-                onChange={() => toggleAmenity(value)}
+                checked={selectedAmenities.includes(
+                  value
+                )}
+                onChange={() =>
+                  toggleAmenity(value)
+                }
                 className="h-4 w-4 accent-blue-600"
               />
 
@@ -639,8 +647,6 @@ const Hotels = () => {
 
       <section className="bg-slate-950">
         <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
-          {/* HEADING */}
-
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-400">
@@ -652,8 +658,8 @@ const Hotels = () => {
               </h1>
 
               <p className="mt-1 max-w-xl text-xs leading-5 text-slate-400 sm:text-sm">
-                Discover comfortable stays, luxury resorts and
-                beautiful places at the best prices.
+                Discover comfortable stays, luxury resorts
+                and beautiful places at the best prices.
               </p>
             </div>
 
@@ -768,21 +774,27 @@ const Hotels = () => {
                     <option value="1-1">
                       1 Guest · 1 Room
                     </option>
+
                     <option value="2-1">
                       2 Guests · 1 Room
                     </option>
+
                     <option value="3-1">
                       3 Guests · 1 Room
                     </option>
+
                     <option value="4-1">
                       4 Guests · 1 Room
                     </option>
+
                     <option value="4-2">
                       4 Guests · 2 Rooms
                     </option>
+
                     <option value="6-2">
                       6 Guests · 2 Rooms
                     </option>
+
                     <option value="8-3">
                       8 Guests · 3 Rooms
                     </option>
@@ -901,123 +913,147 @@ const Hotels = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {hotelData
-              .filter((hotel) => hotel.featured)
-              .map((hotel) => {
-                const isSaved = savedHotels.includes(
-                  hotel.id
-                );
+          {loading ? (
+            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
 
-                return (
-                  <div
-                    key={hotel.id}
-                    className="group min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    {/* IMAGE */}
+              <p className="mt-3 text-sm font-bold text-slate-700">
+                Loading hotels...
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {hotelData
+                .filter((hotel) => hotel.featured)
+                .map((hotel) => {
+                  const isSaved =
+                    savedHotels.includes(hotel.id);
 
-                    <div className="relative h-48 overflow-hidden sm:h-52">
-                      <img
-                        src={hotel.image}
-                        alt={hotel.name}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
+                  return (
+                    <div
+                      key={hotel.id}
+                      className="group min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      {/* IMAGE */}
 
-                      <div className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold text-blue-600 shadow-sm">
-                        Recommended
-                      </div>
+                      <div className="relative h-48 overflow-hidden sm:h-52">
+                        {hotel.image ? (
+                          <img
+                            src={hotel.image}
+                            alt={hotel.name}
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-slate-100">
+                            <BedDouble
+                              size={32}
+                              className="text-slate-300"
+                            />
+                          </div>
+                        )}
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          toggleSaveHotel(hotel.id)
-                        }
-                        className={`absolute right-3 top-3 flex w-8 h-8 items-center justify-center rounded-full backdrop-blur transition ${
-                          isSaved
-                            ? "bg-blue-600 text-white"
-                            : "bg-white/90 text-slate-500"
-                        }`}
-                        aria-label="Save hotel"
-                      >
-                        <Heart
-                          size={14}
-                          fill={
-                            isSaved ? "currentColor" : "none"
-                          }
-                        />
-                      </button>
-                    </div>
-
-                    {/* CONTENT */}
-
-                    <div className="p-3.5">
-                      <div className="flex items-center gap-1">
-                        <Star
-                          size={12}
-                          fill="currentColor"
-                          className="text-amber-400"
-                        />
-
-                        <span className="text-[10px] font-bold text-slate-700">
-                          {hotel.rating}
-                        </span>
-
-                        <span className="text-[10px] text-slate-400">
-                          ({hotel.reviews})
-                        </span>
-                      </div>
-
-                      <h3 className="mt-1.5 truncate text-sm font-extrabold text-slate-900">
-                        {hotel.name}
-                      </h3>
-
-                      <p className="mt-1 flex items-center gap-1 truncate text-[10px] text-slate-400">
-                        <MapPin size={11} />
-                        {hotel.location}
-                      </p>
-
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {hotel.amenities.map((amenity) => (
-                          <span
-                            key={amenity}
-                            className="rounded-md bg-slate-50 px-2 py-1 text-[9px] font-semibold text-slate-500"
-                          >
-                            {amenity}
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="mt-3 flex items-end justify-between gap-2 border-t border-slate-100 pt-3">
-                        <div className="min-w-0">
-                          <p className="text-[9px] text-slate-400">
-                            Starting from
-                          </p>
-
-                          <p className="text-base font-extrabold text-slate-900">
-                            ₹
-                            {hotel.price.toLocaleString(
-                              "en-IN"
-                            )}
-                            <span className="text-[9px] font-medium text-slate-400">
-                              /night
-                            </span>
-                          </p>
+                        <div className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold text-blue-600 shadow-sm">
+                          Recommended
                         </div>
 
-                        <Link to='/hoteldetails'>
-                          <button
+                        <button
                           type="button"
-                          className="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-bold text-white hover:bg-blue-700"
+                          onClick={() =>
+                            toggleSaveHotel(hotel.id)
+                          }
+                          className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur transition ${
+                            isSaved
+                              ? "bg-blue-600 text-white"
+                              : "bg-white/90 text-slate-500"
+                          }`}
+                          aria-label="Save hotel"
                         >
-                          View hotel
+                          <Heart
+                            size={14}
+                            fill={
+                              isSaved
+                                ? "currentColor"
+                                : "none"
+                            }
+                          />
                         </button>
-                        </Link>
+                      </div>
+
+                      {/* CONTENT */}
+
+                      <div className="p-3.5">
+                        <div className="flex items-center gap-1">
+                          <Star
+                            size={12}
+                            fill="currentColor"
+                            className="text-amber-400"
+                          />
+
+                          <span className="text-[10px] font-bold text-slate-700">
+                            {hotel.rating}
+                          </span>
+
+                          <span className="text-[10px] text-slate-400">
+                            ({hotel.reviews})
+                          </span>
+                        </div>
+
+                        <h3 className="mt-1.5 truncate text-sm font-extrabold text-slate-900">
+                          {hotel.name}
+                        </h3>
+
+                        <p className="mt-1 flex items-center gap-1 truncate text-[10px] text-slate-400">
+                          <MapPin size={11} />
+                          {hotel.location}
+                        </p>
+
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {hotel.amenities.map(
+                            (amenity, index) => (
+                              <span
+                                key={`${amenity}-${index}`}
+                                className="rounded-md bg-slate-50 px-2 py-1 text-[9px] font-semibold text-slate-500"
+                              >
+                                {amenity}
+                              </span>
+                            )
+                          )}
+                        </div>
+
+                        <div className="mt-3 flex items-end justify-between gap-2 border-t border-slate-100 pt-3">
+                          <div className="min-w-0">
+                            <p className="text-[9px] text-slate-400">
+                              Starting from
+                            </p>
+
+                            <p className="text-base font-extrabold text-slate-900">
+                              ₹
+                              {hotel.price.toLocaleString(
+                                "en-IN"
+                              )}
+                              <span className="text-[9px] font-medium text-slate-400">
+                                /night
+                              </span>
+                            </p>
+                          </div>
+
+                          <Link
+                            to={`/hoteldetails/${hotel.id}`}
+                          >
+                            <button
+                              type="button"
+                              className="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-[10px] font-bold text-white hover:bg-blue-700"
+                            >
+                              View hotel
+                            </button>
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-          </div>
+                  );
+                })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -1045,7 +1081,9 @@ const Hotels = () => {
                 {searchData.guests} guests
                 {" · "}
                 {searchData.rooms}{" "}
-                {searchData.rooms === 1 ? "room" : "rooms"}
+                {searchData.rooms === 1
+                  ? "room"
+                  : "rooms"}
               </p>
             </div>
 
@@ -1062,9 +1100,7 @@ const Hotels = () => {
           </div>
 
           <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[230px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)]">
-            {/* =================================================
-                FILTER SIDEBAR
-            ================================================== */}
+            {/* FILTER SIDEBAR */}
 
             <aside className="hidden h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:block">
               <div className="mb-5 flex items-center gap-2">
@@ -1081,9 +1117,7 @@ const Hotels = () => {
               <FilterContent />
             </aside>
 
-            {/* =================================================
-                RESULTS
-            ================================================== */}
+            {/* RESULTS */}
 
             <div className="min-w-0">
               {/* SORT */}
@@ -1097,7 +1131,9 @@ const Hotels = () => {
                   <button
                     key={value}
                     type="button"
-                    onClick={() => setActiveSort(value)}
+                    onClick={() =>
+                      setActiveSort(value)
+                    }
                     className={`min-w-0 rounded-lg px-2 py-2 text-[10px] font-bold transition sm:text-xs ${
                       activeSort === value
                         ? "bg-white text-blue-600 shadow-sm"
@@ -1112,7 +1148,50 @@ const Hotels = () => {
               {/* RESULTS */}
 
               <div className="space-y-3">
-                {filteredHotels.length === 0 ? (
+                {/* LOADING */}
+
+                {loading ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center">
+                    <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
+
+                    <h3 className="mt-3 text-sm font-bold text-slate-900">
+                      Loading hotels...
+                    </h3>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      Please wait while we fetch available
+                      hotels.
+                    </p>
+                  </div>
+                ) : error ? (
+                  /* ERROR */
+
+                  <div className="rounded-2xl border border-red-200 bg-white px-5 py-12 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
+                      <X size={21} />
+                    </div>
+
+                    <h3 className="mt-3 text-sm font-bold text-red-600">
+                      Unable to load hotels
+                    </h3>
+
+                    <p className="mt-1 text-xs text-slate-500">
+                      {error}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        dispatch(getAllHotel())
+                      }
+                      className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : filteredHotels.length === 0 ? (
+                  /* NO HOTELS */
+
                   <div className="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                       <BedDouble size={21} />
@@ -1136,10 +1215,11 @@ const Hotels = () => {
                     </button>
                   </div>
                 ) : (
+                  /* HOTEL LIST */
+
                   filteredHotels.map((hotel) => {
-                    const isSaved = savedHotels.includes(
-                      hotel.id
-                    );
+                    const isSaved =
+                      savedHotels.includes(hotel.id);
 
                     const isExpanded =
                       expandedHotel === hotel.id;
@@ -1153,11 +1233,20 @@ const Hotels = () => {
                           {/* IMAGE */}
 
                           <div className="relative h-52 overflow-hidden md:h-full md:min-h-[210px]">
-                            <img
-                              src={hotel.image}
-                              alt={hotel.name}
-                              className="h-full w-full object-cover"
-                            />
+                            {hotel.image ? (
+                              <img
+                                src={hotel.image}
+                                alt={hotel.name}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center bg-slate-100">
+                                <BedDouble
+                                  size={36}
+                                  className="text-slate-300"
+                                />
+                              </div>
+                            )}
 
                             {hotel.featured && (
                               <span className="absolute left-3 top-3 rounded-full bg-blue-600 px-2.5 py-1 text-[9px] font-extrabold text-white">
@@ -1168,7 +1257,9 @@ const Hotels = () => {
                             <button
                               type="button"
                               onClick={() =>
-                                toggleSaveHotel(hotel.id)
+                                toggleSaveHotel(
+                                  hotel.id
+                                )
                               }
                               className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur ${
                                 isSaved
@@ -1325,14 +1416,16 @@ const Hotels = () => {
                                   </p>
                                 </div>
 
-                               <Link to='/hoteldetails'>
-                                 <button
-                                  type="button"
-                                  className="shrink-0 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+                                <Link
+                                  to={`/hoteldetails/${hotel.id}`}
                                 >
-                                  View hotel
-                                </button>
-                               </Link>
+                                  <button
+                                    type="button"
+                                    className="shrink-0 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-blue-700"
+                                  >
+                                    View hotel
+                                  </button>
+                                </Link>
                               </div>
 
                               <button
@@ -1393,15 +1486,17 @@ const Hotels = () => {
                             </div>
 
                             <div className="space-y-2">
-                             <Link to='/hoteldetails'>
-                               <button
-                                type="button"
-                                className="flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 text-[10px] font-bold text-white hover:bg-blue-700"
+                              <Link
+                                to={`/hoteldetails/${hotel.id}`}
                               >
-                                View hotel
-                                <ArrowRight size={12} />
-                              </button>
-                             </Link>
+                                <button
+                                  type="button"
+                                  className="flex min-h-[40px] w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 text-[10px] font-bold text-white hover:bg-blue-700"
+                                >
+                                  View hotel
+                                  <ArrowRight size={12} />
+                                </button>
+                              </Link>
 
                               <button
                                 type="button"
@@ -1485,10 +1580,11 @@ const Hotels = () => {
                               />
 
                               <p className="text-[10px] leading-5 text-blue-700">
-                                Room availability, taxes and final
-                                prices may change before booking.
-                                Review the final price before
-                                completing your reservation.
+                                Room availability, taxes and
+                                final prices may change before
+                                booking. Review the final price
+                                before completing your
+                                reservation.
                               </p>
                             </div>
                           </div>
@@ -1699,8 +1795,9 @@ const Hotels = () => {
           </h2>
 
           <p className="mx-auto mt-2 max-w-xl text-xs leading-5 text-slate-400 sm:text-sm">
-            Great hotels, better prices and memorable journeys.
-            Start exploring your next stay with Tripora.
+            Great hotels, better prices and memorable
+            journeys. Start exploring your next stay with
+            Tripora.
           </p>
 
           <button
@@ -1788,7 +1885,9 @@ const Hotels = () => {
 
           <button
             type="button"
-            onClick={() => setActiveSort("recommended")}
+            onClick={() =>
+              setActiveSort("recommended")
+            }
             className="flex min-h-[42px] items-center justify-center gap-2 rounded-xl bg-blue-600 text-xs font-bold text-white"
           >
             <Star size={14} />
@@ -1799,10 +1898,9 @@ const Hotels = () => {
 
       {/* MOBILE BOTTOM SPACE */}
 
-      <div className=" lg:hidden" />
+      <div className="lg:hidden" />
     </div>
   );
 };
 
 export default Hotels;
-

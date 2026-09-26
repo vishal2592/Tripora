@@ -35,6 +35,23 @@ export const getAllHotel = createAsyncThunk(
     }
 );
 
+            // getSingleHotel with the help of id //
+
+export const getHotelById = createAsyncThunk(
+    "/admin/geteHotelById",
+    async(id, {rejectWithValue}) =>{
+        try {
+            const response = await api.get(`/hotels/${id}`)
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(
+                error.response?.data?.message || "Single Hotel are not Found"
+            );
+        }
+    }
+);
+    
+
 // Update hotel //
 
 export const updateHotel = createAsyncThunk(
@@ -124,6 +141,28 @@ const hotelSlice = createSlice({
                 state.loading = false;
                 state.success = false;
                 state.error = action.payload;
+            })
+
+            // extraReducers for getHotelById //
+
+            .addCase(getHotelById.pending, (state) => {
+                state.loading = true;
+                state.success = false;
+                state.error = null;
+            })
+
+            .addCase(getHotelById.fulfilled, (state,action) => {
+                state.loading = false,
+                state.success = true;
+                state.message = action.payload.message;
+                state.hotel = action.payload.hotel;
+                state.error = null;
+            })
+
+            .addCase(getHotelById.rejected, (state,action) => {
+                state.loading = false;
+                state.success = false;
+                state.error = action.payload
             })
 
             //  ExtraReducer For updateHotel //
