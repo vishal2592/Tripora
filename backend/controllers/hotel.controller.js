@@ -32,19 +32,36 @@ const createHotel = async (req, res) => {
       });
     }
 
-    // Image URL
+    // If image is uploaded
     let imageUrl = "";
     let imageDeleteUrl = "";
+    let imageUrls = [];
+    let imageDeleteUrls = [];
 
-    // If image is uploaded
-    if (req.file) {
+    // Main image
+    if (req.files?.image?.length > 0) {
+      const mainImage = req.files.image[0];
+
       const uploadResult = await uploadToImgBB(
-        req.file.buffer,
-        req.file.originalname,
+        mainImage.buffer,
+        mainImage.originalname,
       );
 
       imageUrl = uploadResult.data.url;
       imageDeleteUrl = uploadResult.data.deleteUrl;
+    }
+
+    // Multiple gallery images
+    if (req.files?.images?.length > 0) {
+      for (const image of req.files.images) {
+        const uploadResult = await uploadToImgBB(
+          image.buffer,
+          image.originalname,
+        );
+
+        imageUrls.push(uploadResult.data.url);
+        imageDeleteUrls.push(uploadResult.data.deleteUrl);
+      }
     }
 
     // Create hotel
@@ -67,8 +84,12 @@ const createHotel = async (req, res) => {
       price,
       amenities,
       status,
+      //main image
       image: imageUrl,
       imageDeleteUrl: imageDeleteUrl,
+      //gellary image
+      images: imageUrls,
+      imageDeleteUrls: imageDeleteUrls,
     });
 
     // Success response
@@ -139,7 +160,7 @@ const getSignleHotel = async (req, res) => {
   }
 };
 
-//update hotel
+// update hotel
 const updateHotel = async (req, res) => {
   try {
     const { id } = req.params;
@@ -203,26 +224,44 @@ const updateHotel = async (req, res) => {
     hotel.amenities = amenities;
     hotel.status = status;
 
-    // -----------------------------------------
-    // If new image is uploaded
-    // -----------------------------------------
-    if (req.file) {
-      // Save old delete URL before replacing it
+    // Update Main Image
+
+    if (req.files?.image?.length > 0) {
+      const mainImage = req.files.image[0];
+
+      // Save old delete URL
       const oldDeleteUrl = hotel.imageDeleteUrl;
 
-      // Upload new image to ImgBB
+      // Upload new main image
       const uploadResult = await uploadToImgBB(
-        req.file.buffer,
-        req.file.originalname,
+        mainImage.buffer,
+        mainImage.originalname,
       );
 
-      // Update image URLs
+      // Save new image URLs
       hotel.image = uploadResult.data.url;
       hotel.imageDeleteUrl = uploadResult.data.deleteUrl;
 
       // Delete old image from ImgBB
       if (oldDeleteUrl) {
         await deleteFromImgBB(oldDeleteUrl);
+      }
+    }
+
+    // Add New Gallery Images
+
+    if (req.files?.images?.length > 0) {
+      for (const image of req.files.images) {
+        const uploadResult = await uploadToImgBB(
+          image.buffer,
+          image.originalname,
+        );
+
+        // Add new gallery image URL
+        hotel.images.push(uploadResult.data.url);
+
+        // Add corresponding delete URL
+        hotel.imageDeleteUrls.push(uploadResult.data.deleteUrl);
       }
     }
 
@@ -246,13 +285,12 @@ const updateHotel = async (req, res) => {
   }
 };
 
-//delete hotel
-
+// delete hotel
 const deleteHotel = async (req, res) => {
   try {
     const { id } = req.params;
 
-    //check existing hotel
+    // Check hotel exists
     const hotel = await Hotel.findById(id);
 
     if (!hotel) {
@@ -262,20 +300,37 @@ const deleteHotel = async (req, res) => {
       });
     }
 
-    // delete hotel
+    // Delete Main Image from ImgBB
+
+    if (hotel.imageDeleteUrl) {
+      await deleteFromImgBB(hotel.imageDeleteUrl);
+    }
+
+    // Delete Gallery Images from ImgBB
+
+    if (hotel.imageDeleteUrls?.length > 0) {
+      for (const deleteUrl of hotel.imageDeleteUrls) {
+        if (deleteUrl) {
+          await deleteFromImgBB(deleteUrl);
+        }
+      }
+    }
+
+    // Delete Hotel from MongoDB
 
     await Hotel.findByIdAndDelete(id);
 
-    //success response
+    // Success response
     return res.status(200).json({
       success: true,
-      message: "Hotel deleted successfully",
+      message: "Hotel and all associated images deleted successfully",
     });
   } catch (error) {
-    console.error("Delet Hotel Error:", error);
+    console.error("Delete Hotel Error:", error);
+
     return res.status(500).json({
       success: false,
-      messgae: "Server error",
+      message: "Server error",
       error: error.message,
     });
   }

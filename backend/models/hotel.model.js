@@ -123,6 +123,11 @@ const hotelSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+
+    imageDeleteUrls: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,
