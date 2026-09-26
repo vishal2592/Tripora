@@ -24,7 +24,7 @@ const hotelSchema = new mongoose.Schema(
     },
 
     reviews: {
-      type: String,
+      type: Number,
       default: 0,
       min: 0,
     },
