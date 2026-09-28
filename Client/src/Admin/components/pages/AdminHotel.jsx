@@ -1,54 +1,41 @@
-import React, { useMemo, useState, useEffect } from "react";
-import toast from "react-hot-toast";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Building2,
-  CheckCircle2,
-  Ban,
-  MapPin,
-  Plus,
-  Search,
-  SlidersHorizontal,
-  RotateCcw,
-  MoreVertical,
-  Eye,
-  Pencil,
-  Trash2,
-  Power,
-  PowerOff,
+  ArrowRight,
   BedDouble,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Coffee,
+  Filter,
+  Heart,
+  MapPin,
+  ParkingCircle,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
   Star,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  ImagePlus,
-  Upload,
-  Wifi,
+  Users,
   Waves,
-  Car,
-  Utensils,
-  Dumbbell,
-  Sparkles,
-  Plane,
-  ConciergeBell,
-  Snowflake,
+  Wifi,
+  X,
+  Upload,
+  Image as ImageIcon,
+  Edit,
+  Trash2,
+  Plus,
+  Eye,
   Phone,
   Mail,
-  Clock3,
-  MapPinned,
-  Loader2,
+  Clock,
 } from "lucide-react";
-
-import {
-  createHotel,
-  getAllHotel,
-  updateHotel,
-  deleteHotel,
-} from "../../../redux/slicer/hotelSlice";
-
+import { Link } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 
+import { createHotel, getAllHotel, updateHotel, deleteHotel } from "../../../redux/slicer/hotelSlice";
+
 /* =========================================================
-   CONSTANTS
+   EMPTY FORM
 ========================================================= */
 
 const emptyForm = {
@@ -69,122 +56,138 @@ const emptyForm = {
   price: "",
   amenities: [],
   status: "Active",
+
+  // Existing image URLs
   image: "",
   images: [],
+
+  // NEW:
+  // Actual File objects selected from computer
+  imageFiles: [],
 };
 
+/* =========================================================
+   AMENITIES
+========================================================= */
+
 const amenitiesList = [
-  { label: "Free WiFi", icon: Wifi },
-  { label: "Swimming Pool", icon: Waves },
-  { label: "Parking", icon: Car },
-  { label: "Restaurant", icon: Utensils },
-  { label: "Gym", icon: Dumbbell },
-  { label: "Spa", icon: Sparkles },
-  { label: "Airport Pickup", icon: Plane },
-  { label: "Room Service", icon: ConciergeBell },
-  { label: "Air Conditioning", icon: Snowflake },
+  "Free WiFi",
+  "Swimming Pool",
+  "Parking",
+  "Restaurant",
+  "Gym",
+  "Spa",
+  "Airport Pickup",
+  "Room Service",
+  "Air Conditioning",
 ];
 
 /* =========================================================
-   HELPER: Normalize backend hotel → UI shape
+   ICON MAP
 ========================================================= */
 
-const normalizeHotel = (h) => ({
-  id: h._id || h.id,
+const getAmenityIcon = (amenity) => {
+  switch (amenity) {
+    case "Free WiFi":
+      return Wifi;
 
-  hotelName: h.hotelName || "",
+    case "Swimming Pool":
+      return Waves;
 
-  city: h.city || "",
+    case "Parking":
+      return ParkingCircle;
 
-  state: h.state || "",
+    case "Restaurant":
+      return Coffee;
 
-  country: h.country || "India",
-
-  address: h.address || "",
-
-  pincode: h.pincode || "",
-
-  propertyType: h.propertyType || "Hotel",
-
-  starRating: Number(h.starRating) || 0,
-
-  rating: Number(h.rating) || 0,
-
-  reviews: Number(h.reviews) || 0,
-
-  rooms: Number(h.rooms) || 0,
-
-  price: Number(h.price) || 0,
-
-  email: h.email || "",
-
-  phone: h.phone || "",
-
-  checkIn: h.checkIn || "02:00 PM",
-
-  checkOut: h.checkOut || "12:00 PM",
-
-  description: h.description || "",
-
-  amenities: Array.isArray(h.amenities) ? h.amenities : [],
-
-  image: h.image || h.images?.[0] || "",
-
-  images: Array.isArray(h.images)
-    ? h.images
-    : h.image
-    ? [h.image]
-    : [],
-
-  status: h.status || "Active",
-});
+    default:
+      return Check;
+  }
+};
 
 /* =========================================================
-   MAIN COMPONENT
+   NORMALIZE HOTEL
 ========================================================= */
 
-function AdminHotel() {
+const normalizeHotel = (h) => {
+  const existingImages = Array.isArray(h?.images)
+    ? h.images.filter(Boolean)
+    : h?.image
+      ? [h.image]
+      : [];
+
+  return {
+    id: h?._id || h?.id,
+
+    hotelName: h?.hotelName || "",
+    propertyType: h?.propertyType || "Hotel",
+
+    starRating: Number(h?.starRating) || 0,
+    rating: Number(h?.rating) || 0,
+    reviews: Number(h?.reviews) || 0,
+
+    email: h?.email || "",
+    phone: h?.phone || "",
+
+    city: h?.city || "",
+    state: h?.state || "",
+    country: h?.country || "India",
+
+    address: h?.address || "",
+    pincode: h?.pincode || "",
+
+    description: h?.description || "",
+
+    checkIn: h?.checkIn || "02:00 PM",
+    checkOut: h?.checkOut || "12:00 PM",
+
+    rooms: Number(h?.rooms) || 0,
+    price: Number(h?.price) || 0,
+
+    amenities: Array.isArray(h?.amenities) ? h.amenities : [],
+
+    status: h?.status || "Active",
+
+    image: h?.image || existingImages[0] || "",
+    images: existingImages,
+
+    imageDeleteUrl: h?.imageDeleteUrl || "",
+    imageDeleteUrls: Array.isArray(h?.imageDeleteUrls)
+      ? h.imageDeleteUrls
+      : [],
+
+    createdAt: h?.createdAt,
+    updatedAt: h?.updatedAt,
+  };
+};
+
+/* =========================================================
+   COMPONENT
+========================================================= */
+
+const AdminHotel = () => {
   const dispatch = useDispatch();
 
-  /* =======================================================
-     REDUX STATE
-  ======================================================= */
-
-  const {
-    hotels: reduxHotels = [],
-    loading: reduxLoading = false,
-    error: reduxError = null,
-  } = useSelector((state) => state.hotel || {});
+  const { hotels = [], loading, error } = useSelector(
+    (state) => state.hotel
+  );
 
   /* =======================================================
-     LOCAL UI STATE
+     STATES
   ======================================================= */
 
   const [search, setSearch] = useState("");
-
-  const [cityFilter, setCityFilter] = useState("All Cities");
-
-  const [ratingFilter, setRatingFilter] = useState("All Ratings");
-
-  const [propertyFilter, setPropertyFilter] = useState("All Types");
-
-  const [statusFilter, setStatusFilter] = useState("All Status");
-
-  const [showFilters, setShowFilters] = useState(false);
+  const [city, setCity] = useState("All");
+  const [rating, setRating] = useState("All");
+  const [propertyType, setPropertyType] = useState("All");
+  const [status, setStatus] = useState("All");
 
   const [page, setPage] = useState(1);
-
   const itemsPerPage = 6;
 
-  const [openMenu, setOpenMenu] = useState(null);
-
   const [showAddModal, setShowAddModal] = useState(false);
-
   const [showEditModal, setShowEditModal] = useState(false);
-
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   const [selectedHotel, setSelectedHotel] = useState(null);
 
@@ -192,8 +195,10 @@ function AdminHotel() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  const [showFilters, setShowFilters] = useState(false);
+
   /* =======================================================
-     FETCH HOTELS ON MOUNT
+     FETCH HOTELS
   ======================================================= */
 
   useEffect(() => {
@@ -201,75 +206,83 @@ function AdminHotel() {
   }, [dispatch]);
 
   /* =======================================================
-     SHOW BACKEND ERROR
+     ERROR TOAST
   ======================================================= */
 
   useEffect(() => {
-    if (reduxError) {
+    if (error) {
       toast.error(
-        typeof reduxError === "string"
-          ? reduxError
-          : "Failed to load hotels"
+        typeof error === "string"
+          ? error
+          : error?.message || "Something went wrong"
       );
     }
-  }, [reduxError]);
+  }, [error]);
 
   /* =======================================================
      NORMALIZED HOTELS
   ======================================================= */
 
-  const hotels = useMemo(
-    () => (reduxHotels || []).map(normalizeHotel),
-    [reduxHotels]
-  );
+  const normalizedHotels = useMemo(() => {
+    return hotels.map(normalizeHotel);
+  }, [hotels]);
 
   /* =======================================================
-     FILTERED DATA
+     CITY LIST
+  ======================================================= */
+
+  const cityList = useMemo(() => {
+    const cities = normalizedHotels
+      .map((hotel) => hotel.city)
+      .filter(Boolean);
+
+    return ["All", ...new Set(cities)];
+  }, [normalizedHotels]);
+
+  /* =======================================================
+     FILTER HOTELS
   ======================================================= */
 
   const filteredHotels = useMemo(() => {
-    return hotels.filter((hotel) => {
-      const searchText = search.toLowerCase().trim();
+    return normalizedHotels.filter((hotel) => {
+      const searchText = search.trim().toLowerCase();
 
       const matchesSearch =
         !searchText ||
         hotel.hotelName.toLowerCase().includes(searchText) ||
         hotel.city.toLowerCase().includes(searchText) ||
         hotel.state.toLowerCase().includes(searchText) ||
-        hotel.country.toLowerCase().includes(searchText) ||
-        hotel.address.toLowerCase().includes(searchText);
+        hotel.country.toLowerCase().includes(searchText);
 
       const matchesCity =
-        cityFilter === "All Cities" ||
-        hotel.city === cityFilter;
+        city === "All" || hotel.city.toLowerCase() === city.toLowerCase();
 
       const matchesRating =
-        ratingFilter === "All Ratings" ||
-        hotel.starRating === Number(ratingFilter);
+        rating === "All" || Number(hotel.starRating) === Number(rating);
 
-      const matchesProperty =
-        propertyFilter === "All Types" ||
-        hotel.propertyType === propertyFilter;
+      const matchesPropertyType =
+        propertyType === "All" ||
+        hotel.propertyType.toLowerCase() === propertyType.toLowerCase();
 
       const matchesStatus =
-        statusFilter === "All Status" ||
-        hotel.status === statusFilter;
+        status === "All" ||
+        hotel.status.toLowerCase() === status.toLowerCase();
 
       return (
         matchesSearch &&
         matchesCity &&
         matchesRating &&
-        matchesProperty &&
+        matchesPropertyType &&
         matchesStatus
       );
     });
   }, [
-    hotels,
+    normalizedHotels,
     search,
-    cityFilter,
-    ratingFilter,
-    propertyFilter,
-    statusFilter,
+    city,
+    rating,
+    propertyType,
+    status,
   ]);
 
   /* =======================================================
@@ -292,139 +305,41 @@ function AdminHotel() {
      STATS
   ======================================================= */
 
-  const totalHotels = hotels.length;
+  const stats = useMemo(() => {
+    const total = normalizedHotels.length;
 
-  const activeHotels = hotels.filter(
-    (hotel) => hotel.status === "Active"
-  ).length;
+    const active = normalizedHotels.filter(
+      (hotel) => hotel.status === "Active"
+    ).length;
 
-  const inactiveHotels = hotels.filter(
-    (hotel) => hotel.status === "Inactive"
-  ).length;
+    const inactive = normalizedHotels.filter(
+      (hotel) => hotel.status !== "Active"
+    ).length;
 
-  const citiesCount = new Set(
-    hotels.map((hotel) => hotel.city).filter(Boolean)
-  ).size;
+    const cities = new Set(
+      normalizedHotels.map((hotel) => hotel.city).filter(Boolean)
+    ).size;
 
-  /* =======================================================
-     CITY OPTIONS
-  ======================================================= */
-
-  const cityOptions = useMemo(() => {
-    const unique = Array.from(
-      new Set(
-        hotels
-          .map((hotel) => hotel.city)
-          .filter(Boolean)
-      )
-    ).sort();
-
-    return ["All Cities", ...unique];
-  }, [hotels]);
+    return {
+      total,
+      active,
+      inactive,
+      cities,
+    };
+  }, [normalizedHotels]);
 
   /* =======================================================
-     RESET FILTERS
+     RESET FORM
   ======================================================= */
 
-  const resetFilters = () => {
-    setSearch("");
-    setCityFilter("All Cities");
-    setRatingFilter("All Ratings");
-    setPropertyFilter("All Types");
-    setStatusFilter("All Status");
-    setPage(1);
-
-    toast.success("Filters reset successfully");
-  };
-
-  /* =======================================================
-     FORM CHANGE
-  ======================================================= */
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  /* =======================================================
-     AMENITIES
-  ======================================================= */
-
-  const toggleAmenity = (amenity) => {
-    setForm((prev) => {
-      const exists = prev.amenities.includes(amenity);
-
-      return {
-        ...prev,
-
-        amenities: exists
-          ? prev.amenities.filter(
-              (item) => item !== amenity
-            )
-          : [...prev.amenities, amenity],
-      };
+  const resetForm = () => {
+    setForm({
+      ...emptyForm,
+      amenities: [],
+      image: "",
+      images: [],
+      imageFiles: [],
     });
-  };
-
-  /* =======================================================
-     IMAGE UPLOAD
-  ======================================================= */
-
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files || []);
-
-    if (!files.length) return;
-
-    const previewUrls = files.map((file) =>
-      URL.createObjectURL(file)
-    );
-
-    setForm((prev) => ({
-      ...prev,
-
-      image:
-        prev.image ||
-        previewUrls[0],
-
-      images: [
-        ...prev.images,
-        ...previewUrls,
-      ],
-    }));
-
-    toast.success(
-      `${files.length} image${
-        files.length > 1 ? "s" : ""
-      } selected`
-    );
-
-    e.target.value = "";
-  };
-
-  /* =======================================================
-     REMOVE IMAGE
-  ======================================================= */
-
-  const removeImage = (index) => {
-    setForm((prev) => {
-      const updatedImages = prev.images.filter(
-        (_, i) => i !== index
-      );
-
-      return {
-        ...prev,
-
-        images: updatedImages,
-
-        image: updatedImages[0] || "",
-      };
-    });
-
-    toast.success("Image removed");
   };
 
   /* =======================================================
@@ -437,29 +352,202 @@ function AdminHotel() {
       return false;
     }
 
+    if (!form.email.trim()) {
+      toast.error("Email is required");
+      return false;
+    }
+
+    if (!form.phone.trim()) {
+      toast.error("Phone number is required");
+      return false;
+    }
+
     if (!form.city.trim()) {
       toast.error("City is required");
       return false;
     }
 
+    if (!form.state.trim()) {
+      toast.error("State is required");
+      return false;
+    }
+
     if (!form.address.trim()) {
-      toast.error("Hotel address is required");
+      toast.error("Address is required");
+      return false;
+    }
+
+    if (!form.pincode.trim()) {
+      toast.error("Pincode is required");
       return false;
     }
 
     if (!form.rooms || Number(form.rooms) <= 0) {
-      toast.error("Please enter valid total rooms");
+      toast.error("Enter valid number of rooms");
       return false;
     }
 
     if (!form.price || Number(form.price) <= 0) {
-      toast.error(
-        "Please enter valid price per night"
-      );
+      toast.error("Enter valid price");
       return false;
     }
 
     return true;
+  };
+
+  /* =======================================================
+     GENERATE PREVIEW URL
+  ======================================================= */
+
+  const createPreviewUrl = (file) => {
+    return URL.createObjectURL(file);
+  };
+
+  /* =======================================================
+     IMAGE UPLOAD
+     
+     IMPORTANT:
+     - images = preview URLs / existing URLs
+     - imageFiles = REAL FILE OBJECTS
+     
+     We DO NOT save blob URL as backend image.
+  ======================================================= */
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+
+    if (!files.length) return;
+
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`${file.name} is not an image`);
+        return false;
+      }
+
+      // 5 MB max per image
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`${file.name} must be less than 5MB`);
+        return false;
+      }
+
+      return true;
+    });
+
+    if (!validFiles.length) {
+      e.target.value = "";
+      return;
+    }
+
+    const previewUrls = validFiles.map((file) =>
+      createPreviewUrl(file)
+    );
+
+    setForm((prev) => {
+      const newImages = [...prev.images, ...previewUrls];
+
+      return {
+        ...prev,
+
+        // Preview only
+        images: newImages,
+
+        // REAL files
+        imageFiles: [...prev.imageFiles, ...validFiles],
+
+        // First preview for main image
+        image: prev.image || previewUrls[0],
+      };
+    });
+
+    toast.success(
+      `${validFiles.length} image${
+        validFiles.length > 1 ? "s" : ""
+      } selected`
+    );
+
+    // Reset file input
+    e.target.value = "";
+  };
+
+  /* =======================================================
+     REMOVE IMAGE
+  ======================================================= */
+
+  const removeImage = (index) => {
+    setForm((prev) => {
+      const imageToRemove = prev.images[index];
+
+      // If this is a local blob URL, revoke it
+      if (
+        typeof imageToRemove === "string" &&
+        imageToRemove.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(imageToRemove);
+      }
+
+      const updatedImages = prev.images.filter(
+        (_, i) => i !== index
+      );
+
+      /*
+        Because existing server images do not have File objects,
+        imageFiles correspond only to newly selected files.
+
+        For newly selected files, their indexes are calculated
+        relative to the blob images.
+      */
+
+      const blobIndexes = prev.images
+        .map((img, i) => (img.startsWith("blob:") ? i : -1))
+        .filter((i) => i !== -1);
+
+      const removedBlobPosition = blobIndexes.indexOf(index);
+
+      let updatedFiles = [...prev.imageFiles];
+
+      if (removedBlobPosition !== -1) {
+        updatedFiles.splice(removedBlobPosition, 1);
+      }
+
+      return {
+        ...prev,
+        images: updatedImages,
+        imageFiles: updatedFiles,
+        image: updatedImages[0] || "",
+      };
+    });
+
+    toast.success("Image removed");
+  };
+
+  /* =======================================================
+     TOGGLE AMENITY
+  ======================================================= */
+
+  const toggleAmenity = (amenity) => {
+    setForm((prev) => {
+      const exists = prev.amenities.includes(amenity);
+
+      return {
+        ...prev,
+        amenities: exists
+          ? prev.amenities.filter((item) => item !== amenity)
+          : [...prev.amenities, amenity],
+      };
+    });
+  };
+
+  /* =======================================================
+     FORM INPUT
+  ======================================================= */
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   /* =======================================================
@@ -474,32 +562,40 @@ function AdminHotel() {
     setSubmitting(true);
 
     try {
+      /*
+        IMPORTANT:
+        We send imageFiles separately.
+
+        hotelSlice must convert this into FormData.
+      */
+
       const payload = {
         ...form,
 
         starRating: Number(form.starRating),
-
         rooms: Number(form.rooms),
-
         price: Number(form.price),
 
-        image:
-          form.image ||
-          form.images[0] ||
-          "",
+        /*
+          DO NOT send blob URL as database image.
+          imageFiles contains actual File objects.
+        */
+        imageFiles: form.imageFiles,
+
+        /*
+          For a new hotel, image URLs should normally
+          be empty until backend uploads them.
+        */
+        image: "",
+        images: [],
       };
 
-      await dispatch(
-        createHotel(payload)
-      ).unwrap();
+      await dispatch(createHotel(payload)).unwrap();
 
-      toast.success(
-        "Hotel added successfully!"
-      );
+      toast.success("Hotel added successfully!");
 
       setShowAddModal(false);
-
-      setForm(emptyForm);
+      resetForm();
 
       setPage(1);
 
@@ -508,7 +604,7 @@ function AdminHotel() {
       toast.error(
         typeof err === "string"
           ? err
-          : "Failed to add hotel"
+          : err?.message || "Failed to create hotel"
       );
     } finally {
       setSubmitting(false);
@@ -516,70 +612,54 @@ function AdminHotel() {
   };
 
   /* =======================================================
-     OPEN EDIT MODAL
+     OPEN EDIT
   ======================================================= */
 
-  const openEditModal = (hotel) => {
+  const handleEdit = (hotel) => {
     setSelectedHotel(hotel);
 
     setForm({
       hotelName: hotel.hotelName || "",
-
-      propertyType:
-        hotel.propertyType || "Hotel",
-
-      starRating: String(
-        hotel.starRating || 4
-      ),
+      propertyType: hotel.propertyType || "Hotel",
+      starRating: String(hotel.starRating || 4),
 
       email: hotel.email || "",
-
       phone: hotel.phone || "",
 
       city: hotel.city || "",
-
       state: hotel.state || "",
-
-      country:
-        hotel.country || "India",
+      country: hotel.country || "India",
 
       address: hotel.address || "",
-
       pincode: hotel.pincode || "",
 
-      description:
-        hotel.description || "",
+      description: hotel.description || "",
 
-      checkIn:
-        hotel.checkIn || "02:00 PM",
+      checkIn: hotel.checkIn || "02:00 PM",
+      checkOut: hotel.checkOut || "12:00 PM",
 
-      checkOut:
-        hotel.checkOut || "12:00 PM",
+      rooms: String(hotel.rooms || ""),
+      price: String(hotel.price || ""),
 
-      rooms: String(
-        hotel.rooms || ""
-      ),
+      amenities: Array.isArray(hotel.amenities)
+        ? [...hotel.amenities]
+        : [],
 
-      price: String(
-        hotel.price || ""
-      ),
+      status: hotel.status || "Active",
 
-      amenities:
-        hotel.amenities || [],
+      /*
+        Existing server URLs
+      */
+      image: hotel.image || "",
+      images: [...(hotel.images || [])],
 
-      status:
-        hotel.status || "Active",
-
-      image:
-        hotel.image || "",
-
-      images:
-        hotel.images || [],
+      /*
+        New files selected during this edit
+      */
+      imageFiles: [],
     });
 
     setShowEditModal(true);
-
-    setOpenMenu(null);
   };
 
   /* =======================================================
@@ -589,7 +669,10 @@ function AdminHotel() {
   const handleUpdateHotel = async (e) => {
     e.preventDefault();
 
-    if (!validateForm() || !selectedHotel) {
+    if (!validateForm()) return;
+
+    if (!selectedHotel?.id) {
+      toast.error("Hotel ID not found");
       return;
     }
 
@@ -599,125 +682,96 @@ function AdminHotel() {
       const payload = {
         ...form,
 
-        starRating: Number(
-          form.starRating
-        ),
-
+        starRating: Number(form.starRating),
         rooms: Number(form.rooms),
-
         price: Number(form.price),
 
-        image:
-          form.image ||
-          form.images[0] ||
-          "",
+        /*
+          New actual files
+        */
+        imageFiles: form.imageFiles,
+
+        /*
+          Existing image URLs.
+          Backend can use these to keep old images.
+        */
+        existingImages: form.images.filter(
+          (image) => !image.startsWith("blob:")
+        ),
+
+        /*
+          Don't send blob URL as permanent image.
+        */
+        image: form.images.find(
+          (image) => !image.startsWith("blob:")
+        ) || "",
       };
 
       await dispatch(
         updateHotel({
           id: selectedHotel.id,
-
           hotelData: payload,
         })
       ).unwrap();
 
-      toast.success(
-        "Hotel updated successfully!"
-      );
+      toast.success("Hotel updated successfully!");
 
       setShowEditModal(false);
-
       setSelectedHotel(null);
-
-      setForm(emptyForm);
+      resetForm();
 
       dispatch(getAllHotel());
     } catch (err) {
       toast.error(
         typeof err === "string"
           ? err
-          : "Failed to update hotel"
+          : err?.message || "Failed to update hotel"
       );
     } finally {
       setSubmitting(false);
     }
-  };
-
-  /* =======================================================
-     DETAILS
-  ======================================================= */
-
-  const openDetails = (hotel) => {
-    setSelectedHotel(hotel);
-
-    setShowDetailsModal(true);
-
-    setOpenMenu(null);
-  };
-
-  /* =======================================================
-     DELETE MODAL
-  ======================================================= */
-
-  const openDeleteModal = (hotel) => {
-    setSelectedHotel(hotel);
-
-    setShowDeleteModal(true);
-
-    setOpenMenu(null);
   };
 
   /* =======================================================
      DELETE HOTEL
   ======================================================= */
 
-  const handleDeleteHotel = async () => {
-    if (!selectedHotel) return;
+  const handleDeleteHotel = async (id) => {
+    if (!id) return;
 
-    setSubmitting(true);
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this hotel?"
+    );
+
+    if (!confirmed) return;
 
     try {
-      await dispatch(
-        deleteHotel(selectedHotel.id)
-      ).unwrap();
+      await dispatch(deleteHotel(id)).unwrap();
 
-      toast.success(
-        "Hotel deleted successfully!"
-      );
-
-      setShowDeleteModal(false);
-
-      setSelectedHotel(null);
+      toast.success("Hotel deleted successfully");
 
       dispatch(getAllHotel());
     } catch (err) {
       toast.error(
         typeof err === "string"
           ? err
-          : "Failed to delete hotel"
+          : err?.message || "Failed to delete hotel"
       );
-    } finally {
-      setSubmitting(false);
     }
   };
 
   /* =======================================================
-     TOGGLE STATUS
+     STATUS TOGGLE
   ======================================================= */
 
-  const toggleHotelStatus = async (hotel) => {
+  const handleToggleStatus = async (hotel) => {
     const newStatus =
-      hotel.status === "Active"
-        ? "Inactive"
-        : "Active";
-
-    setOpenMenu(null);
+      hotel.status === "Active" ? "Inactive" : "Active";
 
     try {
       await dispatch(
         updateHotel({
           id: hotel.id,
-
           hotelData: {
             status: newStatus,
           },
@@ -725,7 +779,11 @@ function AdminHotel() {
       ).unwrap();
 
       toast.success(
-        `${hotel.hotelName} is now ${newStatus.toLowerCase()}`
+        `Hotel ${
+          newStatus === "Active"
+            ? "activated"
+            : "deactivated"
+        } successfully`
       );
 
       dispatch(getAllHotel());
@@ -733,131 +791,727 @@ function AdminHotel() {
       toast.error(
         typeof err === "string"
           ? err
-          : "Failed to update status"
+          : err?.message || "Failed to update status"
       );
     }
   };
 
   /* =======================================================
-     VIEW ROOMS / BOOKINGS
+     VIEW HOTEL
   ======================================================= */
 
-  const handleViewRooms = (hotel) => {
-    setOpenMenu(null);
-
-    toast.success(
-      `Opening rooms for ${hotel.hotelName}`
-    );
-  };
-
-  const handleViewBookings = (hotel) => {
-    setOpenMenu(null);
-
-    toast.success(
-      `Opening bookings for ${hotel.hotelName}`
-    );
+  const handleView = (hotel) => {
+    setSelectedHotel(hotel);
+    setShowViewModal(true);
   };
 
   /* =======================================================
-     OPEN ADD
+     ADD MODAL CLOSE
   ======================================================= */
 
-  const openAddModal = () => {
-    setForm(emptyForm);
+  const closeAddModal = () => {
+    if (submitting) return;
 
+    form.images.forEach((image) => {
+      if (
+        typeof image === "string" &&
+        image.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(image);
+      }
+    });
+
+    setShowAddModal(false);
+    resetForm();
+  };
+
+  /* =======================================================
+     EDIT MODAL CLOSE
+  ======================================================= */
+
+  const closeEditModal = () => {
+    if (submitting) return;
+
+    form.images.forEach((image) => {
+      if (
+        typeof image === "string" &&
+        image.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(image);
+      }
+    });
+
+    setShowEditModal(false);
     setSelectedHotel(null);
-
-    setShowAddModal(true);
+    resetForm();
   };
 
   /* =======================================================
-     RENDER
+     PAGE CHANGE
   ======================================================= */
+
+  const changePage = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+
+    setPage(newPage);
+  };
+
+  /* =======================================================
+     CLEAR FILTERS
+  ======================================================= */
+
+  const clearFilters = () => {
+    setSearch("");
+    setCity("All");
+    setRating("All");
+    setPropertyType("All");
+    setStatus("All");
+    setPage(1);
+  };
+
+  /* =======================================================
+     HOTEL FORM
+  ======================================================= */
+
+  const renderHotelForm = (isEdit = false) => {
+    return (
+      <form
+        onSubmit={
+          isEdit
+            ? handleUpdateHotel
+            : handleAddHotel
+        }
+        className="space-y-6"
+      >
+        {/* =================================================
+            BASIC DETAILS
+        ================================================= */}
+
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Basic Hotel Information
+          </h3>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Enter the basic details of your hotel.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Hotel Name */}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Hotel Name *
+            </label>
+
+            <input
+              type="text"
+              name="hotelName"
+              value={form.hotelName}
+              onChange={handleChange}
+              placeholder="Enter hotel name"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          {/* Property Type */}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Property Type
+            </label>
+
+            <select
+              name="propertyType"
+              value={form.propertyType}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="Hotel">Hotel</option>
+              <option value="Resort">Resort</option>
+              <option value="Villa">Villa</option>
+              <option value="Apartment">Apartment</option>
+              <option value="Guest House">
+                Guest House
+              </option>
+              <option value="Hostel">Hostel</option>
+            </select>
+          </div>
+
+          {/* Star Rating */}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Star Rating
+            </label>
+
+            <select
+              name="starRating"
+              value={form.starRating}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="1">1 Star</option>
+              <option value="2">2 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="5">5 Stars</option>
+            </select>
+          </div>
+
+          {/* Status */}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Status
+            </label>
+
+            <select
+              name="status"
+              value={form.status}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        {/* =================================================
+            CONTACT
+        ================================================= */}
+
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Contact Information
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email *
+            </label>
+
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="hotel@example.com"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Phone *
+            </label>
+
+            <input
+              type="text"
+              name="phone"
+              value={form.phone}
+              onChange={handleChange}
+              placeholder="Enter phone number"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+        </div>
+
+        {/* =================================================
+            LOCATION
+        ================================================= */}
+
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Location
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              City *
+            </label>
+
+            <input
+              type="text"
+              name="city"
+              value={form.city}
+              onChange={handleChange}
+              placeholder="Enter city"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              State *
+            </label>
+
+            <input
+              type="text"
+              name="state"
+              value={form.state}
+              onChange={handleChange}
+              placeholder="Enter state"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Country
+            </label>
+
+            <input
+              type="text"
+              name="country"
+              value={form.country}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Pincode *
+            </label>
+
+            <input
+              type="text"
+              name="pincode"
+              value={form.pincode}
+              onChange={handleChange}
+              placeholder="Enter pincode"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Address *
+          </label>
+
+          <textarea
+            name="address"
+            value={form.address}
+            onChange={handleChange}
+            rows={3}
+            placeholder="Enter complete hotel address"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-none"
+          />
+        </div>
+
+        {/* =================================================
+            HOTEL DETAILS
+        ================================================= */}
+
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            Hotel Details
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Rooms *
+            </label>
+
+            <input
+              type="number"
+              name="rooms"
+              value={form.rooms}
+              onChange={handleChange}
+              min="1"
+              placeholder="Number of rooms"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Price / Night *
+            </label>
+
+            <input
+              type="number"
+              name="price"
+              value={form.price}
+              onChange={handleChange}
+              min="0"
+              placeholder="₹ Price"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Check In
+            </label>
+
+            <input
+              type="text"
+              name="checkIn"
+              value={form.checkIn}
+              onChange={handleChange}
+              placeholder="02:00 PM"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Check Out
+            </label>
+
+            <input
+              type="text"
+              name="checkOut"
+              value={form.checkOut}
+              onChange={handleChange}
+              placeholder="12:00 PM"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+        </div>
+
+        {/* =================================================
+            DESCRIPTION
+        ================================================= */}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Description
+          </label>
+
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            rows={4}
+            placeholder="Describe your hotel..."
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 resize-none"
+          />
+        </div>
+
+        {/* =================================================
+            AMENITIES
+        ================================================= */}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Amenities
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {amenitiesList.map((amenity) => {
+              const Icon = getAmenityIcon(amenity);
+
+              const selected =
+                form.amenities.includes(amenity);
+
+              return (
+                <button
+                  key={amenity}
+                  type="button"
+                  onClick={() => toggleAmenity(amenity)}
+                  className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                    selected
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-blue-300"
+                  }`}
+                >
+                  <Icon size={18} />
+
+                  <span className="text-sm font-medium flex-1">
+                    {amenity}
+                  </span>
+
+                  {selected && (
+                    <Check size={18} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* =================================================
+            IMAGE UPLOAD
+        ================================================= */}
+
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Hotel Images
+              </h3>
+
+              <p className="text-sm text-gray-500 mt-1">
+                Upload JPG, PNG or WEBP images. Maximum 5MB
+                per image.
+              </p>
+            </div>
+
+            <label
+              htmlFor="hotel-images"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white cursor-pointer hover:bg-blue-700 transition"
+            >
+              <Upload size={17} />
+              Upload Images
+            </label>
+          </div>
+
+          <input
+            id="hotel-images"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/jpg"
+            multiple
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+
+          {form.images.length === 0 ? (
+            <label
+              htmlFor="hotel-images"
+              className="border-2 border-dashed border-gray-200 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition"
+            >
+              <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mb-4">
+                <ImageIcon
+                  size={26}
+                  className="text-blue-600"
+                />
+              </div>
+
+              <p className="font-semibold text-gray-800">
+                Click to upload images
+              </p>
+
+              <p className="text-sm text-gray-500 mt-1">
+                You can select multiple images
+              </p>
+            </label>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {form.images.map((image, index) => (
+                <div
+                  key={`${image}-${index}`}
+                  className="relative group rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 aspect-square"
+                >
+                  <img
+                    src={image}
+                    alt={`Hotel ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition" />
+
+                  {index === 0 && (
+                    <span className="absolute top-2 left-2 rounded-lg bg-blue-600 text-white px-2 py-1 text-xs font-semibold">
+                      Main
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white text-red-500 flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition hover:bg-red-50"
+                  >
+                    <X size={17} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* =================================================
+            BUTTONS
+        ================================================= */}
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={
+              isEdit
+                ? closeEditModal
+                : closeAddModal
+            }
+            disabled={submitting}
+            className="px-5 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+          >
+            {submitting ? (
+              <>
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {isEdit
+                  ? "Updating..."
+                  : "Creating..."}
+              </>
+            ) : (
+              <>
+                <Check size={18} />
+
+                {isEdit
+                  ? "Update Hotel"
+                  : "Create Hotel"}
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    );
+  };
+
+  /* =========================================================
+     RETURN
+  ========================================================= */
 
   return (
-    <div
-      className="min-h-screen bg-slate-50"
-      onClick={() => setOpenMenu(null)}
-    >
-      <div className="mx-auto max-w-7xl px-2 py-3 sm:px-2 lg:px-8">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
 
-        {/* HEADER */}
+        {/* =================================================
+            HEADER
+        ================================================= */}
 
-        <div className="mb-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Hotels
             </h1>
 
-            <p className="mt-1 text-sm text-slate-500">
-              Manage and monitor all hotels listed on Tripora
+            <p className="text-gray-500 mt-1">
+              Manage your hotel properties and listings.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={openAddModal}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            onClick={() => {
+              resetForm();
+              setShowAddModal(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-white font-semibold hover:bg-blue-700 transition"
           >
-            <Plus size={18} />
-            Add New Hotel
+            <Plus size={19} />
+            Add Hotel
           </button>
         </div>
 
-        {/* STATS */}
+        {/* =================================================
+            STATS
+        ================================================= */}
 
-        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">
+                  Total Hotels
+                </p>
 
-          <StatCard
-            title="Total Hotels"
-            value={totalHotels.toLocaleString()}
-            change="+12.5%"
-            icon={Building2}
-            iconBg="bg-blue-50"
-            iconColor="text-blue-600"
-          />
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.total}
+                </p>
+              </div>
 
-          <StatCard
-            title="Active Hotels"
-            value={activeHotels.toLocaleString()}
-            change="+8.4%"
-            icon={CheckCircle2}
-            iconBg="bg-emerald-50"
-            iconColor="text-emerald-600"
-          />
+              <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center">
+                <BedDouble
+                  size={22}
+                  className="text-blue-600"
+                />
+              </div>
+            </div>
+          </div>
 
-          <StatCard
-            title="Inactive Hotels"
-            value={inactiveHotels.toLocaleString()}
-            change="-2.1%"
-            icon={Ban}
-            iconBg="bg-red-50"
-            iconColor="text-red-600"
-            negative
-          />
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">
+                  Active
+                </p>
 
-          <StatCard
-            title="Cities"
-            value={citiesCount.toLocaleString()}
-            change="+6 new"
-            icon={MapPin}
-            iconBg="bg-violet-50"
-            iconColor="text-violet-600"
-          />
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.active}
+                </p>
+              </div>
 
+              <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center">
+                <Check
+                  size={22}
+                  className="text-green-600"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">
+                  Inactive
+                </p>
+
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.inactive}
+                </p>
+              </div>
+
+              <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center">
+                <X
+                  size={22}
+                  className="text-red-600"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">
+                  Cities
+                </p>
+
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {stats.cities}
+                </p>
+              </div>
+
+              <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center">
+                <MapPin
+                  size={22}
+                  className="text-purple-600"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* SEARCH / FILTER */}
+        {/* =================================================
+            SEARCH + FILTER
+        ================================================= */}
 
-        <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-
+        <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-3">
             <div className="relative flex-1">
-
               <Search
-                size={18}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                size={19}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
               />
 
               <input
@@ -867,10 +1521,9 @@ function AdminHotel() {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search hotel name, city, location..."
-                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                placeholder="Search hotel, city or location..."
+                className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
-
             </div>
 
             <button
@@ -878,2173 +1531,884 @@ function AdminHotel() {
               onClick={() =>
                 setShowFilters((prev) => !prev)
               }
-              className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition ${
-                showFilters
-                  ? "border-blue-200 bg-blue-50 text-blue-700"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
+              className="lg:hidden inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3 font-medium text-gray-700"
             >
-              <SlidersHorizontal size={17} />
+              <SlidersHorizontal size={18} />
               Filters
+
+              {showFilters ? (
+                <ChevronUp size={17} />
+              ) : (
+                <ChevronDown size={17} />
+              )}
             </button>
 
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+            <div
+              className={`${
+                showFilters
+                  ? "flex"
+                  : "hidden lg:flex"
+              } flex-col sm:flex-row gap-3`}
             >
-              <RotateCcw size={16} />
-              Reset
-            </button>
+              {/* City */}
 
-          </div>
-
-          {showFilters && (
-            <div className="mt-4 grid grid-cols-1 gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2 xl:grid-cols-4">
-
-              <FilterSelect
-                label="City"
-                value={cityFilter}
+              <select
+                value={city}
                 onChange={(e) => {
-                  setCityFilter(e.target.value);
+                  setCity(e.target.value);
                   setPage(1);
                 }}
-                options={cityOptions}
-              />
+                className="rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500"
+              >
+                {cityList.map((item) => (
+                  <option key={item} value={item}>
+                    {item === "All"
+                      ? "All Cities"
+                      : item}
+                  </option>
+                ))}
+              </select>
 
-              <FilterSelect
-                label="Rating"
-                value={ratingFilter}
+              {/* Rating */}
+
+              <select
+                value={rating}
                 onChange={(e) => {
-                  setRatingFilter(e.target.value);
+                  setRating(e.target.value);
                   setPage(1);
                 }}
-                options={[
-                  "All Ratings",
-                  5,
-                  4,
-                  3,
-                  2,
-                ]}
-                formatOption={(option) =>
-                  option === "All Ratings"
-                    ? option
-                    : `${option} Star`
-                }
-              />
+                className="rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500"
+              >
+                <option value="All">
+                  All Ratings
+                </option>
+                <option value="5">5 Star</option>
+                <option value="4">4 Star</option>
+                <option value="3">3 Star</option>
+                <option value="2">2 Star</option>
+                <option value="1">1 Star</option>
+              </select>
 
-              <FilterSelect
-                label="Property Type"
-                value={propertyFilter}
+              {/* Property */}
+
+              <select
+                value={propertyType}
                 onChange={(e) => {
-                  setPropertyFilter(e.target.value);
+                  setPropertyType(e.target.value);
                   setPage(1);
                 }}
-                options={[
-                  "All Types",
-                  "Hotel",
-                  "Resort",
-                  "Villa",
-                  "Apartment",
-                  "Hostel",
-                ]}
-              />
+                className="rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500"
+              >
+                <option value="All">
+                  All Properties
+                </option>
+                <option value="Hotel">
+                  Hotel
+                </option>
+                <option value="Resort">
+                  Resort
+                </option>
+                <option value="Villa">
+                  Villa
+                </option>
+                <option value="Apartment">
+                  Apartment
+                </option>
+                <option value="Guest House">
+                  Guest House
+                </option>
+                <option value="Hostel">
+                  Hostel
+                </option>
+              </select>
 
-              <FilterSelect
-                label="Status"
-                value={statusFilter}
+              {/* Status */}
+
+              <select
+                value={status}
                 onChange={(e) => {
-                  setStatusFilter(e.target.value);
+                  setStatus(e.target.value);
                   setPage(1);
                 }}
-                options={[
-                  "All Status",
-                  "Active",
-                  "Inactive",
-                ]}
-              />
+                className="rounded-xl border border-gray-200 px-4 py-3 outline-none focus:border-blue-500"
+              >
+                <option value="All">
+                  All Status
+                </option>
+                <option value="Active">
+                  Active
+                </option>
+                <option value="Inactive">
+                  Inactive
+                </option>
+              </select>
 
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-3 text-gray-600 hover:bg-gray-50"
+              >
+                <Filter size={17} />
+                Clear
+              </button>
             </div>
-          )}
-
-        </div>
-
-        {/* RESULT COUNT */}
-
-        <div className="mb-3 flex items-center justify-between">
-
-          <p className="text-sm text-slate-500">
-            Showing{" "}
-            <span className="font-semibold text-slate-700">
-              {filteredHotels.length}
-            </span>{" "}
-            hotels
-          </p>
-
-        </div>
-
-        {/* LOADING */}
-
-        {reduxLoading && hotels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-20">
-
-            <Loader2
-              size={32}
-              className="animate-spin text-blue-600"
-            />
-
-            <p className="mt-3 text-sm text-slate-500">
-              Loading hotels...
-            </p>
-
           </div>
-        ) : (
-          <>
+        </div>
 
-            {/* DESKTOP TABLE */}
+        {/* =================================================
+            TABLE
+        ================================================= */}
 
-            <div className="hidden overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm lg:block">
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          {loading ? (
+            <div className="py-20 flex flex-col items-center justify-center">
+              <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
 
-              <div className="overflow-x-auto">
+              <p className="text-gray-500 mt-4">
+                Loading hotels...
+              </p>
+            </div>
+          ) : paginatedHotels.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center px-5 text-center">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                <BedDouble
+                  size={28}
+                  className="text-gray-400"
+                />
+              </div>
 
-                <table className="w-full min-w-[950px]">
+              <h3 className="text-lg font-semibold text-gray-900 mt-4">
+                No hotels found
+              </h3>
 
+              <p className="text-gray-500 mt-1">
+                Try changing your search or filters.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop */}
+
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
                   <thead>
-
-                    <tr className="border-b border-slate-200 bg-slate-50/80">
-
-                      <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <tr className="border-b border-gray-100 bg-gray-50/70">
+                      <th className="text-left px-5 py-4 text-xs font-semibold uppercase text-gray-500">
                         Hotel
                       </th>
 
-                      <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="text-left px-5 py-4 text-xs font-semibold uppercase text-gray-500">
                         Location
                       </th>
 
-                      <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="text-left px-5 py-4 text-xs font-semibold uppercase text-gray-500">
                         Rating
                       </th>
 
-                      <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="text-left px-5 py-4 text-xs font-semibold uppercase text-gray-500">
                         Rooms
                       </th>
 
-                      <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Price / Night
+                      <th className="text-left px-5 py-4 text-xs font-semibold uppercase text-gray-500">
+                        Price
                       </th>
 
-                      <th className="px-5 py-4 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      <th className="text-left px-5 py-4 text-xs font-semibold uppercase text-gray-500">
                         Status
                       </th>
 
-                      <th className="px-5 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Action
+                      <th className="text-right px-5 py-4 text-xs font-semibold uppercase text-gray-500">
+                        Actions
                       </th>
-
                     </tr>
-
                   </thead>
 
                   <tbody>
-
                     {paginatedHotels.map((hotel) => (
-                      <HotelTableRow
+                      <tr
                         key={hotel.id}
-                        hotel={hotel}
-                        openMenu={openMenu}
-                        setOpenMenu={setOpenMenu}
-                        onView={() => openDetails(hotel)}
-                        onEdit={() => openEditModal(hotel)}
-                        onRooms={() =>
-                          handleViewRooms(hotel)
-                        }
-                        onBookings={() =>
-                          handleViewBookings(hotel)
-                        }
-                        onToggle={() =>
-                          toggleHotelStatus(hotel)
-                        }
-                        onDelete={() =>
-                          openDeleteModal(hotel)
-                        }
-                      />
-                    ))}
-
-                  </tbody>
-
-                </table>
-
-              </div>
-
-              {paginatedHotels.length === 0 && (
-                <EmptyState
-                  onReset={resetFilters}
-                />
-              )}
-
-            </div>
-
-            {/* MOBILE CARDS */}
-
-            <div className="space-y-4 lg:hidden">
-
-              {paginatedHotels.map((hotel) => (
-                <HotelMobileCard
-                  key={hotel.id}
-                  hotel={hotel}
-                  openMenu={openMenu}
-                  setOpenMenu={setOpenMenu}
-                  onView={() =>
-                    openDetails(hotel)
-                  }
-                  onEdit={() =>
-                    openEditModal(hotel)
-                  }
-                  onRooms={() =>
-                    handleViewRooms(hotel)
-                  }
-                  onBookings={() =>
-                    handleViewBookings(hotel)
-                  }
-                  onToggle={() =>
-                    toggleHotelStatus(hotel)
-                  }
-                  onDelete={() =>
-                    openDeleteModal(hotel)
-                  }
-                />
-              ))}
-
-              {paginatedHotels.length === 0 && (
-                <EmptyState
-                  onReset={resetFilters}
-                />
-              )}
-
-            </div>
-
-            {/* PAGINATION */}
-
-            {filteredHotels.length > 0 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={filteredHotels.length}
-                itemsPerPage={itemsPerPage}
-                onPrevious={() =>
-                  setPage((prev) =>
-                    Math.max(1, prev - 1)
-                  )
-                }
-                onNext={() =>
-                  setPage((prev) =>
-                    Math.min(
-                      totalPages,
-                      prev + 1
-                    )
-                  )
-                }
-                onPageChange={setPage}
-              />
-            )}
-
-          </>
-        )}
-
-      </div>
-
-      {/* ADD HOTEL MODAL */}
-
-      {showAddModal && (
-        <HotelFormModal
-          title="Add New Hotel"
-          subtitle="Add a new hotel to Tripora"
-          form={form}
-          setForm={setForm}
-          onChange={handleInputChange}
-          onSubmit={handleAddHotel}
-          onClose={() => {
-            setShowAddModal(false);
-            setForm(emptyForm);
-          }}
-          onAmenityToggle={toggleAmenity}
-          onImageUpload={handleImageUpload}
-          onRemoveImage={removeImage}
-          submitText={
-            submitting
-              ? "Adding..."
-              : "Add Hotel"
-          }
-          submitting={submitting}
-        />
-      )}
-
-      {/* EDIT HOTEL MODAL */}
-
-      {showEditModal && (
-        <HotelFormModal
-          title="Edit Hotel"
-          subtitle="Update hotel information"
-          form={form}
-          setForm={setForm}
-          onChange={handleInputChange}
-          onSubmit={handleUpdateHotel}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedHotel(null);
-            setForm(emptyForm);
-          }}
-          onAmenityToggle={toggleAmenity}
-          onImageUpload={handleImageUpload}
-          onRemoveImage={removeImage}
-          submitText={
-            submitting
-              ? "Saving..."
-              : "Save Changes"
-          }
-          submitting={submitting}
-        />
-      )}
-
-      {/* DETAILS MODAL */}
-
-      {showDetailsModal &&
-        selectedHotel && (
-          <HotelDetailsModal
-            hotel={selectedHotel}
-            onClose={() => {
-              setShowDetailsModal(false);
-              setSelectedHotel(null);
-            }}
-            onEdit={() => {
-              setShowDetailsModal(false);
-              openEditModal(selectedHotel);
-            }}
-          />
-        )}
-
-      {/* DELETE MODAL */}
-
-      {showDeleteModal &&
-        selectedHotel && (
-          <DeleteModal
-            hotel={selectedHotel}
-            onClose={() => {
-              setShowDeleteModal(false);
-              setSelectedHotel(null);
-            }}
-            onDelete={handleDeleteHotel}
-            submitting={submitting}
-          />
-        )}
-
-    </div>
-  );
-}
-
-/* =========================================================
-   STAT CARD
-========================================================= */
-
-function StatCard({
-  title,
-  value,
-  change,
-  icon: Icon,
-  iconBg,
-  iconColor,
-  negative,
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-
-      <div className="flex items-start justify-between">
-
-        <div>
-
-          <p className="text-sm font-medium text-slate-500">
-            {title}
-          </p>
-
-          <h3 className="mt-2 text-2xl font-bold text-slate-900">
-            {value}
-          </h3>
-
-          <p
-            className={`mt-2 text-xs font-semibold ${
-              negative
-                ? "text-red-600"
-                : "text-emerald-600"
-            }`}
-          >
-            {change}
-
-            <span className="ml-1 font-normal text-slate-400">
-              vs last month
-            </span>
-          </p>
-
-        </div>
-
-        <div
-          className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconBg}`}
-        >
-          <Icon
-            size={21}
-            className={iconColor}
-          />
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
-
-/* =========================================================
-   FILTER SELECT
-========================================================= */
-
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-  formatOption,
-}) {
-  return (
-    <label>
-
-      <span className="mb-1.5 block text-xs font-semibold text-slate-500">
-        {label}
-      </span>
-
-      <select
-        value={value}
-        onChange={onChange}
-        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-      >
-        {options.map((option) => (
-          <option
-            key={option}
-            value={option}
-          >
-            {formatOption
-              ? formatOption(option)
-              : option}
-          </option>
-        ))}
-      </select>
-
-    </label>
-  );
-}
-
-/* =========================================================
-   HOTEL TABLE ROW
-========================================================= */
-
-function HotelTableRow({
-  hotel,
-  openMenu,
-  setOpenMenu,
-  onView,
-  onEdit,
-  onRooms,
-  onBookings,
-  onToggle,
-  onDelete,
-}) {
-  return (
-    <tr className="border-b border-slate-100 transition hover:bg-slate-50/70">
-
-      <td className="px-5 py-4">
-
-        <div className="flex items-center gap-3">
-
-          <img
-            src={hotel.image}
-            alt={hotel.hotelName}
-            className="h-12 w-16 rounded-xl object-cover"
-          />
-
-          <div className="min-w-0">
-
-            <p className="truncate text-sm font-semibold text-slate-900">
-              {hotel.hotelName}
-            </p>
-
-            <p className="mt-0.5 text-xs text-slate-500">
-              {hotel.city} • {hotel.propertyType}
-            </p>
-
-            <div className="mt-1 flex items-center gap-1">
-
-              {Array.from({
-                length: hotel.starRating,
-              }).map((_, index) => (
-                <Star
-                  key={index}
-                  size={11}
-                  className="fill-amber-400 text-amber-400"
-                />
-              ))}
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </td>
-
-      <td className="px-5 py-4">
-
-        <div className="flex items-start gap-2">
-
-          <MapPin
-            size={15}
-            className="mt-0.5 shrink-0 text-slate-400"
-          />
-
-          <div>
-
-            <p className="text-sm font-medium text-slate-700">
-              {hotel.city}
-            </p>
-
-            <p className="text-xs text-slate-400">
-              {hotel.state}, {hotel.country}
-            </p>
-
-          </div>
-
-        </div>
-
-      </td>
-
-      <td className="px-5 py-4">
-
-        <div className="flex items-center gap-1">
-
-          <Star
-            size={15}
-            className="fill-amber-400 text-amber-400"
-          />
-
-          <span className="text-sm font-semibold text-slate-700">
-            {hotel.rating || "New"}
-          </span>
-
-        </div>
-
-        <p className="mt-0.5 text-xs text-slate-400">
-          {hotel.reviews.toLocaleString()} reviews
-        </p>
-
-      </td>
-
-      <td className="px-5 py-4">
-
-        <div className="flex items-center gap-2">
-
-          <BedDouble
-            size={16}
-            className="text-slate-400"
-          />
-
-          <span className="text-sm font-medium text-slate-700">
-            {hotel.rooms}
-          </span>
-
-        </div>
-
-        <p className="mt-0.5 text-xs text-slate-400">
-          Rooms
-        </p>
-
-      </td>
-
-      <td className="px-5 py-4">
-
-        <p className="text-sm font-bold text-slate-900">
-          ₹{hotel.price.toLocaleString()}
-        </p>
-
-        <p className="text-xs text-slate-400">
-          per night
-        </p>
-
-      </td>
-
-      <td className="px-5 py-4">
-
-        <StatusBadge
-          status={hotel.status}
-        />
-
-      </td>
-
-      <td className="px-5 py-4 text-right">
-
-        <ActionMenu
-          hotel={hotel}
-          openMenu={openMenu}
-          setOpenMenu={setOpenMenu}
-          onView={onView}
-          onEdit={onEdit}
-          onRooms={onRooms}
-          onBookings={onBookings}
-          onToggle={onToggle}
-          onDelete={onDelete}
-        />
-
-      </td>
-
-    </tr>
-  );
-}
-
-/* =========================================================
-   MOBILE CARD
-========================================================= */
-
-function HotelMobileCard({
-  hotel,
-  openMenu,
-  setOpenMenu,
-  onView,
-  onEdit,
-  onRooms,
-  onBookings,
-  onToggle,
-  onDelete,
-}) {
-  return (
-    <div className="relative overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-
-      <div className="flex gap-3">
-
-        <img
-          src={hotel.image}
-          alt={hotel.hotelName}
-          className="h-20 w-24 shrink-0 rounded-xl object-cover"
-        />
-
-        <div className="min-w-0 flex-1">
-
-          <div className="flex items-start justify-between gap-2">
-
-            <div>
-
-              <h3 className="line-clamp-1 text-sm font-bold text-slate-900">
-                {hotel.hotelName}
-              </h3>
-
-              <p className="mt-1 text-xs text-slate-500">
-                {hotel.city} • {hotel.propertyType}
-              </p>
-
-            </div>
-
-            <ActionMenu
-              hotel={hotel}
-              openMenu={openMenu}
-              setOpenMenu={setOpenMenu}
-              onView={onView}
-              onEdit={onEdit}
-              onRooms={onRooms}
-              onBookings={onBookings}
-              onToggle={onToggle}
-              onDelete={onDelete}
-            />
-
-          </div>
-
-          <div className="mt-2 flex items-center gap-1">
-
-            <Star
-              size={14}
-              className="fill-amber-400 text-amber-400"
-            />
-
-            <span className="text-xs font-semibold text-slate-700">
-              {hotel.rating || "New"}
-            </span>
-
-            <span className="text-xs text-slate-400">
-              ({hotel.reviews})
-            </span>
-
-          </div>
-
-        </div>
-
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
-
-        <div>
-
-          <p className="text-[11px] font-medium text-slate-400">
-            Location
-          </p>
-
-          <div className="mt-1 flex items-center gap-1.5">
-
-            <MapPin
-              size={14}
-              className="text-slate-400"
-            />
-
-            <span className="truncate text-xs font-medium text-slate-700">
-              {hotel.city}
-            </span>
-
-          </div>
-
-        </div>
-
-        <div>
-
-          <p className="text-[11px] font-medium text-slate-400">
-            Rooms
-          </p>
-
-          <div className="mt-1 flex items-center gap-1.5">
-
-            <BedDouble
-              size={14}
-              className="text-slate-400"
-            />
-
-            <span className="text-xs font-medium text-slate-700">
-              {hotel.rooms} Rooms
-            </span>
-
-          </div>
-
-        </div>
-
-        <div>
-
-          <p className="text-[11px] font-medium text-slate-400">
-            Price / Night
-          </p>
-
-          <p className="mt-1 text-sm font-bold text-slate-900">
-            ₹{hotel.price.toLocaleString()}
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-[11px] font-medium text-slate-400">
-            Status
-          </p>
-
-          <div className="mt-1">
-
-            <StatusBadge
-              status={hotel.status}
-            />
-
-          </div>
-
-        </div>
-
-      </div>
-
-      <button
-        type="button"
-        onClick={onView}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-      >
-        <Eye size={16} />
-        View Details
-      </button>
-
-    </div>
-  );
-}
-
-/* =========================================================
-   ACTION MENU
-========================================================= */
-
-function ActionMenu({
-  hotel,
-  openMenu,
-  setOpenMenu,
-  onView,
-  onEdit,
-  onRooms,
-  onBookings,
-  onToggle,
-  onDelete,
-}) {
-  const isOpen =
-    openMenu === hotel.id;
-
-  return (
-    <div
-      className="relative inline-block"
-      onClick={(e) =>
-        e.stopPropagation()
-      }
-    >
-
-      <button
-        type="button"
-        onClick={() =>
-          setOpenMenu(
-            isOpen
-              ? null
-              : hotel.id
-          )
-        }
-        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-      >
-        <MoreVertical size={18} />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 top-full z-[100] mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 text-left shadow-xl">
-
-          <MenuItem
-            icon={Eye}
-            label="View Details"
-            onClick={onView}
-          />
-
-          <MenuItem
-            icon={Pencil}
-            label="Edit Hotel"
-            onClick={onEdit}
-          />
-
-          <MenuItem
-            icon={BedDouble}
-            label="View Rooms"
-            onClick={onRooms}
-          />
-
-          <MenuItem
-            icon={Building2}
-            label="View Bookings"
-            onClick={onBookings}
-          />
-
-          <div className="my-1 border-t border-slate-100" />
-
-          <MenuItem
-            icon={
-              hotel.status === "Active"
-                ? PowerOff
-                : Power
-            }
-            label={
-              hotel.status === "Active"
-                ? "Deactivate"
-                : "Activate"
-            }
-            onClick={onToggle}
-          />
-
-          <MenuItem
-            icon={Trash2}
-            label="Delete Hotel"
-            danger
-            onClick={onDelete}
-          />
-
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-/* =========================================================
-   MENU ITEM
-========================================================= */
-
-function MenuItem({
-  icon: Icon,
-  label,
-  onClick,
-  danger = false,
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm transition ${
-        danger
-          ? "text-red-600 hover:bg-red-50"
-          : "text-slate-700 hover:bg-slate-50"
-      }`}
-    >
-      <Icon size={16} />
-      {label}
-    </button>
-  );
-}
-
-/* =========================================================
-   STATUS BADGE
-========================================================= */
-
-function StatusBadge({ status }) {
-  const active =
-    status === "Active";
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-        active
-          ? "bg-emerald-50 text-emerald-700"
-          : "bg-red-50 text-red-700"
-      }`}
-    >
-
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          active
-            ? "bg-emerald-500"
-            : "bg-red-500"
-        }`}
-      />
-
-      {status}
-
-    </span>
-  );
-}
-
-/* =========================================================
-   EMPTY STATE
-========================================================= */
-
-function EmptyState({ onReset }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">
-
-        <Building2
-          size={25}
-          className="text-slate-400"
-        />
-
-      </div>
-
-      <h3 className="mt-4 text-base font-bold text-slate-900">
-        No hotels found
-      </h3>
-
-      <p className="mt-1 text-sm text-slate-500">
-        Try changing your search or filters.
-      </p>
-
-      <button
-        type="button"
-        onClick={onReset}
-        className="mt-4 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-      >
-        Reset Filters
-      </button>
-
-    </div>
-  );
-}
-
-/* =========================================================
-   PAGINATION
-========================================================= */
-
-function Pagination({
-  currentPage,
-  totalPages,
-  totalItems,
-  itemsPerPage,
-  onPrevious,
-  onNext,
-  onPageChange,
-}) {
-  const start =
-    totalItems === 0
-      ? 0
-      : (currentPage - 1) *
-          itemsPerPage +
-        1;
-
-  const end = Math.min(
-    currentPage * itemsPerPage,
-    totalItems
-  );
-
-  const pages = Array.from(
-    { length: totalPages },
-    (_, index) => index + 1
-  );
-
-  return (
-    <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-
-      <p className="text-xs text-slate-500">
-
-        Showing{" "}
-
-        <span className="font-semibold text-slate-700">
-          {start} - {end}
-        </span>{" "}
-
-        of{" "}
-
-        <span className="font-semibold text-slate-700">
-          {totalItems}
-        </span>
-
-      </p>
-
-      <div className="flex items-center justify-between gap-2 sm:justify-end">
-
-        <button
-          type="button"
-          disabled={
-            currentPage === 1
-          }
-          onClick={onPrevious}
-          className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <ChevronLeft size={15} />
-          Previous
-        </button>
-
-        <div className="hidden items-center gap-1 sm:flex">
-
-          {pages.map((page) => (
-            <button
-              type="button"
-              key={page}
-              onClick={() =>
-                onPageChange(page)
-              }
-              className={`h-9 min-w-9 rounded-lg px-2 text-xs font-semibold transition ${
-                currentPage === page
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-
-        </div>
-
-        <span className="text-xs font-medium text-slate-500 sm:hidden">
-          {currentPage} / {totalPages}
-        </span>
-
-        <button
-          type="button"
-          disabled={
-            currentPage ===
-            totalPages
-          }
-          onClick={onNext}
-          className="inline-flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Next
-          <ChevronRight size={15} />
-        </button>
-
-      </div>
-
-    </div>
-  );
-}
-
-/* =========================================================
-   HOTEL FORM MODAL
-========================================================= */
-
-function HotelFormModal({
-  title,
-  subtitle,
-  form,
-  setForm,
-  onChange,
-  onSubmit,
-  onClose,
-  onAmenityToggle,
-  onImageUpload,
-  onRemoveImage,
-  submitText,
-  submitting = false,
-}) {
-  return (
-    <Modal
-      onClose={onClose}
-      size="large"
-    >
-      <div className="flex max-h-[90vh] flex-col">
-
-        {/* HEADER */}
-
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
-
-          <div>
-
-            <h2 className="text-lg font-bold text-slate-900">
-              {title}
-            </h2>
-
-            <p className="mt-0.5 text-xs text-slate-500">
-              {subtitle}
-            </p>
-
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-          >
-            <X size={19} />
-          </button>
-
-        </div>
-
-        {/* FORM */}
-
-        <form
-          onSubmit={onSubmit}
-          className="overflow-y-auto px-5 py-5 sm:px-6"
-        >
-
-          {/* BASIC INFORMATION */}
-
-          <FormSection
-            title="Basic Information"
-            description="Enter the main hotel details."
-          >
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-
-              <InputField
-                label="Hotel Name"
-                name="hotelName"
-                value={form.hotelName}
-                onChange={onChange}
-                placeholder="Enter hotel name"
-                required
-              />
-
-              <SelectField
-                label="Property Type"
-                name="propertyType"
-                value={form.propertyType}
-                onChange={onChange}
-                options={[
-                  "Hotel",
-                  "Resort",
-                  "Villa",
-                  "Apartment",
-                  "Hostel",
-                ]}
-              />
-
-              <SelectField
-                label="Star Rating"
-                name="starRating"
-                value={form.starRating}
-                onChange={onChange}
-                options={[
-                  "2",
-                  "3",
-                  "4",
-                  "5",
-                ]}
-                formatOption={(item) =>
-                  `${item} Star`
-                }
-              />
-
-              <InputField
-                label="Hotel Email"
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={onChange}
-                placeholder="hotel@example.com"
-              />
-
-              <InputField
-                label="Phone Number"
-                name="phone"
-                value={form.phone}
-                onChange={onChange}
-                placeholder="+91 98765 43210"
-              />
-
-            </div>
-
-          </FormSection>
-
-          {/* LOCATION */}
-
-          <FormSection
-            title="Location & Address"
-            description="Add the complete hotel location."
-          >
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-
-              <InputField
-                label="City"
-                name="city"
-                value={form.city}
-                onChange={onChange}
-                placeholder="Enter city"
-                required
-              />
-
-              <InputField
-                label="State"
-                name="state"
-                value={form.state}
-                onChange={onChange}
-                placeholder="Enter state"
-              />
-
-              <InputField
-                label="Country"
-                name="country"
-                value={form.country}
-                onChange={onChange}
-                placeholder="Enter country"
-              />
-
-              <InputField
-                label="Pincode"
-                name="pincode"
-                value={form.pincode}
-                onChange={onChange}
-                placeholder="Enter pincode"
-              />
-
-              <div className="md:col-span-2">
-
-                <InputField
-                  label="Address"
-                  name="address"
-                  value={form.address}
-                  onChange={onChange}
-                  placeholder="Enter complete hotel address"
-                  required
-                />
-
-              </div>
-
-            </div>
-
-          </FormSection>
-
-          {/* HOTEL DETAILS */}
-
-          <FormSection
-            title="Hotel Details"
-            description="Configure rooms, price and timings."
-          >
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-
-              <InputField
-                label="Total Rooms"
-                name="rooms"
-                type="number"
-                value={form.rooms}
-                onChange={onChange}
-                placeholder="e.g. 100"
-                required
-              />
-
-              <InputField
-                label="Price Per Night"
-                name="price"
-                type="number"
-                value={form.price}
-                onChange={onChange}
-                placeholder="e.g. 8999"
-                required
-              />
-
-              <InputField
-                label="Check-in Time"
-                name="checkIn"
-                value={form.checkIn}
-                onChange={onChange}
-                placeholder="02:00 PM"
-              />
-
-              <InputField
-                label="Check-out Time"
-                name="checkOut"
-                value={form.checkOut}
-                onChange={onChange}
-                placeholder="12:00 PM"
-              />
-
-              <div className="md:col-span-2">
-
-                <label className="block">
-
-                  <span className="mb-1.5 block text-xs font-semibold text-slate-600">
-                    Description
-                  </span>
-
-                  <textarea
-                    name="description"
-                    value={form.description}
-                    onChange={onChange}
-                    rows={4}
-                    placeholder="Write a short description about this hotel..."
-                    className="w-full resize-none rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-
-                </label>
-
-              </div>
-
-            </div>
-
-          </FormSection>
-
-          {/* AMENITIES */}
-
-          <FormSection
-            title="Amenities"
-            description="Select amenities available at this property."
-          >
-
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-
-              {amenitiesList.map(
-                (amenity) => {
-                  const Icon =
-                    amenity.icon;
-
-                  const checked =
-                    form.amenities.includes(
-                      amenity.label
-                    );
-
-                  return (
-                    <button
-                      type="button"
-                      key={amenity.label}
-                      onClick={() =>
-                        onAmenityToggle(
-                          amenity.label
-                        )
-                      }
-                      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
-                        checked
-                          ? "border-blue-200 bg-blue-50 text-blue-700"
-                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-
-                      <div
-                        className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                          checked
-                            ? "bg-blue-100"
-                            : "bg-slate-100"
-                        }`}
+                        className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60"
                       >
-                        <Icon size={16} />
+                        {/* Hotel */}
+
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                              {hotel.image ? (
+                                <img
+                                  src={hotel.image}
+                                  alt={hotel.hotelName}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageIcon
+                                    size={22}
+                                    className="text-gray-400"
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-900 truncate max-w-[220px]">
+                                {hotel.hotelName}
+                              </p>
+
+                              <p className="text-sm text-gray-500">
+                                {hotel.propertyType}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Location */}
+
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2 text-gray-700">
+                            <MapPin
+                              size={16}
+                              className="text-gray-400"
+                            />
+
+                            <span>
+                              {hotel.city},{" "}
+                              {hotel.state}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Rating */}
+
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-1">
+                            <Star
+                              size={16}
+                              className="fill-yellow-400 text-yellow-400"
+                            />
+
+                            <span className="font-semibold">
+                              {hotel.starRating}
+                            </span>
+
+                            <span className="text-gray-400 text-sm">
+                              ({hotel.reviews})
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Rooms */}
+
+                        <td className="px-5 py-4 text-gray-700">
+                          {hotel.rooms}
+                        </td>
+
+                        {/* Price */}
+
+                        <td className="px-5 py-4">
+                          <span className="font-semibold text-gray-900">
+                            ₹
+                            {hotel.price.toLocaleString(
+                              "en-IN"
+                            )}
+                          </span>
+
+                          <span className="text-gray-400 text-xs">
+                            {" "}
+                            / night
+                          </span>
+                        </td>
+
+                        {/* Status */}
+
+                        <td className="px-5 py-4">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleToggleStatus(
+                                hotel
+                              )
+                            }
+                            className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
+                              hotel.status === "Active"
+                                ? "bg-green-50 text-green-700"
+                                : "bg-red-50 text-red-700"
+                            }`}
+                          >
+                            {hotel.status}
+                          </button>
+                        </td>
+
+                        {/* Actions */}
+
+                        <td className="px-5 py-4">
+                          <div className="flex justify-end items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleView(hotel)
+                              }
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                              title="View"
+                            >
+                              <Eye size={17} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleEdit(hotel)
+                              }
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-50"
+                              title="Edit"
+                            >
+                              <Edit size={17} />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleDeleteHotel(
+                                  hotel.id
+                                )
+                              }
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50"
+                              title="Delete"
+                            >
+                              <Trash2 size={17} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* =================================================
+                  MOBILE CARDS
+              ================================================= */}
+
+              <div className="lg:hidden divide-y divide-gray-100">
+                {paginatedHotels.map((hotel) => (
+                  <div
+                    key={hotel.id}
+                    className="p-4"
+                  >
+                    <div className="flex gap-3">
+                      <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 shrink-0">
+                        {hotel.image ? (
+                          <img
+                            src={hotel.image}
+                            alt={hotel.hotelName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ImageIcon
+                              size={22}
+                              className="text-gray-400"
+                            />
+                          </div>
+                        )}
                       </div>
 
-                      <span className="text-xs font-semibold">
-                        {amenity.label}
-                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">
+                              {hotel.hotelName}
+                            </h3>
 
-                      <span
-                        className={`ml-auto flex h-4 w-4 items-center justify-center rounded border ${
-                          checked
-                            ? "border-blue-600 bg-blue-600"
-                            : "border-slate-300"
-                        }`}
+                            <p className="text-sm text-gray-500 mt-0.5">
+                              {hotel.propertyType}
+                            </p>
+                          </div>
+
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                              hotel.status ===
+                              "Active"
+                                ? "bg-green-50 text-green-700"
+                                : "bg-red-50 text-red-700"
+                            }`}
+                          >
+                            {hotel.status}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-sm">
+                          <span className="flex items-center gap-1 text-gray-600">
+                            <MapPin
+                              size={14}
+                            />
+                            {hotel.city}
+                          </span>
+
+                          <span className="flex items-center gap-1">
+                            <Star
+                              size={14}
+                              className="fill-yellow-400 text-yellow-400"
+                            />
+                            {hotel.starRating}
+                          </span>
+
+                          <span className="flex items-center gap-1 text-gray-600">
+                            <BedDouble
+                              size={14}
+                            />
+                            {hotel.rooms}
+                          </span>
+                        </div>
+
+                        <p className="font-semibold text-gray-900 mt-2">
+                          ₹
+                          {hotel.price.toLocaleString(
+                            "en-IN"
+                          )}
+                          <span className="text-xs text-gray-400 font-normal">
+                            {" "}
+                            / night
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 mt-4">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleView(hotel)
+                        }
+                        className="px-3 py-2 rounded-lg bg-gray-50 text-gray-600 text-sm"
                       >
-                        {checked && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                        )}
-                      </span>
-
-                    </button>
-                  );
-                }
-              )}
-
-            </div>
-
-          </FormSection>
-
-          {/* IMAGES */}
-
-          <FormSection
-            title="Hotel Images"
-            description="Upload hotel images for the property."
-          >
-
-            <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-5 text-center">
-
-              <input
-                id="hotel-images"
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onImageUpload}
-                className="hidden"
-              />
-
-              <label
-                htmlFor="hotel-images"
-                className="mx-auto flex max-w-xs cursor-pointer flex-col items-center"
-              >
-
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                  <ImagePlus size={21} />
-                </div>
-
-                <p className="mt-3 text-sm font-semibold text-slate-700">
-                  Upload hotel images
-                </p>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  PNG, JPG or WEBP
-                </p>
-
-                <span className="mt-3 inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-blue-600 shadow-sm">
-                  <Upload size={14} />
-                  Choose Images
-                </span>
-
-              </label>
-
-            </div>
-
-            {form.images.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-
-                {form.images.map(
-                  (image, index) => (
-                    <div
-                      key={`${image}-${index}`}
-                      className="group relative overflow-hidden rounded-xl border border-slate-200"
-                    >
-
-                      <img
-                        src={image}
-                        alt={`Hotel ${
-                          index + 1
-                        }`}
-                        className="h-24 w-full object-cover"
-                      />
+                        View
+                      </button>
 
                       <button
                         type="button"
                         onClick={() =>
-                          onRemoveImage(
-                            index
-                          )
+                          handleEdit(hotel)
                         }
-                        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-red-600 opacity-0 shadow-sm transition group-hover:opacity-100"
+                        className="px-3 py-2 rounded-lg bg-blue-50 text-blue-600 text-sm"
                       >
-                        <X size={14} />
+                        Edit
                       </button>
 
-                      {index === 0 && (
-                        <span className="absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-1 text-[10px] font-semibold text-white">
-                          Main Image
-                        </span>
-                      )}
-
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleDeleteHotel(hotel.id)
+                        }
+                        className="px-3 py-2 rounded-lg bg-red-50 text-red-600 text-sm"
+                      >
+                        Delete
+                      </button>
                     </div>
-                  )
-                )}
-
+                  </div>
+                ))}
               </div>
-            )}
 
-          </FormSection>
+              {/* =================================================
+                  PAGINATION
+              ================================================= */}
 
-          {/* STATUS */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-4 border-t border-gray-100">
+                <p className="text-sm text-gray-500">
+                  Showing{" "}
+                  {filteredHotels.length === 0
+                    ? 0
+                    : (currentPage - 1) *
+                        itemsPerPage +
+                      1}{" "}
+                  -{" "}
+                  {Math.min(
+                    currentPage * itemsPerPage,
+                    filteredHotels.length
+                  )}{" "}
+                  of {filteredHotels.length}
+                </p>
 
-          <FormSection
-            title="Status"
-            description="Choose whether this hotel is available for customers."
-          >
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() =>
+                      changePage(currentPage - 1)
+                    }
+                    className="px-3 py-2 rounded-lg border border-gray-200 text-sm disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
 
-            <div className="grid grid-cols-2 gap-3">
+                  {Array.from(
+                    { length: totalPages },
+                    (_, index) => index + 1
+                  ).map((pageNumber) => (
+                    <button
+                      key={pageNumber}
+                      type="button"
+                      onClick={() =>
+                        changePage(pageNumber)
+                      }
+                      className={`w-9 h-9 rounded-lg text-sm font-medium ${
+                        currentPage === pageNumber
+                          ? "bg-blue-600 text-white"
+                          : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
 
-              {[
-                "Active",
-                "Inactive",
-              ].map((status) => (
-                <button
-                  type="button"
-                  key={status}
-                  onClick={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      status,
-                    }))
-                  }
-                  className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${
-                    form.status === status
-                      ? status === "Active"
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : "border-red-200 bg-red-50 text-red-700"
-                      : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                  <button
+                    type="button"
+                    disabled={
+                      currentPage === totalPages
+                    }
+                    onClick={() =>
+                      changePage(currentPage + 1)
+                    }
+                    className="px-3 py-2 rounded-lg border border-gray-200 text-sm disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* =======================================================
+          ADD HOTEL MODAL
+      ======================================================= */}
+
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-5xl max-h-[92vh] rounded-3xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Add New Hotel
+                </h2>
+
+                <p className="text-sm text-gray-500 mt-1">
+                  Add hotel details and images.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeAddModal}
+                disabled={submitting}
+                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(92vh-90px)]">
+              {renderHotelForm(false)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =======================================================
+          EDIT HOTEL MODAL
+      ======================================================= */}
+
+      {showEditModal && selectedHotel && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-5xl max-h-[92vh] rounded-3xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Edit Hotel
+                </h2>
+
+                <p className="text-sm text-gray-500 mt-1">
+                  Update hotel information and images.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeEditModal}
+                disabled={submitting}
+                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(92vh-90px)]">
+              {renderHotelForm(true)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =======================================================
+          VIEW HOTEL MODAL
+      ======================================================= */}
+
+      {showViewModal && selectedHotel && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl max-h-[92vh] rounded-3xl overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  Hotel Details
+                </h2>
+
+                <p className="text-sm text-gray-500">
+                  {selectedHotel.hotelName}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowViewModal(false);
+                  setSelectedHotel(null);
+                }}
+                className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(92vh-90px)]">
+              {/* Images */}
+
+              {selectedHotel.images?.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                  {selectedHotel.images.map(
+                    (image, index) => (
+                      <div
+                        key={`${image}-${index}`}
+                        className="aspect-video rounded-xl overflow-hidden bg-gray-100"
+                      >
+                        <img
+                          src={image}
+                          alt={`${selectedHotel.hotelName} ${
+                            index + 1
+                          }`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <div className="h-48 rounded-2xl bg-gray-100 flex items-center justify-center mb-6">
+                  <div className="text-center">
+                    <ImageIcon
+                      size={30}
+                      className="mx-auto text-gray-400"
+                    />
+
+                    <p className="text-sm text-gray-500 mt-2">
+                      No hotel image
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Header */}
+
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {selectedHotel.hotelName}
+                  </h3>
+
+                  <p className="flex items-center gap-2 text-gray-500 mt-2">
+                    <MapPin size={17} />
+                    {selectedHotel.address},{" "}
+                    {selectedHotel.city},{" "}
+                    {selectedHotel.state},{" "}
+                    {selectedHotel.country}
+                  </p>
+                </div>
+
+                <span
+                  className={`px-3 py-1.5 rounded-full text-sm font-semibold w-fit ${
+                    selectedHotel.status ===
+                    "Active"
+                      ? "bg-green-50 text-green-700"
+                      : "bg-red-50 text-red-700"
                   }`}
                 >
-                  {status}
-                </button>
-              ))}
+                  {selectedHotel.status}
+                </span>
+              </div>
 
-            </div>
+              {/* Information */}
 
-          </FormSection>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                <div className="rounded-xl bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500">
+                    Property
+                  </p>
 
-          {/* BUTTONS */}
+                  <p className="font-semibold mt-1">
+                    {selectedHotel.propertyType}
+                  </p>
+                </div>
 
-          <div className="sticky bottom-0 -mx-5 mt-5 flex gap-3 border-t border-slate-200 bg-white px-5 py-4 sm:-mx-6 sm:px-6">
+                <div className="rounded-xl bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500">
+                    Rating
+                  </p>
 
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Cancel
-            </button>
+                  <p className="font-semibold mt-1 flex items-center gap-1">
+                    <Star
+                      size={15}
+                      className="fill-yellow-400 text-yellow-400"
+                    />
+                    {selectedHotel.starRating}
+                  </p>
+                </div>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {submitText}
-            </button>
+                <div className="rounded-xl bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500">
+                    Rooms
+                  </p>
 
-          </div>
+                  <p className="font-semibold mt-1">
+                    {selectedHotel.rooms}
+                  </p>
+                </div>
 
-        </form>
+                <div className="rounded-xl bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500">
+                    Price
+                  </p>
 
-      </div>
-    </Modal>
-  );
-}
+                  <p className="font-semibold mt-1">
+                    ₹
+                    {selectedHotel.price.toLocaleString(
+                      "en-IN"
+                    )}
+                  </p>
+                </div>
+              </div>
 
-/* =========================================================
-   FORM SECTION
-========================================================= */
+              {/* Description */}
 
-function FormSection({
-  title,
-  description,
-  children,
-}) {
-  return (
-    <div className="mb-6">
+              {selectedHotel.description && (
+                <div className="mt-6">
+                  <h4 className="font-semibold text-gray-900">
+                    Description
+                  </h4>
 
-      <div className="mb-4">
+                  <p className="text-gray-600 leading-7 mt-2">
+                    {selectedHotel.description}
+                  </p>
+                </div>
+              )}
 
-        <h3 className="text-sm font-bold text-slate-900">
-          {title}
-        </h3>
+              {/* Contact */}
 
-        <p className="mt-0.5 text-xs text-slate-400">
-          {description}
-        </p>
-
-      </div>
-
-      {children}
-
-    </div>
-  );
-}
-
-/* =========================================================
-   INPUT FIELD
-========================================================= */
-
-function InputField({
-  label,
-  name,
-  type = "text",
-  value,
-  onChange,
-  placeholder,
-  required = false,
-}) {
-  return (
-    <label className="block">
-
-      <span className="mb-1.5 block text-xs font-semibold text-slate-600">
-
-        {label}
-
-        {required && (
-          <span className="ml-1 text-red-500">
-            *
-          </span>
-        )}
-
-      </span>
-
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required={required}
-        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-      />
-
-    </label>
-  );
-}
-
-/* =========================================================
-   SELECT FIELD
-========================================================= */
-
-function SelectField({
-  label,
-  name,
-  value,
-  onChange,
-  options,
-  formatOption,
-}) {
-  return (
-    <label className="block">
-
-      <span className="mb-1.5 block text-xs font-semibold text-slate-600">
-        {label}
-      </span>
-
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-      >
-
-        {options.map(
-          (option) => (
-            <option
-              key={option}
-              value={option}
-            >
-              {formatOption
-                ? formatOption(option)
-                : option}
-            </option>
-          )
-        )}
-
-      </select>
-
-    </label>
-  );
-}
-
-/* =========================================================
-   HOTEL DETAILS MODAL
-========================================================= */
-
-function HotelDetailsModal({
-  hotel,
-  onClose,
-  onEdit,
-}) {
-  return (
-    <Modal
-      onClose={onClose}
-      size="large"
-    >
-      <div className="max-h-[90vh] overflow-y-auto">
-
-        {/* HERO */}
-
-        <div className="relative">
-
-          <img
-            src={hotel.image}
-            alt={hotel.hotelName}
-            className="h-56 w-full object-cover sm:h-64"
-          />
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur transition hover:bg-black/70"
-          >
-            <X size={18} />
-          </button>
-
-          <div className="absolute bottom-4 left-4 right-4">
-
-            <div className="rounded-xl bg-black/50 p-4 backdrop-blur-sm">
-
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-
-                <div>
-
-                  <h2 className="text-xl font-bold text-white">
-                    {hotel.hotelName}
-                  </h2>
-
-                  <div className="mt-1 flex items-center gap-2 text-xs text-white/80">
-
-                    <MapPin size={13} />
-
-                    {hotel.city},{" "}
-                    {hotel.country}
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <div className="flex items-center gap-3 rounded-xl border border-gray-100 p-4">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Mail
+                      size={18}
+                      className="text-blue-600"
+                    />
                   </div>
 
+                  <div>
+                    <p className="text-xs text-gray-500">
+                      Email
+                    </p>
+
+                    <p className="font-medium text-gray-800">
+                      {selectedHotel.email}
+                    </p>
+                  </div>
                 </div>
 
-                <StatusBadge
-                  status={hotel.status}
-                />
+                <div className="flex items-center gap-3 rounded-xl border border-gray-100 p-4">
+                  <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                    <Phone
+                      size={18}
+                      className="text-green-600"
+                    />
+                  </div>
 
+                  <div>
+                    <p className="text-xs text-gray-500">
+                      Phone
+                    </p>
+
+                    <p className="font-medium text-gray-800">
+                      {selectedHotel.phone}
+                    </p>
+                  </div>
+                </div>
               </div>
 
-            </div>
+              {/* Timing */}
 
-          </div>
-
-        </div>
-
-        <div className="p-5 sm:p-6">
-
-          {/* RATING */}
-
-          <div className="flex flex-wrap items-center gap-3">
-
-            <div className="flex items-center gap-1 rounded-lg bg-amber-50 px-3 py-2">
-
-              <Star
-                size={16}
-                className="fill-amber-400 text-amber-400"
-              />
-
-              <span className="text-sm font-bold text-amber-700">
-                {hotel.rating || "New"}
-              </span>
-
-            </div>
-
-            <span className="text-sm text-slate-500">
-              {hotel.reviews.toLocaleString()} reviews
-            </span>
-
-            <span className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
-              {hotel.propertyType}
-            </span>
-
-            <span className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
-              {hotel.starRating} Star
-            </span>
-
-          </div>
-
-          {/* MAIN INFO */}
-
-          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-
-            <DetailBox
-              icon={BedDouble}
-              label="Total Rooms"
-              value={hotel.rooms}
-            />
-
-            <DetailBox
-              icon={Building2}
-              label="Property Type"
-              value={hotel.propertyType}
-            />
-
-            <DetailBox
-              icon={Clock3}
-              label="Check-in"
-              value={hotel.checkIn}
-            />
-
-            <DetailBox
-              icon={Clock3}
-              label="Check-out"
-              value={hotel.checkOut}
-            />
-
-          </div>
-
-          {/* PRICE */}
-
-          <div className="mt-4 rounded-2xl bg-blue-50 p-4">
-
-            <p className="text-xs font-medium text-blue-600">
-              Starting price
-            </p>
-
-            <div className="mt-1 flex items-end gap-1">
-
-              <span className="text-2xl font-bold text-slate-900">
-                ₹{hotel.price.toLocaleString()}
-              </span>
-
-              <span className="pb-1 text-xs text-slate-500">
-                / night
-              </span>
-
-            </div>
-
-          </div>
-
-          {/* LOCATION */}
-
-          <div className="mt-6">
-
-            <h3 className="text-sm font-bold text-slate-900">
-              Location
-            </h3>
-
-            <div className="mt-3 rounded-xl border border-slate-200 p-4">
-
-              <div className="flex gap-3">
-
-                <MapPinned
-                  size={18}
-                  className="mt-0.5 shrink-0 text-blue-600"
-                />
-
-                <div>
-
-                  <p className="text-sm font-semibold text-slate-800">
-                    {hotel.address}
-                  </p>
-
-                  <p className="mt-1 text-xs text-slate-500">
-                    {hotel.city},{" "}
-                    {hotel.state},{" "}
-                    {hotel.country} -{" "}
-                    {hotel.pincode}
-                  </p>
-
+              <div className="flex flex-wrap gap-4 mt-6">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Clock size={17} />
+                  Check-in:{" "}
+                  <strong>
+                    {selectedHotel.checkIn}
+                  </strong>
                 </div>
 
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Clock size={17} />
+                  Check-out:{" "}
+                  <strong>
+                    {selectedHotel.checkOut}
+                  </strong>
+                </div>
               </div>
 
-            </div>
+              {/* Amenities */}
 
-          </div>
+              {selectedHotel.amenities?.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    Amenities
+                  </h4>
 
-          {/* CONTACT */}
+                  <div className="flex flex-wrap gap-2">
+                    {selectedHotel.amenities.map(
+                      (amenity) => {
+                        const Icon =
+                          getAmenityIcon(
+                            amenity
+                          );
 
-          <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
-
-            <div className="rounded-xl border border-slate-200 p-4">
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                  <Mail size={16} />
+                        return (
+                          <span
+                            key={amenity}
+                            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm"
+                          >
+                            <Icon size={15} />
+                            {amenity}
+                          </span>
+                        );
+                      }
+                    )}
+                  </div>
                 </div>
-
-                <div>
-
-                  <p className="text-[11px] text-slate-400">
-                    Email
-                  </p>
-
-                  <p className="mt-0.5 text-sm font-medium text-slate-700">
-                    {hotel.email ||
-                      "Not available"}
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="rounded-xl border border-slate-200 p-4">
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                  <Phone size={16} />
-                </div>
-
-                <div>
-
-                  <p className="text-[11px] text-slate-400">
-                    Phone
-                  </p>
-
-                  <p className="mt-0.5 text-sm font-medium text-slate-700">
-                    {hotel.phone ||
-                      "Not available"}
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* DESCRIPTION */}
-
-          <div className="mt-6">
-
-            <h3 className="text-sm font-bold text-slate-900">
-              Description
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              {hotel.description ||
-                "No description available."}
-            </p>
-
-          </div>
-
-          {/* AMENITIES */}
-
-          <div className="mt-6">
-
-            <h3 className="text-sm font-bold text-slate-900">
-              Amenities
-            </h3>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-
-              {hotel.amenities.length >
-              0 ? (
-                hotel.amenities.map(
-                  (amenity) => (
-                    <span
-                      key={amenity}
-                      className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-medium text-slate-600"
-                    >
-                      {amenity}
-                    </span>
-                  )
-                )
-              ) : (
-                <p className="text-sm text-slate-400">
-                  No amenities added.
-                </p>
               )}
-
             </div>
-
           </div>
-
-          {/* GALLERY */}
-
-          <div className="mt-6">
-
-            <h3 className="text-sm font-bold text-slate-900">
-              Image Gallery
-            </h3>
-
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-
-              {hotel.images?.map(
-                (image, index) => (
-                  <img
-                    key={`${image}-${index}`}
-                    src={image}
-                    alt={`${hotel.hotelName} ${
-                      index + 1
-                    }`}
-                    className="h-32 w-full rounded-xl object-cover"
-                  />
-                )
-              )}
-
-            </div>
-
-          </div>
-
-          {/* BUTTONS */}
-
-          <div className="mt-6 flex gap-3 border-t border-slate-200 pt-5">
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Close
-            </button>
-
-            <button
-              type="button"
-              onClick={onEdit}
-              className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
-            >
-              Edit Hotel
-            </button>
-
-          </div>
-
         </div>
-
-      </div>
-    </Modal>
-  );
-}
-
-/* =========================================================
-   DETAIL BOX
-========================================================= */
-
-function DetailBox({
-  icon: Icon,
-  label,
-  value,
-}) {
-  return (
-    <div className="rounded-xl border border-slate-200 p-3">
-
-      <Icon
-        size={17}
-        className="text-slate-400"
-      />
-
-      <p className="mt-2 text-[11px] text-slate-400">
-        {label}
-      </p>
-
-      <p className="mt-0.5 truncate text-sm font-bold text-slate-700">
-        {value}
-      </p>
-
+      )}
     </div>
   );
-}
-
-/* =========================================================
-   DELETE MODAL
-========================================================= */
-
-function DeleteModal({
-  hotel,
-  onClose,
-  onDelete,
-  submitting = false,
-}) {
-  return (
-    <Modal
-      onClose={onClose}
-      size="small"
-    >
-
-      <div className="p-6">
-
-        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600">
-          <Trash2 size={22} />
-        </div>
-
-        <h2 className="mt-4 text-lg font-bold text-slate-900">
-          Delete Hotel?
-        </h2>
-
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-
-          Are you sure you want to delete{" "}
-
-          <span className="font-semibold text-slate-700">
-            {hotel.hotelName}
-          </span>
-
-          ? This action cannot be undone.
-
-        </p>
-
-        <div className="mt-6 flex gap-3">
-
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={submitting}
-            className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting
-              ? "Deleting..."
-              : "Delete Hotel"}
-          </button>
-
-        </div>
-
-      </div>
-
-    </Modal>
-  );
-}
-
-/* =========================================================
-   MODAL
-========================================================= */
-
-function Modal({
-  children,
-  onClose,
-  size = "medium",
-}) {
-  const sizeClass =
-    size === "large"
-      ? "max-w-4xl"
-      : size === "small"
-      ? "max-w-md"
-      : "max-w-2xl";
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-[2px] sm:p-5">
-
-      <div
-        className={`relative w-full overflow-hidden rounded-2xl bg-white shadow-2xl ${sizeClass}`}
-        onClick={(e) =>
-          e.stopPropagation()
-        }
-      >
-        {children}
-      </div>
-
-    </div>
-  );
-}
+};
 
 export default AdminHotel;

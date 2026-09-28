@@ -1,466 +1,795 @@
-
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import {
   ArrowLeft,
   ArrowRight,
-  ArrowDown,
-  Plane,
-  Clock3,
+  BedDouble,
   CalendarDays,
-  Luggage,
-  BriefcaseBusiness,
   CheckCircle2,
-  ShieldCheck,
-  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Coffee,
+  CreditCard,
   Info,
   MapPin,
-  Wifi,
+  ParkingCircle,
+  ShieldCheck,
+  Star,
+  Users,
   Utensils,
-  Armchair,
-  CreditCard,
+  Wifi,
+  Waves,
+  Car,
+  Dumbbell,
+  X,
 } from "lucide-react";
 
-const FlightDetail = () => {
+import { getHotelById } from "../redux/slicer/hotelSlice";
+
+const HotelDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const dispatch = useDispatch();
 
-  // Demo flight data
-  // Later you can replace this with API data using the id.
-  const flight = {
-    id: id || "TRPFL78421",
-    airline: "IndiGo",
-    airlineCode: "6E",
-    flightNumber: "6E 2345",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/4/4a/IndiGo_Airlines_logo.svg",
+  const [hotel, setHotel] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
-    from: {
-      city: "Delhi",
-      airport: "Indira Gandhi International Airport",
-      code: "DEL",
-      time: "06:30 AM",
-    },
+  /* =========================================================
+     FETCH ACTUAL HOTEL BY ID
+  ========================================================= */
 
-    to: {
-      city: "Mumbai",
-      airport: "Chhatrapati Shivaji Maharaj International Airport",
-      code: "BOM",
-      time: "08:40 AM",
-    },
+  useEffect(() => {
+    const fetchHotel = async () => {
+      if (!id) {
+        setError("Hotel ID is missing.");
+        setLoading(false);
+        return;
+      }
 
-    date: "18 September 2026",
-    duration: "2h 10m",
-    stops: "Non-stop",
-    aircraft: "Airbus A320",
-    travelClass: "Economy",
+      try {
+        setLoading(true);
+        setError("");
+        setHotel(null);
+        setSelectedImage(0);
 
-    price: 5499,
-    baseFare: 4800,
-    taxes: 624,
-    convenienceFee: 75,
+        console.log("Fetching hotel with ID:", id);
 
-    baggage: {
-      cabin: "7 kg",
-      checkIn: "15 kg",
-    },
+        const response = await dispatch(getHotelById(id)).unwrap();
+
+        console.log("Actual hotel API response:", response);
+
+        /*
+          Expected backend response:
+
+          {
+            success: true,
+            hotel: {
+              _id: "...",
+              hotelName: "...",
+              image: "...",
+              images: [...]
+            }
+          }
+        */
+
+        const hotelData = response?.hotel;
+
+        if (!hotelData) {
+          throw new Error(
+            response?.message || "Hotel details not found."
+          );
+        }
+
+        if (!hotelData._id) {
+          throw new Error("Invalid hotel data received from server.");
+        }
+
+        console.log("Actual hotel data:", hotelData);
+
+        setHotel(hotelData);
+      } catch (err) {
+        console.error("Get hotel detail error:", err);
+
+        const message =
+          err?.message ||
+          err?.payload?.message ||
+          err?.response?.data?.message ||
+          "Failed to load hotel details.";
+
+        setError(message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHotel();
+  }, [dispatch, id]);
+
+  /* =========================================================
+     ACTUAL HOTEL IMAGES
+  ========================================================= */
+
+  const hotelImages = useMemo(() => {
+    if (!hotel) return [];
+
+    const images = [];
+
+    if (hotel.image) {
+      images.push(hotel.image);
+    }
+
+    if (Array.isArray(hotel.images)) {
+      images.push(...hotel.images);
+    }
+
+    return [...new Set(images)].filter(Boolean);
+  }, [hotel]);
+
+  /* =========================================================
+     AMENITIES
+  ========================================================= */
+
+  const amenities = useMemo(() => {
+    if (!hotel) return [];
+
+    if (!Array.isArray(hotel.amenities)) {
+      return [];
+    }
+
+    return hotel.amenities.filter(Boolean);
+  }, [hotel]);
+
+  /* =========================================================
+     ACTUAL HOTEL DATA
+  ========================================================= */
+
+  const hotelName = hotel?.hotelName || "";
+  const propertyType = hotel?.propertyType || "";
+
+  const location = [
+    hotel?.address,
+    hotel?.city,
+    hotel?.state,
+    hotel?.country,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const rating =
+    hotel?.rating !== undefined && hotel?.rating !== null
+      ? Number(hotel.rating)
+      : 0;
+
+  const reviews =
+    hotel?.reviews !== undefined && hotel?.reviews !== null
+      ? Number(hotel.reviews)
+      : 0;
+
+  const stars =
+    hotel?.starRating !== undefined && hotel?.starRating !== null
+      ? Number(hotel.starRating)
+      : 0;
+
+  const price =
+    hotel?.price !== undefined && hotel?.price !== null
+      ? Number(hotel.price)
+      : 0;
+
+  const description = hotel?.description || "";
+
+  const checkIn = hotel?.checkIn || "";
+  const checkOut = hotel?.checkOut || "";
+
+  const rooms =
+    hotel?.rooms !== undefined && hotel?.rooms !== null
+      ? Number(hotel.rooms)
+      : 0;
+
+  const city = hotel?.city || "";
+  const state = hotel?.state || "";
+  const country = hotel?.country || "";
+
+  /* =========================================================
+     IMAGE HANDLERS
+  ========================================================= */
+
+  const nextImage = () => {
+    if (!hotelImages.length) return;
+
+    setSelectedImage((current) =>
+      current === hotelImages.length - 1 ? 0 : current + 1
+    );
   };
 
-  const handleContinue = () => {
-    navigate(`/flight-booking/${flight.id}`, {
+  const previousImage = () => {
+    if (!hotelImages.length) return;
+
+    setSelectedImage((current) =>
+      current === 0 ? hotelImages.length - 1 : current - 1
+    );
+  };
+
+  /* =========================================================
+     BOOK HOTEL
+  ========================================================= */
+
+  const handleBookNow = () => {
+    if (!hotel?._id) return;
+
+    navigate("/hotelbook", {
       state: {
-        flight,
+        hotel,
       },
     });
   };
 
+  /* =========================================================
+     AMENITY ICON
+  ========================================================= */
+
+  const getAmenityIcon = (amenity) => {
+    const value = String(amenity).toLowerCase();
+
+    if (value.includes("wifi") || value.includes("internet")) {
+      return Wifi;
+    }
+
+    if (value.includes("breakfast") || value.includes("food")) {
+      return Coffee;
+    }
+
+    if (value.includes("pool") || value.includes("swimming")) {
+      return Waves;
+    }
+
+    if (value.includes("parking")) {
+      return ParkingCircle;
+    }
+
+    if (value.includes("gym") || value.includes("fitness")) {
+      return Dumbbell;
+    }
+
+    if (value.includes("restaurant")) {
+      return Utensils;
+    }
+
+    if (value.includes("car")) {
+      return Car;
+    }
+
+    return CheckCircle2;
+  };
+
+  /* =========================================================
+     LOADING
+  ========================================================= */
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <div className="animate-pulse space-y-5">
+            <div className="h-5 w-48 rounded bg-slate-200"></div>
+
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_350px]">
+              <div className="space-y-4">
+                <div className="h-[420px] rounded-2xl bg-slate-200"></div>
+                <div className="h-52 rounded-2xl bg-slate-200"></div>
+                <div className="h-64 rounded-2xl bg-slate-200"></div>
+              </div>
+
+              <div className="h-[430px] rounded-2xl bg-slate-200"></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  /* =========================================================
+     ERROR
+  ========================================================= */
+
+  if (error || !hotel) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <main className="mx-auto flex min-h-[70vh] max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
+              <Info size={26} />
+            </div>
+
+            <h1 className="mt-5 text-xl font-bold text-slate-900">
+              Hotel not found
+            </h1>
+
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              {error || "We couldn't find the requested hotel."}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => navigate("/hotels")}
+              className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+            >
+              <ArrowLeft size={17} />
+              Back to Hotels
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* ================= HEADER SPACE ================= */}
-      <div className=""></div>
-
       <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        {/* ================= BREADCRUMB ================= */}
+        {/* ==================================================
+            BREADCRUMB
+        ================================================== */}
+
         <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
           <button
-            onClick={() => navigate("/flights")}
+            type="button"
+            onClick={() => navigate("/hotels")}
             className="text-slate-500 transition hover:text-blue-600"
           >
-            Flights
+            Hotels
           </button>
 
           <span className="text-slate-300">/</span>
 
-          <span className="font-medium text-slate-700">
-            Flight Details
+          <span className="max-w-[250px] truncate font-medium text-slate-700">
+            {hotelName}
           </span>
         </div>
 
-        {/* ================= BACK BUTTON ================= */}
+        {/* ==================================================
+            BACK BUTTON
+        ================================================== */}
+
         <button
+          type="button"
           onClick={() => navigate(-1)}
-          className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-blue-600"
+          className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-blue-600"
         >
           <ArrowLeft size={17} />
-          Back to Flights
+          Back to Hotels
         </button>
 
-        {/* ================= PAGE GRID ================= */}
+        {/* ==================================================
+            HOTEL TITLE
+        ================================================== */}
+
+        <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                {propertyType && (
+                  <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+                    {propertyType}
+                  </span>
+                )}
+
+                {hotel?.status && (
+                  <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+                    {hotel.status}
+                  </span>
+                )}
+              </div>
+
+              <h1 className="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">
+                {hotelName}
+              </h1>
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+                {location && (
+                  <div className="flex items-center gap-1.5 text-sm text-slate-500">
+                    <MapPin size={16} className="text-blue-600" />
+                    <span>{location}</span>
+                  </div>
+                )}
+
+                {rating > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1 text-white">
+                      <Star size={13} fill="currentColor" />
+
+                      <span className="text-xs font-bold">
+                        {rating.toFixed(1)}
+                      </span>
+                    </div>
+
+                    {reviews > 0 && (
+                      <span className="text-sm text-slate-500">
+                        {reviews.toLocaleString("en-IN")} reviews
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {stars > 0 && (
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({
+                      length: Math.min(stars, 5),
+                    }).map((_, index) => (
+                      <Star
+                        key={index}
+                        size={15}
+                        className="text-amber-400"
+                        fill="currentColor"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {price > 0 && (
+              <div className="shrink-0">
+                <p className="text-xs font-medium text-slate-500">
+                  Starting from
+                </p>
+
+                <div className="mt-1 flex items-end gap-1">
+                  <span className="text-2xl font-bold text-slate-900">
+                    ₹{price.toLocaleString("en-IN")}
+                  </span>
+
+                  <span className="mb-1 text-sm text-slate-500">
+                    / night
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ==================================================
+            PAGE GRID
+        ================================================== */}
+
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_350px]">
           {/* ==================================================
               LEFT CONTENT
           ================================================== */}
+
           <div className="space-y-4">
-            {/* ================= FLIGHT SUMMARY ================= */}
+            {/* ==================================================
+                IMAGE GALLERY
+            ================================================== */}
+
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              {/* Top header */}
-              <div className="border-b border-slate-100 px-5 py-5 sm:px-7">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white p-2">
-                      <img
-                        src={flight.logo}
-                        alt={flight.airline}
-                        className="max-h-8 max-w-full object-contain"
-                      />
-                    </div>
+              {hotelImages.length > 0 ? (
+                <>
+                  <div className="relative h-[300px] overflow-hidden bg-slate-100 sm:h-[430px]">
+                    <img
+                      src={hotelImages[selectedImage]}
+                      alt={hotelName}
+                      className="h-full w-full object-cover"
+                      onError={(event) => {
+                        console.error(
+                          "Hotel image failed to load:",
+                          hotelImages[selectedImage]
+                        );
 
-                    <div>
-                      <h1 className="text-lg font-bold text-slate-900">
-                        {flight.airline}
-                      </h1>
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
 
-                      <p className="text-sm text-slate-500">
-                        {flight.flightNumber} · {flight.aircraft}
-                      </p>
-                    </div>
-                  </div>
+                    {hotelImages.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={previousImage}
+                          className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md transition hover:bg-white"
+                        >
+                          <ChevronLeft size={21} />
+                        </button>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-                      {flight.travelClass}
-                    </span>
+                        <button
+                          type="button"
+                          onClick={nextImage}
+                          className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md transition hover:bg-white"
+                        >
+                          <ChevronRight size={21} />
+                        </button>
 
-                    <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                      {flight.stops}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white">
+                          {selectedImage + 1} / {hotelImages.length}
+                        </div>
+                      </>
+                    )}
 
-              {/* Flight route */}
-              <div className="px-5 py-7 sm:px-7">
-                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-                  {/* Departure */}
-                  <div>
-                    <p className="text-2xl font-bold text-slate-900 sm:text-3xl">
-                      {flight.from.time}
-                    </p>
-
-                    <p className="mt-1 text-base font-bold text-slate-800">
-                      {flight.from.code}
-                    </p>
-
-                    <p className="mt-1 text-sm text-slate-500">
-                      {flight.from.city}
-                    </p>
-                  </div>
-
-                  {/* Center */}
-                  <div className="flex min-w-[90px] flex-col items-center">
-                    <span className="mb-2 whitespace-nowrap text-xs font-medium text-slate-500">
-                      {flight.duration}
-                    </span>
-
-                    <div className="flex w-full items-center">
-                      <div className="h-2 w-2 rounded-full border-2 border-blue-600 bg-white"></div>
-
-                      <div className="relative mx-1 h-px flex-1 bg-slate-300">
-                        <Plane
-                          size={17}
-                          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90 bg-white px-0.5 text-blue-600"
-                        />
-                      </div>
-
-                      <div className="h-2 w-2 rounded-full bg-blue-600"></div>
-                    </div>
-
-                    <span className="mt-2 whitespace-nowrap text-xs font-semibold text-emerald-600">
-                      {flight.stops}
-                    </span>
-                  </div>
-
-                  {/* Arrival */}
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-slate-900 sm:text-3xl">
-                      {flight.to.time}
-                    </p>
-
-                    <p className="mt-1 text-base font-bold text-slate-800">
-                      {flight.to.code}
-                    </p>
-
-                    <p className="mt-1 text-sm text-slate-500">
-                      {flight.to.city}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Date */}
-                <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-100 pt-5 text-sm text-slate-500">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays size={16} className="text-blue-600" />
-                    <span>{flight.date}</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Clock3 size={16} className="text-blue-600" />
-                    <span>{flight.duration} travel time</span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Plane size={16} className="text-blue-600" />
-                    <span>{flight.aircraft}</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* ================= FLIGHT DETAILS ================= */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="mb-7">
-                <h2 className="text-xl font-bold text-slate-900">
-                  Flight Details
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Complete departure and arrival information
-                </p>
-              </div>
-
-              <div className="relative">
-                {/* Vertical line */}
-                <div className="absolute left-[11px] top-7 bottom-7 w-px bg-slate-200"></div>
-
-                {/* Departure */}
-                <div className="relative flex gap-5 pb-10">
-                  <div className="z-10 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-4 border-blue-50 bg-blue-600"></div>
-
-                  <div className="flex-1">
-                    <div className="flex flex-col justify-between gap-2 sm:flex-row">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                          Departure
-                        </p>
-
-                        <h3 className="mt-1 text-xl font-bold text-slate-900">
-                          {flight.from.time}
-                        </h3>
-
-                        <p className="mt-1 font-semibold text-slate-800">
-                          {flight.from.city} ({flight.from.code})
-                        </p>
-                      </div>
-
-                      <div className="text-left sm:text-right">
-                        <p className="text-sm font-medium text-slate-700">
-                          {flight.from.airport}
-                        </p>
-
-                        <p className="mt-1 text-xs text-slate-500">
-                          Terminal 2
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Duration */}
-                <div className="relative mb-10 ml-11 rounded-xl bg-slate-50 px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <Clock3 size={16} className="text-slate-500" />
-
-                    <div>
-                      <p className="text-sm font-semibold text-slate-700">
-                        {flight.duration}
-                      </p>
-
-                      <p className="text-xs text-slate-500">
-                        {flight.stops}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Arrival */}
-                <div className="relative flex gap-5">
-                  <div className="z-10 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600">
-                    <div className="h-2 w-2 rounded-full bg-white"></div>
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="flex flex-col justify-between gap-2 sm:flex-row">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                          Arrival
-                        </p>
-
-                        <h3 className="mt-1 text-xl font-bold text-slate-900">
-                          {flight.to.time}
-                        </h3>
-
-                        <p className="mt-1 font-semibold text-slate-800">
-                          {flight.to.city} ({flight.to.code})
-                        </p>
-                      </div>
-
-                      <div className="text-left sm:text-right">
-                        <p className="text-sm font-medium text-slate-700">
-                          {flight.to.airport}
-                        </p>
-
-                        <p className="mt-1 text-xs text-slate-500">
-                          Terminal 1
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* ================= BAGGAGE ================= */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-slate-900">
-                  Baggage Information
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Baggage allowance included with this fare
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Cabin */}
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                      <BriefcaseBusiness size={20} />
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">
-                        Cabin Baggage
-                      </p>
-
-                      <p className="mt-1 text-lg font-bold text-slate-900">
-                        {flight.baggage.cabin}
-                      </p>
-
-                      <p className="text-xs text-slate-500">
-                        per passenger
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Check-in */}
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                      <Luggage size={20} />
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">
-                        Check-in Baggage
-                      </p>
-
-                      <p className="mt-1 text-lg font-bold text-slate-900">
-                        {flight.baggage.checkIn}
-                      </p>
-
-                      <p className="text-xs text-slate-500">
-                        per passenger
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* ================= FARE BENEFITS ================= */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-slate-900">
-                  Fare Benefits
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  What's included with your selected fare
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {[
-                  {
-                    icon: Luggage,
-                    title: "15 kg Check-in Baggage",
-                    text: "Included in your fare",
-                  },
-                  {
-                    icon: BriefcaseBusiness,
-                    title: "7 kg Cabin Baggage",
-                    text: "Carry-on baggage included",
-                  },
-                  {
-                    icon: Armchair,
-                    title: "Seat Selection",
-                    text: "Available during booking",
-                  },
-                  {
-                    icon: Utensils,
-                    title: "In-flight Services",
-                    text: "Available as per airline policy",
-                  },
-                  {
-                    icon: Wifi,
-                    title: "Entertainment",
-                    text: "Available on selected aircraft",
-                  },
-                  {
-                    icon: ShieldCheck,
-                    title: "Secure Booking",
-                    text: "Protected payment process",
-                  },
-                ].map((item, index) => {
-                  const Icon = item.icon;
-
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-start gap-3 rounded-xl bg-slate-50 p-4"
+                    <button
+                      type="button"
+                      onClick={() => setLightboxOpen(true)}
+                      className="absolute bottom-4 right-4 rounded-lg bg-black/60 px-3 py-2 text-xs font-semibold text-white transition hover:bg-black/75"
                     >
-                      <div className="mt-0.5 text-emerald-600">
-                        <CheckCircle2 size={18} />
-                      </div>
+                      View all photos
+                    </button>
+                  </div>
 
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {item.title}
-                        </p>
-
-                        <p className="mt-1 text-xs text-slate-500">
-                          {item.text}
-                        </p>
-                      </div>
+                  {hotelImages.length > 1 && (
+                    <div className="flex gap-3 overflow-x-auto p-4">
+                      {hotelImages.map((image, index) => (
+                        <button
+                          type="button"
+                          key={`${image}-${index}`}
+                          onClick={() => setSelectedImage(index)}
+                          className={`h-20 w-24 shrink-0 overflow-hidden rounded-xl border-2 transition ${
+                            selectedImage === index
+                              ? "border-blue-600"
+                              : "border-transparent"
+                          }`}
+                        >
+                          <img
+                            src={image}
+                            alt={`${hotelName} ${index + 1}`}
+                            className="h-full w-full object-cover"
+                          />
+                        </button>
+                      ))}
                     </div>
-                  );
-                })}
+                  )}
+                </>
+              ) : (
+                <div className="flex h-[300px] items-center justify-center bg-slate-100 sm:h-[430px]">
+                  <div className="text-center">
+                    <BedDouble
+                      size={48}
+                      className="mx-auto text-slate-300"
+                    />
+
+                    <p className="mt-3 text-sm font-medium text-slate-500">
+                      Hotel image not available
+                    </p>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* ==================================================
+                ABOUT HOTEL
+            ================================================== */}
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <div className="mb-5">
+                <h2 className="text-xl font-bold text-slate-900">
+                  About this hotel
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Everything you need to know about your stay
+                </p>
+              </div>
+
+              {description ? (
+                <p className="text-sm leading-7 text-slate-600">
+                  {description}
+                </p>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  No description available for this hotel.
+                </p>
+              )}
+            </section>
+
+            {/* ==================================================
+                HOTEL INFORMATION
+            ================================================== */}
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-slate-900">
+                  Hotel Information
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Important information for your stay
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* Property Type */}
+
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                      <BedDouble size={20} />
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">
+                        Property Type
+                      </p>
+
+                      <p className="mt-1 text-sm font-bold text-slate-900">
+                        {propertyType || "Not available"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rooms */}
+
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                      <Users size={20} />
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">
+                        Available Rooms
+                      </p>
+
+                      <p className="mt-1 text-sm font-bold text-slate-900">
+                        {rooms > 0 ? rooms : "Not available"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Check In */}
+
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                      <Clock3 size={20} />
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">
+                        Check-in
+                      </p>
+
+                      <p className="mt-1 text-sm font-bold text-slate-900">
+                        {checkIn || "Not available"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Check Out */}
+
+                <div className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                      <CalendarDays size={20} />
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">
+                        Check-out
+                      </p>
+
+                      <p className="mt-1 text-sm font-bold text-slate-900">
+                        {checkOut || "Not available"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location */}
+
+                <div className="rounded-xl border border-slate-200 p-4 sm:col-span-2">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                      <MapPin size={20} />
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-slate-500">
+                        Location
+                      </p>
+
+                      <p className="mt-1 text-sm font-bold text-slate-900">
+                        {location || "Location not available"}
+                      </p>
+
+                      {(city || state || country) && (
+                        <p className="mt-1 text-xs text-slate-500">
+                          {[city, state, country]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
 
-            {/* ================= CANCELLATION ================= */}
+            {/* ==================================================
+                AMENITIES
+            ================================================== */}
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-slate-900">
+                  Amenities
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Facilities available at this property
+                </p>
+              </div>
+
+              {amenities.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {amenities.map((amenity, index) => {
+                    const Icon = getAmenityIcon(amenity);
+
+                    return (
+                      <div
+                        key={`${amenity}-${index}`}
+                        className="flex items-center gap-3 rounded-xl bg-slate-50 p-4"
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                          <Icon size={18} />
+                        </div>
+
+                        <span className="text-sm font-semibold text-slate-800">
+                          {amenity}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-slate-50 p-5 text-center">
+                  <p className="text-sm text-slate-500">
+                    No amenities information available.
+                  </p>
+                </div>
+              )}
+            </section>
+
+            {/* ==================================================
+                LOCATION
+            ================================================== */}
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+              <div className="mb-5">
+                <h2 className="text-xl font-bold text-slate-900">
+                  Location
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Where you'll be staying
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                    <MapPin size={20} />
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">
+                      {hotelName}
+                    </p>
+
+                    <p className="mt-1 text-sm leading-6 text-slate-500">
+                      {location || "Location not available"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* ==================================================
+                BOOKING INFO
+            ================================================== */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -469,40 +798,54 @@ const FlightDetail = () => {
 
                 <div className="flex-1">
                   <h2 className="text-lg font-bold text-slate-900">
-                    Cancellation & Refund
+                    Booking Information
                   </h2>
 
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Cancellation charges and refund eligibility depend on
-                    the selected fare type and the time of cancellation.
+                    Please check the property's cancellation policy,
+                    room availability and booking conditions before
+                    completing your reservation.
                   </p>
-
-                  <button className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:text-blue-700">
-                    View cancellation policy
-                    <ArrowRight size={15} />
-                  </button>
                 </div>
               </div>
             </section>
           </div>
 
           {/* ==================================================
-              RIGHT FARE SUMMARY
+              RIGHT BOOKING SUMMARY
           ================================================== */}
+
           <aside className="lg:sticky lg:top-24 lg:h-fit">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              {/* Fare header */}
+              {/* Header */}
+
               <div className="border-b border-slate-100 px-5 py-5">
                 <h2 className="text-lg font-bold text-slate-900">
-                  Fare Summary
+                  Your Stay
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  {flight.airline} · {flight.flightNumber}
+                  {hotelName}
                 </p>
               </div>
 
+              {/* Location */}
+
+              <div className="border-b border-slate-100 px-5 py-5">
+                <div className="flex items-start gap-2">
+                  <MapPin
+                    size={17}
+                    className="mt-0.5 shrink-0 text-blue-600"
+                  />
+
+                  <p className="text-sm leading-5 text-slate-600">
+                    {location || "Location not available"}
+                  </p>
+                </div>
+              </div>
+
               {/* Price */}
+
               <div className="px-5 py-5">
                 <p className="text-xs font-medium text-slate-500">
                   Starting from
@@ -510,39 +853,71 @@ const FlightDetail = () => {
 
                 <div className="mt-1 flex items-end gap-1">
                   <span className="text-3xl font-bold text-slate-900">
-                    ₹{flight.price.toLocaleString("en-IN")}
+                    ₹{price.toLocaleString("en-IN")}
                   </span>
 
                   <span className="mb-1 text-sm text-slate-500">
-                    / passenger
+                    / night
                   </span>
                 </div>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  Taxes and charges may apply
+                </p>
               </div>
 
-              {/* Fare breakdown */}
+              {/* Stay Details */}
+
               <div className="border-t border-slate-100 px-5 py-5">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Base Fare</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock3
+                        size={16}
+                        className="text-blue-600"
+                      />
 
-                    <span className="font-medium text-slate-800">
-                      ₹{flight.baseFare.toLocaleString("en-IN")}
+                      <span className="text-sm text-slate-500">
+                        Check-in
+                      </span>
+                    </div>
+
+                    <span className="text-sm font-semibold text-slate-800">
+                      {checkIn || "Not available"}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Taxes & Fees</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock3
+                        size={16}
+                        className="text-blue-600"
+                      />
 
-                    <span className="font-medium text-slate-800">
-                      ₹{flight.taxes.toLocaleString("en-IN")}
+                      <span className="text-sm text-slate-500">
+                        Check-out
+                      </span>
+                    </div>
+
+                    <span className="text-sm font-semibold text-slate-800">
+                      {checkOut || "Not available"}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Convenience Fee</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <BedDouble
+                        size={16}
+                        className="text-blue-600"
+                      />
 
-                    <span className="font-medium text-slate-800">
-                      ₹{flight.convenienceFee.toLocaleString("en-IN")}
+                      <span className="text-sm text-slate-500">
+                        Property
+                      </span>
+                    </div>
+
+                    <span className="text-sm font-semibold text-slate-800">
+                      {propertyType || "Not available"}
                     </span>
                   </div>
                 </div>
@@ -551,38 +926,39 @@ const FlightDetail = () => {
 
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900">
-                    Total Amount
+                    Price / Night
                   </span>
 
                   <span className="text-xl font-bold text-blue-600">
-                    ₹
-                    {(
-                      flight.baseFare +
-                      flight.taxes +
-                      flight.convenienceFee
-                    ).toLocaleString("en-IN")}
+                    ₹{price.toLocaleString("en-IN")}
                   </span>
                 </div>
               </div>
 
-              {/* Booking button */}
+              {/* Booking */}
+
               <div className="border-t border-slate-100 bg-slate-50 p-5">
                 <button
-                  onClick={handleContinue}
+                  type="button"
+                  onClick={handleBookNow}
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]"
                 >
-                  Continue to Book
+                  Book Now
                   <ArrowRight size={18} />
                 </button>
 
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-500">
-                  <ShieldCheck size={14} className="text-emerald-600" />
+                  <ShieldCheck
+                    size={14}
+                    className="text-emerald-600"
+                  />
                   Secure & encrypted booking
                 </div>
               </div>
             </div>
 
             {/* Quick info */}
+
             <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
               <div className="flex gap-3">
                 <CreditCard
@@ -592,12 +968,12 @@ const FlightDetail = () => {
 
                 <div>
                   <p className="text-sm font-semibold text-blue-900">
-                    No hidden charges
+                    Secure booking
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-blue-700">
-                    The displayed fare includes applicable taxes and
-                    booking charges.
+                    Your booking information and payment details are
+                    protected through a secure booking process.
                   </p>
                 </div>
               </div>
@@ -605,10 +981,52 @@ const FlightDetail = () => {
           </aside>
         </div>
       </main>
+
+      {/* ======================================================
+          LIGHTBOX
+      ====================================================== */}
+
+      {lightboxOpen && hotelImages.length > 0 && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4">
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(false)}
+            className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+          >
+            <X size={22} />
+          </button>
+
+          <button
+            type="button"
+            onClick={previousImage}
+            className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:left-8"
+          >
+            <ChevronLeft size={25} />
+          </button>
+
+          <div className="flex max-h-[90vh] max-w-6xl items-center justify-center">
+            <img
+              src={hotelImages[selectedImage]}
+              alt={hotelName}
+              className="max-h-[85vh] max-w-full rounded-xl object-contain"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={nextImage}
+            className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:right-8"
+          >
+            <ChevronRight size={25} />
+          </button>
+
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-2 text-sm font-semibold text-white">
+            {selectedImage + 1} / {hotelImages.length}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default FlightDetail;
-
-
+export default HotelDetail;

@@ -187,7 +187,7 @@ function App() {
         {/* ================= HOTEL ROUTES ================= */}
 
         <Route
-          path='/hoteldetails'
+          path='/hoteldetails/:id'
           element={<HotelDetail />}
         />
 
