@@ -14,9 +14,11 @@ const {
   getSinglePackageBooking,
   updatePackageBooking,
 } = require("../controllers/adminPackageBooking.controller");
+const { getAllUsers } = require("../controllers/adminUser.controller");
 const router = express.Router();
 
 router.post("/login", loginAdmin);
+router.get("/users", adminAuth, getAllUsers);
 router.get("/bookings", adminAuth, getAllHotelBookings);
 router.get("/bookings/:bookingId", adminAuth, getHotelBookingByBookingId);
 router.put("/bookings/:bookingId", adminAuth, updateHotelBooking);
