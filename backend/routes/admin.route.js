@@ -14,11 +14,26 @@ const {
   getSinglePackageBooking,
   updatePackageBooking,
 } = require("../controllers/adminPackageBooking.controller");
-const { getAllUsers } = require("../controllers/adminUser.controller");
+const {
+  getAllUsers,
+  getSingleUser,
+  updateUser,
+  toggleUserStatus,
+  toggleUserVerification,
+  deleteUser,
+  createUserByAdmin,
+} = require("../controllers/adminUser.controller");
 const router = express.Router();
 
 router.post("/login", loginAdmin);
 router.get("/users", adminAuth, getAllUsers);
+router.get("/users/:id", adminAuth, getSingleUser);
+router.put("/users/:id", adminAuth, updateUser);
+router.put("/users/:id/block", adminAuth, toggleUserStatus);
+router.put("/users/:id/status", adminAuth, toggleUserStatus);
+router.put("/users/:id/verification", adminAuth, toggleUserVerification);
+router.delete("/users/:id", adminAuth, deleteUser);
+router.post("/users", adminAuth, createUserByAdmin);
 router.get("/bookings", adminAuth, getAllHotelBookings);
 router.get("/bookings/:bookingId", adminAuth, getHotelBookingByBookingId);
 router.put("/bookings/:bookingId", adminAuth, updateHotelBooking);
