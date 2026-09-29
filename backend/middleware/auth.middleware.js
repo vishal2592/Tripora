@@ -27,7 +27,6 @@ const protect = (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Attach user information to request
     req.user = decoded;
 
     next();

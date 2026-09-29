@@ -111,6 +111,45 @@ const uploadWithField = (fieldName) => {
   };
 };
 
+const deletePackage = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid package ID",
+      });
+    }
+
+    const packageData = await Package.findById(id);
+
+    if (!packageData) {
+      return res.status(404).json({
+        success: false,
+        message: "package not found",
+      });
+    }
+
+    if (packageData.imageDeleteUrl) {
+      await deleteFromImgBB(packageData.imageDeleteUrl);
+    }
+
+    await Package.findByIdAndDelete(id);
+    return res.status(200).json({
+      success: true,
+      message: "Package deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Package Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   uploadImage,
   uploadMultipleImages,

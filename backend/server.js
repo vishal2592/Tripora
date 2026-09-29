@@ -10,6 +10,9 @@ const hotelRoutes = require("./routes/hotel.route");
 const hotelBookingRoutes = require("./routes/hotelBooking.route");
 const savedHotelRoutes = require("./routes/savedHotel.route");
 const myBookingRoutes = require("./routes/myBookings.route");
+const packageRoutes = require("./routes/package.route");
+const packageBookingRoutes = require("./routes/packageBooking.route");
+const packagePaymentRoutes = require("./routes/packagePayment.route");
 const app = express();
 
 //middlewares
@@ -28,6 +31,9 @@ app.use("/api/hotels", hotelRoutes);
 app.use("/api/hotel-bookings", hotelBookingRoutes);
 app.use("/api/saved-hotels", savedHotelRoutes);
 app.use("/api/bookings", myBookingRoutes);
+app.use("/api/packages", packageRoutes);
+app.use("/api/package-bookings", packageBookingRoutes);
+app.use("/api/package-payments", packagePaymentRoutes);
 //test route
 app.get("/", (req, res) => {
   res.json({

@@ -1,4 +1,5 @@
 const Destination = require("../models/destination.model");
+const { uploadToImgBB, deleteFromImgBB } = require("../utils/imgbb");
 
 //create destination
 
@@ -15,14 +16,12 @@ const createDestination = async (req, res) => {
       flightsCount,
       rating,
       bestTimeToVisit,
-      image,
       description,
       highlights,
       isPopular,
     } = req.body;
 
-    //check fields
-
+    // Check required fields
     if (!name || !country || !region || !destinationType) {
       return res.status(400).json({
         success: false,
@@ -30,8 +29,7 @@ const createDestination = async (req, res) => {
       });
     }
 
-    //check duplicate destination
-
+    // Check duplicate destination
     const existingDestination = await Destination.findOne({
       name: name.trim(),
       country: country.trim(),
@@ -44,19 +42,33 @@ const createDestination = async (req, res) => {
       });
     }
 
-    //convert highlights into array
-
+    // Convert highlights into array
     let highlightsArray = [];
+
     if (Array.isArray(highlights)) {
       highlightsArray = highlights;
-    } else if (typeof highlights == "string") {
+    } else if (typeof highlights === "string") {
       highlightsArray = highlights
         .split(",")
         .map((item) => item.trim())
         .filter((item) => item !== "");
     }
 
-    // create destination
+    // Upload image to ImgBB
+    let imageUrl = "";
+    let imageDeleteUrl = "";
+
+    if (req.file) {
+      const uploadResult = await uploadToImgBB(
+        req.file.buffer,
+        req.file.originalname,
+      );
+
+      imageUrl = uploadResult.data.url;
+      imageDeleteUrl = uploadResult.data.deleteUrl;
+    }
+
+    // Create destination
     const destination = await Destination.create({
       name: name.trim(),
       country: country.trim(),
@@ -68,14 +80,14 @@ const createDestination = async (req, res) => {
       flightsCount: flightsCount || 0,
       rating: rating || 0,
       bestTimeToVisit,
-      image,
+      image: imageUrl,
+      imageDeleteUrl,
       description,
       highlights: highlightsArray,
       isPopular: isPopular || false,
     });
 
-    // success response
-
+    // Success response
     return res.status(201).json({
       success: true,
       message: "Destination created successfully",
@@ -83,6 +95,7 @@ const createDestination = async (req, res) => {
     });
   } catch (error) {
     console.error("Create Destination Error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -163,14 +176,12 @@ const updateDestination = async (req, res) => {
       flightsCount,
       rating,
       bestTimeToVisit,
-      image,
       description,
       highlights,
       isPopular,
     } = req.body;
 
-    //find destination
-
+    // Find destination
     const destination = await Destination.findById(id);
 
     if (!destination) {
@@ -180,29 +191,32 @@ const updateDestination = async (req, res) => {
       });
     }
 
-    // convert highlights into aaray
+    // Convert highlights into array
+    let highlightsArray = destination.highlights || [];
 
-    let highlightsArray = [];
     if (Array.isArray(highlights)) {
       highlightsArray = highlights;
-    } else if (typeof highlights == "string") {
+    } else if (typeof highlights === "string") {
       highlightsArray = highlights
         .split(",")
         .map((item) => item.trim())
         .filter((item) => item !== "");
     }
 
-    // update fields
-
+    // Update basic fields
     destination.name = name !== undefined ? name.trim() : destination.name;
+
     destination.country =
       country !== undefined ? country.trim() : destination.country;
+
     destination.region =
       region !== undefined ? region.trim() : destination.region;
+
     destination.destinationType =
       destinationType !== undefined
         ? destinationType
         : destination.destinationType;
+
     destination.status = status !== undefined ? status : destination.status;
 
     destination.packagesCount =
@@ -221,8 +235,6 @@ const updateDestination = async (req, res) => {
         ? bestTimeToVisit
         : destination.bestTimeToVisit;
 
-    destination.image = image !== undefined ? image : destination.image;
-
     destination.description =
       description !== undefined ? description : destination.description;
 
@@ -231,6 +243,24 @@ const updateDestination = async (req, res) => {
     destination.isPopular =
       isPopular !== undefined ? isPopular : destination.isPopular;
 
+    // Handle new image
+    if (req.file) {
+      // Delete old ImgBB image
+      if (destination.imageDeleteUrl) {
+        await deleteFromImgBB(destination.imageDeleteUrl);
+      }
+
+      // Upload new image to ImgBB
+      const uploadResult = await uploadToImgBB(
+        req.file.buffer,
+        req.file.originalname,
+      );
+
+      destination.image = uploadResult.data.url;
+      destination.imageDeleteUrl = uploadResult.data.deleteUrl;
+    }
+
+    // Save updated destination
     const updatedDestination = await destination.save();
 
     return res.status(200).json({
@@ -255,31 +285,36 @@ const deleteDestination = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Find destination
     const destination = await Destination.findById(id);
 
-    if(!destination){
+    if (!destination) {
       return res.status(404).json({
-        success:false,
-        message:"Destin"
-      })
+        success: false,
+        message: "Destination not found",
+      });
     }
 
+    // Delete image from ImgBB
+    if (destination.imageDeleteUrl) {
+      await deleteFromImgBB(destination.imageDeleteUrl);
+    }
+
+    // Delete destination from MongoDB
     await Destination.findByIdAndDelete(id);
 
-    //success response
-
     return res.status(200).json({
-      success:true,
-      message:"Destination deleted successfully"
-    })
-
-
+      success: true,
+      message: "Destination deleted successfully",
+    });
   } catch (error) {
-    console.error("Delete Destination Error:",error)
+    console.error("Delete Destination Error:", error);
+
     return res.status(500).json({
-      success:false,
-      message:"Server error"
-    })
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 
@@ -288,5 +323,5 @@ module.exports = {
   getAllDestination,
   getSingleDestinationById,
   updateDestination,
-  deleteDestination 
+  deleteDestination,
 };

@@ -9,6 +9,11 @@ const {
   updateHotelBooking,
   cancelHotelBooking,
 } = require("../controllers/hotelBooking.controller");
+const {
+  getAllPackageBookings,
+  getSinglePackageBooking,
+  updatePackageBooking,
+} = require("../controllers/adminPackageBooking.controller");
 const router = express.Router();
 
 router.post("/login", loginAdmin);
@@ -16,6 +21,12 @@ router.get("/bookings", adminAuth, getAllHotelBookings);
 router.get("/bookings/:bookingId", adminAuth, getHotelBookingByBookingId);
 router.put("/bookings/:bookingId", adminAuth, updateHotelBooking);
 router.put("/bookings/:bookingId/cancel", adminAuth, cancelHotelBooking);
+// Get all package bookings
+router.get("/package-bookings", adminAuth, getAllPackageBookings);
+// Get single package booking
+router.get("/package-bookings/:id", adminAuth, getSinglePackageBooking);
+// Update package booking
+router.put("/package-bookings/:id", adminAuth, updatePackageBooking);
 //protected test route
 router.get("/profile", adminAuth, (req, res) => {
   res.status(200).json({

@@ -63,6 +63,11 @@ const destinationSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    imageDeleteUrl: {
+      type: String,
+      trim: true,
+    },
     description: {
       type: String,
       trim: true,
