@@ -13,6 +13,7 @@ const myBookingRoutes = require("./routes/myBookings.route");
 const packageRoutes = require("./routes/package.route");
 const packageBookingRoutes = require("./routes/packageBooking.route");
 const packagePaymentRoutes = require("./routes/packagePayment.route");
+const offerRoutes = require("./routes/offer.route");
 const app = express();
 
 //middlewares
@@ -34,6 +35,7 @@ app.use("/api/bookings", myBookingRoutes);
 app.use("/api/packages", packageRoutes);
 app.use("/api/package-bookings", packageBookingRoutes);
 app.use("/api/package-payments", packagePaymentRoutes);
+app.use("/api/offers", offerRoutes);
 //test route
 app.get("/", (req, res) => {
   res.json({

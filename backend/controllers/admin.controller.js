@@ -6,10 +6,8 @@ const Admin = require("../models/user.model");
 
 const loginAdmin = async (req, res) => {
   try {
-
-    const { email, password } = req.body;
-        console.log(email,password)
-
+    const { email, password } = req.body || {};
+    console.log(email, password);
 
     //check fields
     if (!email || !password) {
