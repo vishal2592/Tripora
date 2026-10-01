@@ -22,13 +22,14 @@ import {
   CheckCircle2,
   XCircle,
   CalendarDays,
+  Upload,
 } from "lucide-react";
 
 import {
   createDestination,
   getAllDestination,
   updateDestination,
-  deleteDestination
+  deleteDestination,
 } from "../../../redux/slicer/destinationSlice";
 
 import toast from "react-hot-toast";
@@ -49,10 +50,22 @@ const emptyForm = {
   flights: 0,
   bestTime: "",
   rating: 5,
-  image:
-    "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
   description: "",
   highlights: "",
+
+  // MAIN IMAGE
+  image: null,
+  imagePreview: "",
+
+  // EXISTING MAIN IMAGE
+  existingImage: "",
+
+  // GALLERY IMAGES
+  images: [],
+  imagePreviews: [],
+
+  // EXISTING GALLERY IMAGES
+  existingImages: [],
 };
 
 /* =========================================================
@@ -119,8 +132,6 @@ const AdminDestinations = () => {
     dispatch(getAllDestination());
   }, [dispatch]);
 
-  
-
   /* =========================================================
      API DATA → UI DATA
   ========================================================= */
@@ -129,24 +140,40 @@ const AdminDestinations = () => {
     const formattedDestinations = apiDestinations.map(
       (destination) => ({
         id: destination._id,
-        name: destination.name,
-        country: destination.country,
-        region: destination.region,
-        type: destination.destinationType,
-        status: destination.status,
-        popular: destination.isPopular,
-        packages: destination.packagesCount,
-        hotels: destination.hotelsCount,
-        flights: destination.flightsCount,
-        rating: destination.rating,
-        reviews: 0,
+        name: destination.name || "",
+        country: destination.country || "",
+        region: destination.region || "",
+        type: destination.destinationType || "Domestic",
+        status: destination.status || "Active",
+        popular: Boolean(destination.isPopular),
+        packages: destination.packagesCount || 0,
+        hotels: destination.hotelsCount || 0,
+        flights: destination.flightsCount || 0,
+        rating: destination.rating || 0,
+        reviews: destination.reviews || 0,
+
         bestTime:
           destination.bestTimeToVisit || "",
-        image: destination.image || "",
+
+        // MAIN IMAGE
+        image:
+          destination.image ||
+          destination.mainImage ||
+          "",
+
+        // MULTIPLE IMAGES
+        images:
+          Array.isArray(destination.images)
+            ? destination.images
+            : [],
+
         description:
           destination.description || "",
+
         highlights:
-          destination.highlights || [],
+          Array.isArray(destination.highlights)
+            ? destination.highlights
+            : [],
       })
     );
 
@@ -184,16 +211,18 @@ const AdminDestinations = () => {
 
   const filteredDestinations = useMemo(() => {
     return destinations.filter((item) => {
+      const searchText = search.toLowerCase();
+
       const searchMatch =
         item.name
           .toLowerCase()
-          .includes(search.toLowerCase()) ||
+          .includes(searchText) ||
         item.country
           .toLowerCase()
-          .includes(search.toLowerCase()) ||
+          .includes(searchText) ||
         item.region
           .toLowerCase()
-          .includes(search.toLowerCase());
+          .includes(searchText);
 
       const countryMatch =
         country === "All Countries" ||
@@ -287,9 +316,9 @@ const AdminDestinations = () => {
       prev.map((item) =>
         item.id === id
           ? {
-            ...item,
-            status: newStatus,
-          }
+              ...item,
+              status: newStatus,
+            }
           : item
       )
     );
@@ -300,17 +329,18 @@ const AdminDestinations = () => {
       setSelectedDestination((prev) =>
         prev
           ? {
-            ...prev,
-            status: newStatus,
-          }
+              ...prev,
+              status: newStatus,
+            }
           : null
       );
     }
 
     toast.success(
-      `${destination.name} ${newStatus === "Active"
-        ? "activated"
-        : "deactivated"
+      `${destination.name} ${
+        newStatus === "Active"
+          ? "activated"
+          : "deactivated"
       }`
     );
   };
@@ -330,9 +360,9 @@ const AdminDestinations = () => {
       prev.map((item) =>
         item.id === id
           ? {
-            ...item,
-            popular: !item.popular,
-          }
+              ...item,
+              popular: !item.popular,
+            }
           : item
       )
     );
@@ -350,43 +380,40 @@ const AdminDestinations = () => {
      DELETE DESTINATION
   ========================================================= */
 
-const handleDeleteDestination = async (id) => {
-  const destination = destinations.find(
-    (item) => item.id === id
-  );
-
-  if (!destination) return;
-
-  const confirmed = window.confirm(
-    `Are you sure you want to delete "${destination.name}"?`
-  );
-
-  if (!confirmed) return;
-
-  try {
-    const result = await dispatch(
-      deleteDestination(id)
-    ).unwrap();
-
-    console.log("Delete response:", result);
-
-    toast.success(
-      result.message ||
-        "Destination deleted successfully"
+  const handleDeleteDestination = async (id) => {
+    const destination = destinations.find(
+      (item) => item.id === id
     );
 
-    setOpenMenuId(null);
+    if (!destination) return;
 
-     dispatch(getAllDestination());
-     
-  } catch (error) {
-    console.log("Delete error:", error);
-
-    toast.error(
-      error || "Delete destination failed"
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${destination.name}"?`
     );
-  }
-};
+
+    if (!confirmed) return;
+
+    try {
+      const result = await dispatch(
+        deleteDestination(id)
+      ).unwrap();
+
+      toast.success(
+        result.message ||
+          "Destination deleted successfully"
+      );
+
+      setOpenMenuId(null);
+
+      dispatch(getAllDestination());
+    } catch (error) {
+      console.log("Delete error:", error);
+
+      toast.error(
+        error || "Delete destination failed"
+      );
+    }
+  };
 
   /* =========================================================
      DUPLICATE DESTINATION
@@ -424,7 +451,7 @@ const handleDeleteDestination = async (id) => {
   };
 
   /* =========================================================
-     ADD DESTINATION
+     OPEN ADD MODAL
   ========================================================= */
 
   const openAddModal = () => {
@@ -438,7 +465,7 @@ const handleDeleteDestination = async (id) => {
   };
 
   /* =========================================================
-     EDIT DESTINATION
+     OPEN EDIT MODAL
   ========================================================= */
 
   const openEditModal = (destination) => {
@@ -459,10 +486,20 @@ const handleDeleteDestination = async (id) => {
       flights: destination.flights,
       bestTime: destination.bestTime,
       rating: destination.rating,
-      image: destination.image,
       description: destination.description,
+
       highlights:
         destination.highlights.join(", "),
+
+      // EXISTING MAIN IMAGE
+      image: null,
+      imagePreview: destination.image || "",
+      existingImage: destination.image || "",
+
+      // EXISTING GALLERY IMAGES
+      images: [],
+      imagePreviews: [],
+      existingImages: destination.images || [],
     });
 
     setIsFormOpen(true);
@@ -499,6 +536,134 @@ const handleDeleteDestination = async (id) => {
         type === "checkbox"
           ? checked
           : value,
+    }));
+  };
+
+  /* =========================================================
+     MAIN IMAGE CHANGE
+  ========================================================= */
+
+  const handleMainImageChange = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(
+        "Main image must be less than 5MB"
+      );
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+
+    setFormData((prev) => ({
+      ...prev,
+      image: file,
+      imagePreview: previewUrl,
+    }));
+  };
+
+  /* =========================================================
+     MULTIPLE IMAGE CHANGE
+  ========================================================= */
+
+  const handleMultipleImagesChange = (e) => {
+    const files = Array.from(
+      e.target.files || []
+    );
+
+    if (!files.length) return;
+
+    const validFiles = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error(
+          `${file.name} is not an image`
+        );
+        return false;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(
+          `${file.name} must be less than 5MB`
+        );
+        return false;
+      }
+
+      return true;
+    });
+
+    if (!validFiles.length) return;
+
+    const previews = validFiles.map((file) =>
+      URL.createObjectURL(file)
+    );
+
+    setFormData((prev) => ({
+      ...prev,
+      images: [
+        ...prev.images,
+        ...validFiles,
+      ],
+      imagePreviews: [
+        ...prev.imagePreviews,
+        ...previews,
+      ],
+    }));
+
+    e.target.value = "";
+  };
+
+  /* =========================================================
+     REMOVE NEW MAIN IMAGE
+  ========================================================= */
+
+  const removeMainImage = () => {
+    setFormData((prev) => ({
+      ...prev,
+      image: null,
+      imagePreview: prev.existingImage || "",
+    }));
+  };
+
+  /* =========================================================
+     REMOVE NEW GALLERY IMAGE
+  ========================================================= */
+
+  const removeGalleryImage = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      images: prev.images.filter(
+        (_, imageIndex) =>
+          imageIndex !== index
+      ),
+      imagePreviews:
+        prev.imagePreviews.filter(
+          (_, imageIndex) =>
+            imageIndex !== index
+        ),
+    }));
+  };
+
+  /* =========================================================
+     REMOVE EXISTING GALLERY IMAGE
+  ========================================================= */
+
+  const removeExistingGalleryImage = (
+    index
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      existingImages:
+        prev.existingImages.filter(
+          (_, imageIndex) =>
+            imageIndex !== index
+        ),
     }));
   };
 
@@ -545,48 +710,137 @@ const handleDeleteDestination = async (id) => {
       .filter(Boolean);
 
     /* =====================================================
-       EDIT
-       
-       NOTE:
-       Abhi edit local state par hai.
-       Backend UPDATE next step mein connect karenge.
+       FORM DATA
+    ==================================================== */
+
+    const payload = new FormData();
+
+    payload.append(
+      "name",
+      formData.name.trim()
+    );
+
+    payload.append(
+      "country",
+      formData.country.trim()
+    );
+
+    payload.append(
+      "region",
+      formData.region.trim()
+    );
+
+    payload.append(
+      "destinationType",
+      formData.type
+    );
+
+    payload.append(
+      "status",
+      formData.status
+    );
+
+    payload.append(
+      "isPopular",
+      String(formData.popular)
+    );
+
+    payload.append(
+      "packagesCount",
+      String(
+        Number(formData.packages) || 0
+      )
+    );
+
+    payload.append(
+      "hotelsCount",
+      String(
+        Number(formData.hotels) || 0
+      )
+    );
+
+    payload.append(
+      "flightsCount",
+      String(
+        Number(formData.flights) || 0
+      )
+    );
+
+    payload.append(
+      "rating",
+      String(
+        Number(formData.rating) || 0
+      )
+    );
+
+    payload.append(
+      "bestTimeToVisit",
+      formData.bestTime.trim()
+    );
+
+    payload.append(
+      "description",
+      formData.description.trim()
+    );
+
+    /*
+      Highlights ko JSON string bhej rahe hain.
+      Backend me JSON.parse() karna hoga.
+    */
+
+    payload.append(
+      "highlights",
+      JSON.stringify(highlightsArray)
+    );
+
+    /* =====================================================
+       MAIN IMAGE
+    ==================================================== */
+
+    if (formData.image) {
+      payload.append(
+        "image",
+        formData.image
+      );
+    }
+
+    /* =====================================================
+       MULTIPLE IMAGES
+    ==================================================== */
+
+    formData.images.forEach((file) => {
+      payload.append(
+        "images",
+        file
+      );
+    });
+
+    /* =====================================================
+       EDIT ONLY
     ==================================================== */
 
     if (editingDestination) {
-      const payload = {
-        name: formData.name.trim(),
-        country: formData.country.trim(),
-        region: formData.region.trim(),
+      /*
+        Existing gallery images jo delete nahi kiye gaye
+        unke URLs backend ko bhej rahe hain.
+      */
 
-        destinationType: formData.type,
+      payload.append(
+        "existingImages",
+        JSON.stringify(
+          formData.existingImages
+        )
+      );
 
-        status: formData.status,
+      /*
+        Agar main image change nahi hui,
+        existing main image ko preserve karne ke liye.
+      */
 
-        isPopular: formData.popular,
-
-        packagesCount:
-          Number(formData.packages) || 0,
-
-        hotelsCount:
-          Number(formData.hotels) || 0,
-
-        flightsCount:
-          Number(formData.flights) || 0,
-
-        rating:
-          Number(formData.rating) || 0,
-
-        bestTimeToVisit:
-          formData.bestTime.trim(),
-
-        image:
-          formData.image.trim(),
-
-        description:
-          formData.description.trim(),
-
-        highlights: highlightsArray,
-      };
+      payload.append(
+        "existingImage",
+        formData.existingImage || ""
+      );
 
       try {
         const result = await dispatch(
@@ -598,15 +852,21 @@ const handleDeleteDestination = async (id) => {
 
         toast.success(
           result.message ||
-          "Destination updated successfully"
+            "Destination updated successfully"
         );
 
         closeFormModal();
 
         dispatch(getAllDestination());
       } catch (error) {
+        console.log(
+          "Update destination error:",
+          error
+        );
+
         toast.error(
-          error || "Update destination failed"
+          error ||
+            "Update destination failed"
         );
       }
 
@@ -614,46 +874,7 @@ const handleDeleteDestination = async (id) => {
     }
 
     /* =====================================================
-       CREATE PAYLOAD
-    ==================================================== */
-
-    const payload = {
-      name: formData.name.trim(),
-      country: formData.country.trim(),
-      region: formData.region.trim(),
-
-      destinationType: formData.type,
-
-      status: formData.status,
-
-      isPopular: formData.popular,
-
-      packagesCount:
-        Number(formData.packages) || 0,
-
-      hotelsCount:
-        Number(formData.hotels) || 0,
-
-      flightsCount:
-        Number(formData.flights) || 0,
-
-      rating:
-        Number(formData.rating) || 0,
-
-      bestTimeToVisit:
-        formData.bestTime.trim(),
-
-      image:
-        formData.image.trim(),
-
-      description:
-        formData.description.trim(),
-
-      highlights: highlightsArray,
-    };
-
-    /* =====================================================
-       CREATE API CALL
+       CREATE
     ==================================================== */
 
     try {
@@ -663,19 +884,21 @@ const handleDeleteDestination = async (id) => {
 
       toast.success(
         result.message ||
-        "Destination added successfully"
+          "Destination added successfully"
       );
 
       closeFormModal();
 
-      /* ================================================
-         GET FRESH DATA FROM DATABASE
-      ================================================= */
-
       dispatch(getAllDestination());
     } catch (error) {
+      console.log(
+        "Create destination error:",
+        error
+      );
+
       toast.error(
-        error || "Create destination failed"
+        error ||
+          "Create destination failed"
       );
     }
   };
@@ -765,11 +988,13 @@ const handleDeleteDestination = async (id) => {
       ====================================================== */}
 
       <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+
         {/* ===================================================
             STATS
         ==================================================== */}
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+
           {/* Total */}
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -869,6 +1094,7 @@ const handleDeleteDestination = async (id) => {
 
         <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="grid gap-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr_auto]">
+
             {/* Search */}
 
             <div className="relative">
@@ -961,10 +1187,11 @@ const handleDeleteDestination = async (id) => {
                   key={item}
                   type="button"
                   onClick={() => setStatus(item)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${status === item
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    status === item
                       ? "bg-blue-600 text-white"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
+                  }`}
                 >
                   {item}
                 </button>
@@ -986,7 +1213,7 @@ const handleDeleteDestination = async (id) => {
         </div>
 
         {/* ===================================================
-            LOADING
+            LOADING / ERROR
         ==================================================== */}
 
         {loading ? (
@@ -998,10 +1225,6 @@ const handleDeleteDestination = async (id) => {
             </p>
           </div>
         ) : error ? (
-          /* =================================================
-             ERROR STATE
-          ================================================== */
-
           <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-16 text-center">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100">
               <XCircle
@@ -1030,6 +1253,7 @@ const handleDeleteDestination = async (id) => {
             </button>
           </div>
         ) : filteredDestinations.length > 0 ? (
+
           /* =================================================
              DESTINATION GRID
           ================================================== */
@@ -1041,9 +1265,11 @@ const handleDeleteDestination = async (id) => {
                   key={destination.id}
                   className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  {/* Image */}
+
+                  {/* IMAGE */}
 
                   <div className="relative h-52 overflow-hidden">
+
                     <img
                       src={destination.image}
                       alt={destination.name}
@@ -1056,11 +1282,12 @@ const handleDeleteDestination = async (id) => {
 
                     <div className="absolute left-3 top-3 flex flex-wrap gap-2">
                       <span
-                        className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${destination.status ===
-                            "Active"
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+                          destination.status ===
+                          "Active"
                             ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                             : "border-red-200 bg-red-50 text-red-700"
-                          }`}
+                        }`}
                       >
                         {destination.status}
                       </span>
@@ -1101,95 +1328,96 @@ const handleDeleteDestination = async (id) => {
 
                       {openMenuId ===
                         destination.id && (
-                          <div className="absolute right-0 z-30 mt-2 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleViewDestination(
-                                  destination
-                                )
-                              }
-                              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                            >
-                              <Eye size={16} />
-                              View Details
-                            </button>
+                        <div className="absolute right-0 z-30 mt-2 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openEditModal(
-                                  destination
-                                )
-                              }
-                              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                            >
-                              <Edit size={16} />
-                              Edit
-                            </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleViewDestination(
+                                destination
+                              )
+                            }
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            <Eye size={16} />
+                            View Details
+                          </button>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleDuplicateDestination(
-                                  destination.id
-                                )
-                              }
-                              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                            >
-                              <Copy size={16} />
-                              Duplicate
-                            </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openEditModal(
+                                destination
+                              )
+                            }
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            <Edit size={16} />
+                            Edit
+                          </button>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleTogglePopular(
-                                  destination.id
-                                )
-                              }
-                              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                            >
-                              <Star size={16} />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDuplicateDestination(
+                                destination.id
+                              )
+                            }
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            <Copy size={16} />
+                            Duplicate
+                          </button>
 
-                              {destination.popular
-                                ? "Remove Popular"
-                                : "Mark Popular"}
-                            </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleTogglePopular(
+                                destination.id
+                              )
+                            }
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            <Star size={16} />
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleToggleStatus(
-                                  destination.id
-                                )
-                              }
-                              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                            >
-                              <Power size={16} />
+                            {destination.popular
+                              ? "Remove Popular"
+                              : "Mark Popular"}
+                          </button>
 
-                              {destination.status ===
-                                "Active"
-                                ? "Deactivate"
-                                : "Activate"}
-                            </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleToggleStatus(
+                                destination.id
+                              )
+                            }
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
+                          >
+                            <Power size={16} />
 
-                            <div className="my-1 border-t border-slate-100" />
+                            {destination.status ===
+                            "Active"
+                              ? "Deactivate"
+                              : "Activate"}
+                          </button>
 
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleDeleteDestination(
-                                  destination.id
-                                )
-                              }
-                              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 size={16} />
-                              Delete
-                            </button>
-                          </div>
-                        )}
+                          <div className="my-1 border-t border-slate-100" />
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDeleteDestination(
+                                destination.id
+                              )
+                            }
+                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 size={16} />
+                            Delete
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Bottom location */}
@@ -1216,9 +1444,10 @@ const handleDeleteDestination = async (id) => {
                     </div>
                   </div>
 
-                  {/* Content */}
+                  {/* CONTENT */}
 
                   <div className="p-4">
+
                     {/* Rating */}
 
                     <div className="flex items-center justify-between">
@@ -1251,6 +1480,7 @@ const handleDeleteDestination = async (id) => {
                     {/* Stats */}
 
                     <div className="mt-4 grid grid-cols-3 divide-x divide-slate-200 rounded-xl border border-slate-100 bg-slate-50">
+
                       <div className="p-2.5 text-center">
                         <div className="flex items-center justify-center gap-1 text-blue-600">
                           <Package size={14} />
@@ -1332,18 +1562,19 @@ const handleDeleteDestination = async (id) => {
 
                         {destination.highlights
                           .length > 3 && (
-                            <span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">
-                              +
-                              {destination.highlights
-                                .length - 3}
-                            </span>
-                          )}
+                          <span className="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">
+                            +
+                            {destination.highlights
+                              .length - 3}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     {/* Actions */}
 
                     <div className="mt-4 grid grid-cols-2 gap-2">
+
                       <button
                         type="button"
                         onClick={() =>
@@ -1372,6 +1603,7 @@ const handleDeleteDestination = async (id) => {
                     </div>
 
                     <div className="mt-2 grid grid-cols-3 gap-2">
+
                       <button
                         type="button"
                         onClick={() =>
@@ -1417,6 +1649,7 @@ const handleDeleteDestination = async (id) => {
             )}
           </div>
         ) : (
+
           /* =================================================
              EMPTY STATE
           ================================================== */
@@ -1467,9 +1700,11 @@ const handleDeleteDestination = async (id) => {
               e.stopPropagation()
             }
           >
-            {/* Modal Header Image */}
+
+            {/* HEADER IMAGE */}
 
             <div className="relative h-56 sm:h-64">
+
               <img
                 src={selectedDestination.image}
                 alt={selectedDestination.name}
@@ -1489,13 +1724,16 @@ const handleDeleteDestination = async (id) => {
               </button>
 
               <div className="absolute bottom-4 left-4 right-4 text-white">
+
                 <div className="flex flex-wrap items-center gap-2">
+
                   <span
-                    className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${selectedDestination.status ===
-                        "Active"
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+                      selectedDestination.status ===
+                      "Active"
                         ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                         : "border-red-200 bg-red-50 text-red-700"
-                      }`}
+                    }`}
                   >
                     {selectedDestination.status}
                   </span>
@@ -1524,12 +1762,14 @@ const handleDeleteDestination = async (id) => {
               </div>
             </div>
 
-            {/* Modal Body */}
+            {/* BODY */}
 
             <div className="max-h-[55vh] overflow-y-auto p-5 sm:p-6">
-              {/* Stats */}
+
+              {/* STATS */}
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+
                 <div className="rounded-xl bg-slate-50 p-3">
                   <p className="text-[11px] text-slate-500">
                     Rating
@@ -1578,7 +1818,7 @@ const handleDeleteDestination = async (id) => {
                 </div>
               </div>
 
-              {/* Description */}
+              {/* DESCRIPTION */}
 
               <div className="mt-5">
                 <h3 className="text-sm font-bold text-slate-800">
@@ -1590,7 +1830,37 @@ const handleDeleteDestination = async (id) => {
                 </p>
               </div>
 
-              {/* Highlights */}
+              {/* GALLERY */}
+
+              {selectedDestination.images?.length >
+                0 && (
+                <div className="mt-5">
+                  <h3 className="text-sm font-bold text-slate-800">
+                    Destination Gallery
+                  </h3>
+
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {selectedDestination.images.map(
+                      (image, index) => (
+                        <div
+                          key={`${image}-${index}`}
+                          className="h-24 overflow-hidden rounded-xl border border-slate-200"
+                        >
+                          <img
+                            src={image}
+                            alt={`${selectedDestination.name} ${
+                              index + 1
+                            }`}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* HIGHLIGHTS */}
 
               <div className="mt-5">
                 <h3 className="text-sm font-bold text-slate-800">
@@ -1611,10 +1881,11 @@ const handleDeleteDestination = async (id) => {
                 </div>
               </div>
 
-              {/* Best Time */}
+              {/* BEST TIME */}
 
               <div className="mt-5 rounded-xl border border-slate-200 p-4">
                 <div className="flex items-center gap-3">
+
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50">
                     <CalendarDays
                       size={17}
@@ -1634,9 +1905,10 @@ const handleDeleteDestination = async (id) => {
                 </div>
               </div>
 
-              {/* Actions */}
+              {/* ACTIONS */}
 
               <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+
                 <button
                   type="button"
                   onClick={() =>
@@ -1680,9 +1952,11 @@ const handleDeleteDestination = async (id) => {
               e.stopPropagation()
             }
           >
-            {/* Header */}
+
+            {/* HEADER */}
 
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 sm:px-6">
+
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
                   {editingDestination
@@ -1706,14 +1980,16 @@ const handleDeleteDestination = async (id) => {
               </button>
             </div>
 
-            {/* Form */}
+            {/* FORM */}
 
             <form
               onSubmit={handleSaveDestination}
               className="max-h-[78vh] overflow-y-auto"
             >
+
               <div className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
-                {/* Name */}
+
+                {/* NAME */}
 
                 <div className="sm:col-span-2">
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -1729,7 +2005,7 @@ const handleDeleteDestination = async (id) => {
                   />
                 </div>
 
-                {/* Country */}
+                {/* COUNTRY */}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -1745,7 +2021,7 @@ const handleDeleteDestination = async (id) => {
                   />
                 </div>
 
-                {/* Region */}
+                {/* REGION */}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -1761,7 +2037,7 @@ const handleDeleteDestination = async (id) => {
                   />
                 </div>
 
-                {/* Type */}
+                {/* TYPE */}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -1782,7 +2058,7 @@ const handleDeleteDestination = async (id) => {
                   </select>
                 </div>
 
-                {/* Status */}
+                {/* STATUS */}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -1800,7 +2076,7 @@ const handleDeleteDestination = async (id) => {
                   </select>
                 </div>
 
-                {/* Packages */}
+                {/* PACKAGES */}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -1817,7 +2093,7 @@ const handleDeleteDestination = async (id) => {
                   />
                 </div>
 
-                {/* Hotels */}
+                {/* HOTELS */}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -1834,7 +2110,7 @@ const handleDeleteDestination = async (id) => {
                   />
                 </div>
 
-                {/* Flights */}
+                {/* FLIGHTS */}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -1851,7 +2127,7 @@ const handleDeleteDestination = async (id) => {
                   />
                 </div>
 
-                {/* Rating */}
+                {/* RATING */}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -1870,7 +2146,7 @@ const handleDeleteDestination = async (id) => {
                   />
                 </div>
 
-                {/* Best Time */}
+                {/* BEST TIME */}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
@@ -1886,47 +2162,239 @@ const handleDeleteDestination = async (id) => {
                   />
                 </div>
 
-                {/* Image URL */}
+                {/* =================================================
+                    MAIN IMAGE UPLOAD
+                ================================================== */}
 
                 <div className="sm:col-span-2">
+
                   <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-700">
                     <ImageIcon size={14} />
-                    Image URL
+                    Main Destination Image
                   </label>
 
-                  <input
-                    name="image"
-                    value={formData.image}
-                    onChange={handleFormChange}
-                    placeholder="https://..."
-                    className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
+                  <label className="group relative flex min-h-40 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-blue-400 hover:bg-blue-50/40">
 
-                  {formData.image && (
-                    <div className="mt-3 h-32 overflow-hidden rounded-xl border border-slate-200">
-                      <img
-                        src={formData.image}
-                        alt="Preview"
-                        className="h-full w-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display =
-                            "none";
-                        }}
-                      />
-                    </div>
-                  )}
+                    {formData.imagePreview ? (
+                      <>
+                        <img
+                          src={
+                            formData.imagePreview
+                          }
+                          alt="Main preview"
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+
+                        <div className="absolute inset-0 bg-black/30 opacity-0 transition group-hover:opacity-100" />
+
+                        <div className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2">
+                          <span className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow">
+                            Change Main Image
+                          </span>
+                        </div>
+
+                        {formData.image && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              removeMainImage();
+                            }}
+                            className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white text-red-500 shadow hover:bg-red-50"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
+                          <Upload
+                            size={21}
+                            className="text-blue-600"
+                          />
+                        </div>
+
+                        <p className="mt-3 text-sm font-semibold text-slate-700">
+                          Upload Main Image
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-400">
+                          PNG, JPG, WEBP · Max 5MB
+                        </p>
+                      </>
+                    )}
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={
+                        handleMainImageChange
+                      }
+                      className="hidden"
+                    />
+                  </label>
+
+                  <p className="mt-1.5 text-[11px] text-slate-400">
+                    This image will be used as the
+                    primary destination image.
+                  </p>
                 </div>
 
-                {/* Description */}
+                {/* =================================================
+                    MULTIPLE GALLERY IMAGES
+                ================================================== */}
 
                 <div className="sm:col-span-2">
+
+                  <div className="flex items-center justify-between">
+
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                      <ImageIcon size={14} />
+                      Destination Gallery
+                    </label>
+
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                      <Plus size={14} />
+                      Add Images
+
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={
+                          handleMultipleImagesChange
+                        }
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {/* EXISTING IMAGES */}
+
+                  {formData.existingImages
+                    ?.length > 0 && (
+                    <div className="mt-3">
+
+                      <p className="mb-2 text-[11px] font-medium text-slate-500">
+                        Existing Images
+                      </p>
+
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+
+                        {formData.existingImages.map(
+                          (image, index) => (
+                            <div
+                              key={`${image}-${index}`}
+                              className="group relative h-28 overflow-hidden rounded-xl border border-slate-200"
+                            >
+
+                              <img
+                                src={image}
+                                alt={`Existing ${index + 1}`}
+                                className="h-full w-full object-cover"
+                              />
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeExistingGalleryImage(
+                                    index
+                                  )
+                                }
+                                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-red-500 opacity-0 shadow transition group-hover:opacity-100"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* NEW IMAGES */}
+
+                  {formData.imagePreviews
+                    ?.length > 0 && (
+                    <div className="mt-4">
+
+                      <p className="mb-2 text-[11px] font-medium text-slate-500">
+                        New Images
+                      </p>
+
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+
+                        {formData.imagePreviews.map(
+                          (image, index) => (
+                            <div
+                              key={`${image}-${index}`}
+                              className="group relative h-28 overflow-hidden rounded-xl border border-slate-200"
+                            >
+
+                              <img
+                                src={image}
+                                alt={`New ${index + 1}`}
+                                className="h-full w-full object-cover"
+                              />
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removeGalleryImage(
+                                    index
+                                  )
+                                }
+                                className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-red-500 opacity-0 shadow transition group-hover:opacity-100"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* EMPTY GALLERY */}
+
+                  {formData.existingImages
+                    ?.length === 0 &&
+                    formData.imagePreviews
+                      ?.length === 0 && (
+                      <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+
+                        <ImageIcon
+                          size={24}
+                          className="mx-auto text-slate-300"
+                        />
+
+                        <p className="mt-2 text-xs font-medium text-slate-500">
+                          No gallery images added
+                        </p>
+
+                        <p className="mt-1 text-[11px] text-slate-400">
+                          You can upload multiple
+                          destination images.
+                        </p>
+                      </div>
+                    )}
+                </div>
+
+                {/* DESCRIPTION */}
+
+                <div className="sm:col-span-2">
+
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
                     Description
                   </label>
 
                   <textarea
                     name="description"
-                    value={formData.description}
+                    value={
+                      formData.description
+                    }
                     onChange={handleFormChange}
                     rows={4}
                     placeholder="Write destination description..."
@@ -1934,35 +2402,45 @@ const handleDeleteDestination = async (id) => {
                   />
                 </div>
 
-                {/* Highlights */}
+                {/* HIGHLIGHTS */}
 
                 <div className="sm:col-span-2">
+
                   <label className="mb-1.5 block text-xs font-semibold text-slate-700">
                     Highlights
                   </label>
 
                   <input
                     name="highlights"
-                    value={formData.highlights}
+                    value={
+                      formData.highlights
+                    }
                     onChange={handleFormChange}
                     placeholder="Burj Khalifa, Dubai Mall, Desert Safari"
                     className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   />
 
                   <p className="mt-1.5 text-[11px] text-slate-400">
-                    Separate highlights using commas.
+                    Separate highlights using
+                    commas.
                   </p>
                 </div>
 
-                {/* Popular */}
+                {/* POPULAR */}
 
                 <div className="sm:col-span-2">
+
                   <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 p-3">
+
                     <input
                       type="checkbox"
                       name="popular"
-                      checked={formData.popular}
-                      onChange={handleFormChange}
+                      checked={
+                        formData.popular
+                      }
+                      onChange={
+                        handleFormChange
+                      }
                       className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                     />
 
@@ -1980,9 +2458,10 @@ const handleDeleteDestination = async (id) => {
                 </div>
               </div>
 
-              {/* Footer */}
+              {/* FOOTER */}
 
               <div className="sticky bottom-0 flex flex-col-reverse gap-2 border-t border-slate-200 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+
                 <button
                   type="button"
                   onClick={closeFormModal}

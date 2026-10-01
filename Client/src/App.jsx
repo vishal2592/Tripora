@@ -28,6 +28,7 @@ import HotelDetail from './pages/HotelDetails'
 import HotelBookNow from './pages/HotelBookNow'
 import HotelPayment from './pages/HotelPayment'
 import BookingSuccess from './pages/BookingSuccess'
+import SavedHotel from './pages/SavedHotel'
 
 import FlightDetail from './pages/FlightDetail'
 import FlightBook from './pages/FlightBook'
@@ -58,11 +59,45 @@ import AdminReview from './Admin/components/pages/AdminReview'
 import AdminProfile from './Admin/components/pages/AdminProfile'
 import AdminLogin from './Admin/components/pages/AdminLogin'
 import Content from './pages/Content'
+import { useDispatch } from 'react-redux'
+import { useEffect } from 'react'
+import { getProfile, setAuthInitialized } from './redux/slicer/userSlice'
+import { getAdminProfile, setAdminAuthInitialized } from './redux/slicer/adminSlice'
+
 
 
 function App() {
+  const dispatch = useDispatch();
 
   const location = useLocation()
+
+useEffect(() => {
+  // ===============================
+  // USER AUTH
+  // ===============================
+
+  const userToken = localStorage.getItem("triporaToken");
+
+  if (userToken) {
+    dispatch(getProfile());
+  } else {
+    dispatch(setAuthInitialized());
+  }
+
+  // ===============================
+  // ADMIN AUTH
+  // ===============================
+
+  const adminToken = localStorage.getItem(
+    "triporaAdminToken"
+  );
+
+  if (adminToken) {
+    dispatch(getAdminProfile());
+  } else {
+    dispatch(setAdminAuthInitialized());
+  }
+}, [dispatch]);
 
   // Check whether current page is an admin page
   const isAdminRoute = location.pathname.startsWith('/admin')
@@ -204,6 +239,11 @@ function App() {
         <Route
           path='/booking-success/:bookingId'
           element={<BookingSuccess />}
+        />
+
+       <Route 
+        path='/savedHotel'
+        element={<SavedHotel />}
         />
 
 

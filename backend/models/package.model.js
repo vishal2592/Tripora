@@ -13,6 +13,7 @@ const packageSchema = new mongoose.Schema(
       ref: "Destination",
       required: true,
     },
+
     country: {
       type: String,
       required: true,
@@ -42,6 +43,7 @@ const packageSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+
     rating: {
       type: Number,
       default: 0,
@@ -60,21 +62,28 @@ const packageSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+
     oldPrice: {
       type: Number,
       default: 0,
       min: 0,
     },
+
     bookings: {
       type: Number,
       default: 0,
       min: 0,
     },
+
     status: {
       type: String,
       enum: ["Active", "Inactive"],
       default: "Active",
     },
+
+    // =========================
+    // MAIN / COVER IMAGE
+    // =========================
 
     image: {
       type: String,
@@ -85,6 +94,24 @@ const packageSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    // =========================
+    // MULTIPLE GALLERY IMAGES
+    // =========================
+
+    images: [
+      {
+        url: {
+          type: String,
+          trim: true,
+        },
+
+        deleteUrl: {
+          type: String,
+          trim: true,
+        },
+      },
+    ],
 
     description: {
       type: String,
@@ -105,6 +132,10 @@ const packageSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+
+    // =========================
+    // ITINERARY
+    // =========================
 
     itinerary: [
       {
@@ -130,11 +161,19 @@ const packageSchema = new mongoose.Schema(
       },
     ],
 
+    // =========================
+    // HOTEL
+    // =========================
+
     hotel: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Hotel",
       default: null,
     },
+
+    // =========================
+    // FLIGHTS
+    // =========================
 
     flights: {
       departure: {
@@ -232,10 +271,18 @@ const packageSchema = new mongoose.Schema(
       },
     },
 
+    // =========================
+    // IMPORTANT INFO
+    // =========================
+
     importantInfo: {
       type: [String],
       default: [],
     },
+
+    // =========================
+    // CANCELLATION
+    // =========================
 
     cancellation: {
       type: [String],

@@ -1,8 +1,6 @@
-
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
-  Baby,
   BedDouble,
   Check,
   ChevronDown,
@@ -11,7 +9,6 @@ import {
   Coffee,
   Filter,
   Heart,
-  MapPin,
   Mountain,
   Plane,
   Search,
@@ -24,289 +21,11 @@ import {
   Utensils,
   Waves,
   X,
+  MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-/* =========================================================
-   PACKAGE DATA
-========================================================= */
-
-const packageData = [
-  {
-    id: 1,
-    title: "Dubai Premium Escape",
-    destination: "Dubai",
-    country: "United Arab Emirates",
-    image:
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=85",
-    rating: 4.8,
-    reviews: 324,
-    duration: "5 Days / 4 Nights",
-    days: 5,
-    price: 24999,
-    oldPrice: 32999,
-    discount: "24% OFF",
-    type: "Luxury",
-    category: "International",
-    hotel: "4★ Hotel",
-    meals: "Breakfast",
-    activities: ["Desert Safari", "City Tour", "Dhow Cruise"],
-    inclusions: [
-      "4★ Hotel Stay",
-      "Daily Breakfast",
-      "Airport Transfers",
-      "Desert Safari",
-    ],
-    featured: true,
-    bestSeller: true,
-    freeCancellation: true,
-  },
-  {
-    id: 2,
-    title: "Bali Tropical Getaway",
-    destination: "Bali",
-    country: "Indonesia",
-    image:
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=85",
-    rating: 4.9,
-    reviews: 412,
-    duration: "6 Days / 5 Nights",
-    days: 6,
-    price: 29999,
-    oldPrice: 38999,
-    discount: "23% OFF",
-    type: "Honeymoon",
-    category: "International",
-    hotel: "4★ Resort",
-    meals: "Breakfast",
-    activities: ["Water Sports", "Temple Tour", "Beach Visit"],
-    inclusions: [
-      "4★ Resort Stay",
-      "Daily Breakfast",
-      "Airport Transfers",
-      "Sightseeing",
-    ],
-    featured: true,
-    bestSeller: true,
-    freeCancellation: true,
-  },
-  {
-    id: 3,
-    title: "Maldives Luxury Escape",
-    destination: "Maldives",
-    country: "Maldives",
-    image:
-      "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=1200&q=85",
-    rating: 4.9,
-    reviews: 286,
-    duration: "4 Days / 3 Nights",
-    days: 4,
-    price: 39999,
-    oldPrice: 49999,
-    discount: "20% OFF",
-    type: "Honeymoon",
-    category: "International",
-    hotel: "5★ Resort",
-    meals: "All Meals",
-    activities: ["Island Tour", "Snorkeling", "Sunset Cruise"],
-    inclusions: [
-      "5★ Beach Resort",
-      "All Meals",
-      "Airport Transfers",
-      "Water Activities",
-    ],
-    featured: true,
-    bestSeller: false,
-    freeCancellation: true,
-  },
-  {
-    id: 4,
-    title: "Goa Beach Holiday",
-    destination: "Goa",
-    country: "India",
-    image:
-      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=1200&q=85",
-    rating: 4.7,
-    reviews: 578,
-    duration: "4 Days / 3 Nights",
-    days: 4,
-    price: 12999,
-    oldPrice: 17999,
-    discount: "28% OFF",
-    type: "Beach",
-    category: "Domestic",
-    hotel: "4★ Hotel",
-    meals: "Breakfast",
-    activities: ["Beach Tour", "North Goa", "South Goa"],
-    inclusions: [
-      "4★ Hotel Stay",
-      "Daily Breakfast",
-      "Airport Transfers",
-      "Sightseeing",
-    ],
-    featured: true,
-    bestSeller: true,
-    freeCancellation: true,
-  },
-  {
-    id: 5,
-    title: "Paris Romantic Escape",
-    destination: "Paris",
-    country: "France",
-    image:
-      "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=85",
-    rating: 4.8,
-    reviews: 198,
-    duration: "7 Days / 6 Nights",
-    days: 7,
-    price: 59999,
-    oldPrice: 74999,
-    discount: "20% OFF",
-    type: "Romantic",
-    category: "International",
-    hotel: "4★ Hotel",
-    meals: "Breakfast",
-    activities: ["Eiffel Tower", "City Tour", "Seine Cruise"],
-    inclusions: [
-      "4★ Hotel Stay",
-      "Daily Breakfast",
-      "City Tour",
-      "Airport Transfers",
-    ],
-    featured: false,
-    bestSeller: false,
-    freeCancellation: true,
-  },
-  {
-    id: 6,
-    title: "Thailand Adventure",
-    destination: "Thailand",
-    country: "Thailand",
-    image:
-      "https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=1200&q=85",
-    rating: 4.8,
-    reviews: 351,
-    duration: "6 Days / 5 Nights",
-    days: 6,
-    price: 27499,
-    oldPrice: 34999,
-    discount: "21% OFF",
-    type: "Adventure",
-    category: "International",
-    hotel: "4★ Hotel",
-    meals: "Breakfast",
-    activities: ["Island Hopping", "Snorkeling", "City Tour"],
-    inclusions: [
-      "4★ Hotel Stay",
-      "Daily Breakfast",
-      "Island Hopping",
-      "Transfers",
-    ],
-    featured: false,
-    bestSeller: true,
-    freeCancellation: true,
-  },
-  {
-    id: 7,
-    title: "Singapore Family Tour",
-    destination: "Singapore",
-    country: "Singapore",
-    image:
-      "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?auto=format&fit=crop&w=1200&q=85",
-    rating: 4.7,
-    reviews: 267,
-    duration: "5 Days / 4 Nights",
-    days: 5,
-    price: 34999,
-    oldPrice: 42999,
-    discount: "19% OFF",
-    type: "Family",
-    category: "International",
-    hotel: "4★ Hotel",
-    meals: "Breakfast",
-    activities: ["Universal Studios", "City Tour", "Sentosa"],
-    inclusions: [
-      "4★ Hotel Stay",
-      "Daily Breakfast",
-      "City Tour",
-      "Airport Transfers",
-    ],
-    featured: false,
-    bestSeller: false,
-    freeCancellation: true,
-  },
-  {
-    id: 8,
-    title: "Manali Mountain Escape",
-    destination: "Manali",
-    country: "India",
-    image:
-      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=85",
-    rating: 4.8,
-    reviews: 445,
-    duration: "5 Days / 4 Nights",
-    days: 5,
-    price: 15999,
-    oldPrice: 21999,
-    discount: "27% OFF",
-    type: "Adventure",
-    category: "Domestic",
-    hotel: "3★ Hotel",
-    meals: "Breakfast + Dinner",
-    activities: ["Solang Valley", "Rohtang", "Local Sightseeing"],
-    inclusions: [
-      "3★ Hotel Stay",
-      "Breakfast & Dinner",
-      "Local Transfers",
-      "Sightseeing",
-    ],
-    featured: false,
-    bestSeller: true,
-    freeCancellation: true,
-  },
-];
-
-/* =========================================================
-   DESTINATIONS
-========================================================= */
-
-const popularDestinations = [
-  {
-    name: "Dubai",
-    duration: "5D / 4N",
-    price: "₹24,999",
-    image:
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    name: "Bali",
-    duration: "6D / 5N",
-    price: "₹29,999",
-    image:
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    name: "Maldives",
-    duration: "4D / 3N",
-    price: "₹39,999",
-    image:
-      "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    name: "Paris",
-    duration: "7D / 6N",
-    price: "₹59,999",
-    image:
-      "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    name: "Goa",
-    duration: "4D / 3N",
-    price: "₹12,999",
-    image:
-      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?auto=format&fit=crop&w=800&q=80",
-  },
-];
+import { useDispatch, useSelector } from "react-redux";
+import { getAllPackages } from "../redux/slicer/packageSlice";
 
 /* =========================================================
    TRAVEL TYPES
@@ -358,43 +77,35 @@ const travelTypes = [
 ];
 
 /* =========================================================
-   FAQ
-========================================================= */
-
-// const faqs = [
-//   {
-//     question: "What is included in a holiday package?",
-//     answer:
-//       "Depending on the package, inclusions can include hotel stay, meals, airport transfers, sightseeing, activities and local transportation.",
-//   },
-//   {
-//     question: "Can I customize my holiday package?",
-//     answer:
-//       "Yes. You can customize destinations, hotels, activities, duration and other travel preferences according to your requirements.",
-//   },
-//   {
-//     question: "Are flights included in the package?",
-//     answer:
-//       "Flights depend on the selected package. The package details clearly mention whether flights are included or available as an add-on.",
-//   },
-//   {
-//     question: "Can I cancel my package?",
-//     answer:
-//       "Cancellation depends on the package's cancellation policy. Packages with free cancellation will show the cancellation information clearly.",
-//   },
-//   {
-//     question: "Can I change my travel dates?",
-//     answer:
-//       "Date changes depend on availability and the selected package's terms. Contact support before making changes to your booking.",
-//   },
-// ];
-
-/* =========================================================
    MAIN COMPONENT
 ========================================================= */
 
 const Packages = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  /* =========================================================
+     REDUX PACKAGE STATE
+  ========================================================= */
+
+  const {
+    packages = [],
+    loading = false,
+    error = null,
+  } = useSelector((state) => state.package);
+
+  /* =========================================================
+     FETCH PACKAGES
+  ========================================================= */
+
+  useEffect(() => {
+    dispatch(getAllPackages());
+  }, [dispatch]);
+
+  /* =========================================================
+     SEARCH
+  ========================================================= */
+
   const [searchData, setSearchData] = useState({
     destination: "",
     date: "",
@@ -405,6 +116,10 @@ const Packages = () => {
   const [activeType, setActiveType] = useState("All");
   const [activeSort, setActiveSort] = useState("recommended");
 
+  /* =========================================================
+     FILTERS
+  ========================================================= */
+
   const [priceRange, setPriceRange] = useState(70000);
   const [selectedDuration, setSelectedDuration] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
@@ -413,9 +128,16 @@ const Packages = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
+  /* =========================================================
+     PACKAGE UI STATES
+  ========================================================= */
+
   const [savedPackages, setSavedPackages] = useState([]);
   const [expandedPackage, setExpandedPackage] = useState(null);
-  const [openFaq, setOpenFaq] = useState(null);
+
+  /* =========================================================
+     CUSTOM TRIP
+  ========================================================= */
 
   const [customTrip, setCustomTrip] = useState({
     destination: "",
@@ -423,6 +145,293 @@ const Packages = () => {
     duration: "",
     type: "Honeymoon",
   });
+
+  /* =========================================================
+     NORMALIZE BACKEND DATA
+========================================================= */
+
+  const normalizedPackages = useMemo(() => {
+    if (!Array.isArray(packages)) {
+      return [];
+    }
+
+    return packages.map((item) => {
+      const price = Number(item.price || 0);
+      const oldPrice = Number(item.oldPrice || 0);
+
+      const discount =
+        oldPrice > price
+          ? `${Math.round(((oldPrice - price) / oldPrice) * 100)}% OFF`
+          : "";
+
+      /* -------------------------------------------------------
+         DESTINATION
+      ------------------------------------------------------- */
+
+      /*
+        Backend can return destination in two forms:
+
+        1. Old/string format:
+        destination: "Bali"
+
+        2. Current/populated format:
+        destination: {
+          _id: "...",
+          name: "Bali",
+          country: "India",
+          region: "Middle East",
+          destinationType: "Domestic",
+          image: "..."
+        }
+      */
+
+      const destinationName =
+        item.destination &&
+        typeof item.destination === "object"
+          ? item.destination.name || ""
+          : String(item.destination || "");
+
+      const destinationCountry =
+        item.destination &&
+        typeof item.destination === "object"
+          ? item.destination.country || item.country || ""
+          : item.country || "";
+
+      const destinationRegion =
+        item.destination &&
+        typeof item.destination === "object"
+          ? item.destination.region || ""
+          : "";
+
+      const destinationImage =
+        item.destination &&
+        typeof item.destination === "object"
+          ? item.destination.image || ""
+          : "";
+
+      /* -------------------------------------------------------
+         INCLUSIONS
+      ------------------------------------------------------- */
+
+      const inclusions = Array.isArray(item.inclusions)
+        ? item.inclusions
+        : item.inclusions
+          ? String(item.inclusions)
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean)
+          : [];
+
+      /* -------------------------------------------------------
+         EXCLUSIONS
+      ------------------------------------------------------- */
+
+      const exclusions = Array.isArray(item.exclusions)
+        ? item.exclusions
+        : item.exclusions
+          ? String(item.exclusions)
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean)
+          : [];
+
+      /* -------------------------------------------------------
+         HIGHLIGHTS
+      ------------------------------------------------------- */
+
+      const highlights = Array.isArray(item.highlights)
+        ? item.highlights
+        : item.highlights
+          ? String(item.highlights)
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean)
+          : [];
+
+      /* -------------------------------------------------------
+         ACTIVITIES
+      ------------------------------------------------------- */
+
+      const activities =
+        Array.isArray(item.activities) && item.activities.length > 0
+          ? item.activities
+          : highlights.length > 0
+            ? highlights
+            : ["Sightseeing", "Transfers", "Activities"];
+
+      /* -------------------------------------------------------
+         CATEGORY
+      ------------------------------------------------------- */
+
+      const category =
+        item.category ||
+        (String(destinationCountry || "").toLowerCase() === "india"
+          ? "Domestic"
+          : "International");
+
+      /* -------------------------------------------------------
+         IMAGE
+      ------------------------------------------------------- */
+
+      /*
+        Package image has priority.
+
+        If package image is not available,
+        destination image will be used.
+      */
+
+      const image =
+        item.image ||
+        (Array.isArray(item.images) && item.images.length > 0
+          ? item.images[0]
+          : destinationImage) ||
+        "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80";
+
+      /* -------------------------------------------------------
+         DAYS / NIGHTS
+      ------------------------------------------------------- */
+
+      const days = Number(item.days || 0);
+      const nights = Number(item.nights || 0);
+
+      return {
+        ...item,
+
+        /* MongoDB ID */
+        id: item._id,
+
+        /* Basic information */
+        title: item.name || item.title || "Holiday Package",
+
+        /*
+          IMPORTANT:
+          destination is now always a string.
+          This prevents:
+          destination.toLowerCase is not a function
+        */
+        destination: destinationName,
+
+        /*
+          Extra destination information
+        */
+        destinationCountry,
+
+        destinationRegion,
+
+        destinationImage,
+
+        country: destinationCountry,
+
+        image,
+
+        /* Rating */
+        rating: Number(item.rating || 0),
+
+        reviews: Number(item.reviews || 0),
+
+        /* Duration */
+        days,
+
+        nights,
+
+        duration:
+          days || nights
+            ? `${days} Days / ${nights} Nights`
+            : "Flexible Duration",
+
+        /* Price */
+        price,
+
+        oldPrice,
+
+        discount,
+
+        /* Type */
+        type: item.type || "Holiday",
+
+        category,
+
+        /* Hotel / meal */
+        hotel: item.hotel || "Hotel Stay",
+
+        meals: item.meals || "As per package",
+
+        /* Activities */
+        activities,
+
+        /* Arrays */
+        inclusions,
+
+        exclusions,
+
+        highlights,
+
+        /* Flags */
+        featured: Boolean(item.featured || item.isFeatured),
+
+        bestSeller: Boolean(item.bestSeller),
+
+        freeCancellation:
+          item.freeCancellation !== undefined
+            ? Boolean(item.freeCancellation)
+            : true,
+      };
+    });
+  }, [packages]);
+
+  /* =========================================================
+     POPULAR DESTINATIONS
+  ========================================================= */
+
+  const popularDestinations = useMemo(() => {
+    const uniqueDestinations = [];
+
+    normalizedPackages.forEach((item) => {
+      if (!item.destination) {
+        return;
+      }
+
+      const exists = uniqueDestinations.some(
+        (destination) =>
+          destination.name.toLowerCase() ===
+          item.destination.toLowerCase()
+      );
+
+      if (!exists) {
+        uniqueDestinations.push({
+          name: item.destination,
+
+          duration: item.duration,
+
+          price: item.price,
+
+          /*
+            Use destination image first for
+            Popular Destinations.
+            Package image remains fallback.
+          */
+          image:
+            item.destinationImage ||
+            item.image ||
+            "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+        });
+      }
+    });
+
+    return uniqueDestinations.slice(0, 5);
+  }, [normalizedPackages]);
+
+  /* =========================================================
+     SPECIAL OFFER
+  ========================================================= */
+
+  const specialOffer = useMemo(() => {
+    return (
+      normalizedPackages.find((item) => item.featured) ||
+      normalizedPackages[0] ||
+      null
+    );
+  }, [normalizedPackages]);
 
   /* =========================================================
      SEARCH
@@ -485,26 +494,48 @@ const Packages = () => {
   ========================================================= */
 
   const filteredPackages = useMemo(() => {
-    let result = [...packageData];
+    let result = [...normalizedPackages];
+
+    /* -------------------------------------------------------
+       DESTINATION SEARCH
+    ------------------------------------------------------- */
 
     if (searchData.destination.trim()) {
       const search = searchData.destination.toLowerCase();
 
       result = result.filter(
         (item) =>
-          item.destination.toLowerCase().includes(search) ||
-          item.country.toLowerCase().includes(search) ||
-          item.title.toLowerCase().includes(search)
+          String(item.destination || "")
+            .toLowerCase()
+            .includes(search) ||
+          String(item.country || "")
+            .toLowerCase()
+            .includes(search) ||
+          String(item.title || "")
+            .toLowerCase()
+            .includes(search)
       );
     }
+
+    /* -------------------------------------------------------
+       TRAVEL TYPE
+    ------------------------------------------------------- */
 
     if (activeType !== "All") {
       result = result.filter((item) => item.type === activeType);
     }
 
+    /* -------------------------------------------------------
+       PRICE
+    ------------------------------------------------------- */
+
     if (priceRange) {
       result = result.filter((item) => item.price <= priceRange);
     }
+
+    /* -------------------------------------------------------
+       DURATION
+    ------------------------------------------------------- */
 
     if (selectedDuration.length > 0) {
       result = result.filter((item) =>
@@ -526,17 +557,31 @@ const Packages = () => {
       );
     }
 
+    /* -------------------------------------------------------
+       CATEGORY
+    ------------------------------------------------------- */
+
     if (selectedCategories.length > 0) {
       result = result.filter((item) =>
         selectedCategories.includes(item.category)
       );
     }
 
+    /* -------------------------------------------------------
+       RATING
+    ------------------------------------------------------- */
+
     if (selectedRatings.length > 0) {
       result = result.filter((item) =>
-        selectedRatings.some((rating) => item.rating >= Number(rating))
+        selectedRatings.some(
+          (rating) => item.rating >= Number(rating)
+        )
       );
     }
+
+    /* -------------------------------------------------------
+       SORT
+    ------------------------------------------------------- */
 
     if (activeSort === "price-low") {
       result.sort((a, b) => a.price - b.price);
@@ -552,6 +597,7 @@ const Packages = () => {
 
     return result;
   }, [
+    normalizedPackages,
     searchData.destination,
     activeType,
     priceRange,
@@ -568,9 +614,12 @@ const Packages = () => {
   const FilterContent = () => (
     <div className="space-y-5">
       {/* Price */}
+
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h4 className="text-sm font-bold text-slate-800">Price Range</h4>
+          <h4 className="text-sm font-bold text-slate-800">
+            Price Range
+          </h4>
 
           <span className="text-xs font-semibold text-blue-600">
             ₹{priceRange.toLocaleString("en-IN")}
@@ -596,8 +645,11 @@ const Packages = () => {
       <div className="h-px bg-slate-100" />
 
       {/* Duration */}
+
       <div>
-        <h4 className="mb-3 text-sm font-bold text-slate-800">Duration</h4>
+        <h4 className="mb-3 text-sm font-bold text-slate-800">
+          Duration
+        </h4>
 
         <div className="space-y-2.5">
           {["3-4 Days", "5-6 Days", "7+ Days"].map((duration) => (
@@ -609,7 +661,10 @@ const Packages = () => {
                 type="checkbox"
                 checked={selectedDuration.includes(duration)}
                 onChange={() =>
-                  toggleArrayValue(setSelectedDuration, duration)
+                  toggleArrayValue(
+                    setSelectedDuration,
+                    duration
+                  )
                 }
                 className="h-4 w-4 rounded accent-blue-600"
               />
@@ -623,6 +678,7 @@ const Packages = () => {
       <div className="h-px bg-slate-100" />
 
       {/* Package Category */}
+
       <div>
         <h4 className="mb-3 text-sm font-bold text-slate-800">
           Package Type
@@ -638,7 +694,10 @@ const Packages = () => {
                 type="checkbox"
                 checked={selectedCategories.includes(category)}
                 onChange={() =>
-                  toggleArrayValue(setSelectedCategories, category)
+                  toggleArrayValue(
+                    setSelectedCategories,
+                    category
+                  )
                 }
                 className="h-4 w-4 rounded accent-blue-600"
               />
@@ -652,8 +711,11 @@ const Packages = () => {
       <div className="h-px bg-slate-100" />
 
       {/* Rating */}
+
       <div>
-        <h4 className="mb-3 text-sm font-bold text-slate-800">Rating</h4>
+        <h4 className="mb-3 text-sm font-bold text-slate-800">
+          Rating
+        </h4>
 
         <div className="space-y-2.5">
           {["4.8", "4.5", "4.0"].map((rating) => (
@@ -664,12 +726,21 @@ const Packages = () => {
               <input
                 type="checkbox"
                 checked={selectedRatings.includes(rating)}
-                onChange={() => toggleArrayValue(setSelectedRatings, rating)}
+                onChange={() =>
+                  toggleArrayValue(
+                    setSelectedRatings,
+                    rating
+                  )
+                }
                 className="h-4 w-4 rounded accent-blue-600"
               />
 
               <span className="flex items-center gap-1">
-                <Star size={13} className="fill-amber-400 text-amber-400" />
+                <Star
+                  size={13}
+                  className="fill-amber-400 text-amber-400"
+                />
+
                 {rating}+
               </span>
             </label>
@@ -699,6 +770,7 @@ const Packages = () => {
       <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
         <div className="grid lg:grid-cols-[240px_1fr_155px]">
           {/* Image */}
+
           <div className="relative h-[220px] lg:h-full lg:min-h-[245px]">
             <img
               src={item.image}
@@ -718,10 +790,11 @@ const Packages = () => {
             <button
               type="button"
               onClick={() => toggleSavePackage(item.id)}
-              className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-sm transition ${isSaved
+              className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-sm transition ${
+                isSaved
                   ? "bg-red-500 text-white"
                   : "bg-white/90 text-slate-600 hover:bg-white"
-                }`}
+              }`}
               aria-label="Save package"
             >
               <Heart
@@ -742,6 +815,7 @@ const Packages = () => {
           </div>
 
           {/* Details */}
+
           <div className="min-w-0 p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0">
@@ -750,13 +824,20 @@ const Packages = () => {
                     {item.type}
                   </span>
 
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
-                    <Star
-                      size={12}
-                      className="fill-amber-400 text-amber-400"
-                    />
-                    {item.rating} ({item.reviews})
-                  </span>
+                  {item.rating > 0 && (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-500">
+                      <Star
+                        size={12}
+                        className="fill-amber-400 text-amber-400"
+                      />
+
+                      {item.rating}
+
+                      {item.reviews > 0 && (
+                        <> ({item.reviews})</>
+                      )}
+                    </span>
+                  )}
                 </div>
 
                 <h3 className="truncate text-base font-extrabold text-slate-900 sm:text-lg">
@@ -771,30 +852,47 @@ const Packages = () => {
             </div>
 
             {/* Highlights */}
+
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
               <div className="rounded-lg bg-slate-50 p-2.5">
-                <BedDouble size={15} className="text-blue-600" />
+                <BedDouble
+                  size={15}
+                  className="text-blue-600"
+                />
+
                 <p className="mt-1 truncate text-[10px] font-semibold text-slate-700">
                   {item.hotel}
                 </p>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-2.5">
-                <Coffee size={15} className="text-blue-600" />
+                <Coffee
+                  size={15}
+                  className="text-blue-600"
+                />
+
                 <p className="mt-1 truncate text-[10px] font-semibold text-slate-700">
                   {item.meals}
                 </p>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-2.5">
-                <Plane size={15} className="text-blue-600" />
+                <Plane
+                  size={15}
+                  className="text-blue-600"
+                />
+
                 <p className="mt-1 truncate text-[10px] font-semibold text-slate-700">
                   Transfers
                 </p>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-2.5">
-                <Sparkles size={15} className="text-blue-600" />
+                <Sparkles
+                  size={15}
+                  className="text-blue-600"
+                />
+
                 <p className="mt-1 truncate text-[10px] font-semibold text-slate-700">
                   Activities
                 </p>
@@ -802,16 +900,25 @@ const Packages = () => {
             </div>
 
             {/* Inclusions */}
+
             <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2">
-              {item.inclusions.slice(0, 4).map((inclusion) => (
-                <div
-                  key={inclusion}
-                  className="flex min-w-0 items-center gap-1.5 text-[10px] font-medium text-slate-600"
-                >
-                  <Check size={12} className="shrink-0 text-emerald-500" />
-                  <span className="truncate">{inclusion}</span>
-                </div>
-              ))}
+              {item.inclusions
+                .slice(0, 4)
+                .map((inclusion) => (
+                  <div
+                    key={inclusion}
+                    className="flex min-w-0 items-center gap-1.5 text-[10px] font-medium text-slate-600"
+                  >
+                    <Check
+                      size={12}
+                      className="shrink-0 text-emerald-500"
+                    />
+
+                    <span className="truncate">
+                      {inclusion}
+                    </span>
+                  </div>
+                ))}
             </div>
 
             {item.freeCancellation && (
@@ -822,48 +929,63 @@ const Packages = () => {
             )}
 
             {/* Expanded */}
+
             {isExpanded && (
               <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50/50 p-3">
                 <p className="mb-2 text-[10px] font-extrabold uppercase tracking-wide text-slate-700">
                   Package Includes
                 </p>
 
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {item.inclusions.map((inclusion) => (
-                    <div
-                      key={inclusion}
-                      className="flex items-center gap-2 text-[10px] text-slate-600"
-                    >
-                      <Check
-                        size={12}
-                        className="shrink-0 text-emerald-500"
-                      />
-                      {inclusion}
-                    </div>
-                  ))}
-                </div>
+                {item.inclusions.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {item.inclusions.map((inclusion) => (
+                      <div
+                        key={inclusion}
+                        className="flex items-center gap-2 text-[10px] text-slate-600"
+                      >
+                        <Check
+                          size={12}
+                          className="shrink-0 text-emerald-500"
+                        />
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {item.activities.map((activity) => (
-                    <span
-                      key={activity}
-                      className="rounded-full bg-white px-2.5 py-1 text-[9px] font-semibold text-slate-600"
-                    >
-                      {activity}
-                    </span>
-                  ))}
-                </div>
+                        {inclusion}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-500">
+                    Package inclusions will be available in
+                    the package details.
+                  </p>
+                )}
+
+                {item.activities.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {item.activities.map((activity) => (
+                      <span
+                        key={activity}
+                        className="rounded-full bg-white px-2.5 py-1 text-[9px] font-semibold text-slate-600"
+                      >
+                        {activity}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
             <button
               type="button"
               onClick={() =>
-                setExpandedPackage(isExpanded ? null : item.id)
+                setExpandedPackage(
+                  isExpanded ? null : item.id
+                )
               }
               className="mt-4 flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-700"
             >
-              {isExpanded ? "Hide details" : "View package details"}
+              {isExpanded
+                ? "Hide details"
+                : "View package details"}
 
               {isExpanded ? (
                 <ChevronUp size={13} />
@@ -874,18 +996,26 @@ const Packages = () => {
           </div>
 
           {/* Price */}
+
           <div className="border-t border-slate-100 bg-slate-50/60 p-4 lg:border-l lg:border-t-0 lg:p-5">
             <div className="flex h-full flex-row items-center justify-between gap-4 lg:flex-col lg:items-end lg:justify-center">
               <div>
-                <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-[9px] font-bold text-red-600">
-                  <Tag size={10} />
-                  {item.discount}
-                </span>
+                {item.discount && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-[9px] font-bold text-red-600">
+                    <Tag size={10} />
+                    {item.discount}
+                  </span>
+                )}
 
                 <div className="mt-2 flex items-center gap-2 lg:flex-col lg:items-end lg:gap-0">
-                  <span className="text-xs text-slate-400 line-through">
-                    ₹{item.oldPrice.toLocaleString("en-IN")}
-                  </span>
+                  {item.oldPrice > item.price && (
+                    <span className="text-xs text-slate-400 line-through">
+                      ₹
+                      {item.oldPrice.toLocaleString(
+                        "en-IN"
+                      )}
+                    </span>
+                  )}
 
                   <span className="text-xl font-extrabold text-slate-900">
                     ₹{item.price.toLocaleString("en-IN")}
@@ -899,7 +1029,9 @@ const Packages = () => {
 
               <button
                 type="button"
-                onClick={() => navigate(`/packages/${item.id}`)}
+                onClick={() =>
+                  navigate(`/packages/${item.id}`)
+                }
                 className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700"
               >
                 View Package
@@ -911,11 +1043,16 @@ const Packages = () => {
     );
   };
 
+  /* =========================================================
+     RETURN
+  ========================================================= */
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-white text-slate-900">
       {/* =====================================================
           HERO
       ===================================================== */}
+
       <section className="relative overflow-visible bg-slate-950">
         <div className="absolute inset-0 opacity-30">
           <img
@@ -942,17 +1079,22 @@ const Packages = () => {
             </h1>
 
             <p className="mx-auto mt-3 max-w-2xl text-xs leading-6 text-slate-300 sm:text-sm">
-              Curated trips, handpicked stays and unforgettable experiences
-              at the best available prices.
+              Curated trips, handpicked stays and unforgettable
+              experiences at the best available prices.
             </p>
           </div>
 
           {/* Search Card */}
+
           <div className="mx-auto mt-7 max-w-6xl rounded-2xl border border-white/10 bg-white p-2 shadow-2xl">
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr_auto]">
               {/* Destination */}
+
               <div className="flex min-w-0 items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
-                <MapPin size={17} className="shrink-0 text-blue-600" />
+                <MapPin
+                  size={17}
+                  className="shrink-0 text-blue-600"
+                />
 
                 <div className="min-w-0 flex-1">
                   <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
@@ -963,7 +1105,10 @@ const Packages = () => {
                     type="text"
                     value={searchData.destination}
                     onChange={(e) =>
-                      handleSearchChange("destination", e.target.value)
+                      handleSearchChange(
+                        "destination",
+                        e.target.value
+                      )
                     }
                     placeholder="Where do you want to go?"
                     className="mt-0.5 w-full bg-transparent text-xs font-semibold text-slate-800 outline-none placeholder:text-slate-400"
@@ -972,8 +1117,12 @@ const Packages = () => {
               </div>
 
               {/* Date */}
+
               <div className="flex min-w-0 items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
-                <Clock3 size={17} className="shrink-0 text-blue-600" />
+                <Clock3
+                  size={17}
+                  className="shrink-0 text-blue-600"
+                />
 
                 <div className="min-w-0 flex-1">
                   <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
@@ -984,7 +1133,10 @@ const Packages = () => {
                     type="date"
                     value={searchData.date}
                     onChange={(e) =>
-                      handleSearchChange("date", e.target.value)
+                      handleSearchChange(
+                        "date",
+                        e.target.value
+                      )
                     }
                     className="mt-0.5 w-full bg-transparent text-xs font-semibold text-slate-800 outline-none"
                   />
@@ -992,8 +1144,12 @@ const Packages = () => {
               </div>
 
               {/* Duration */}
+
               <div className="flex min-w-0 items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
-                <Clock3 size={17} className="shrink-0 text-blue-600" />
+                <Clock3
+                  size={17}
+                  className="shrink-0 text-blue-600"
+                />
 
                 <div className="min-w-0 flex-1">
                   <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
@@ -1003,7 +1159,10 @@ const Packages = () => {
                   <select
                     value={searchData.duration}
                     onChange={(e) =>
-                      handleSearchChange("duration", e.target.value)
+                      handleSearchChange(
+                        "duration",
+                        e.target.value
+                      )
                     }
                     className="mt-0.5 w-full bg-transparent text-xs font-semibold text-slate-800 outline-none"
                   >
@@ -1018,8 +1177,12 @@ const Packages = () => {
               </div>
 
               {/* Travellers */}
+
               <div className="flex min-w-0 items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
-                <Users size={17} className="shrink-0 text-blue-600" />
+                <Users
+                  size={17}
+                  className="shrink-0 text-blue-600"
+                />
 
                 <div className="min-w-0 flex-1">
                   <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
@@ -1029,7 +1192,10 @@ const Packages = () => {
                   <select
                     value={searchData.travellers}
                     onChange={(e) =>
-                      handleSearchChange("travellers", e.target.value)
+                      handleSearchChange(
+                        "travellers",
+                        e.target.value
+                      )
                     }
                     className="mt-0.5 w-full bg-transparent text-xs font-semibold text-slate-800 outline-none"
                   >
@@ -1043,6 +1209,7 @@ const Packages = () => {
               </div>
 
               {/* Search */}
+
               <button
                 type="button"
                 onClick={handleSearch}
@@ -1050,7 +1217,10 @@ const Packages = () => {
                 className="flex min-h-[48px] items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-xs font-extrabold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Search size={16} />
-                {isSearching ? "Searching..." : "Search Packages"}
+
+                {isSearching
+                  ? "Searching..."
+                  : "Search Packages"}
               </button>
             </div>
           </div>
@@ -1060,6 +1230,7 @@ const Packages = () => {
       {/* =====================================================
           POPULAR DESTINATIONS
       ===================================================== */}
+
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-4 lg:px-8 lg:py-4">
         <div className="mb-5 flex items-end justify-between gap-3">
           <div>
@@ -1072,12 +1243,21 @@ const Packages = () => {
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
-              Discover destinations loved by Tripora travellers.
+              Discover destinations loved by Tripora
+              travellers.
             </p>
           </div>
 
           <button
             type="button"
+            onClick={() =>
+              document
+                .getElementById("package-results")
+                ?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                })
+            }
             className="hidden items-center gap-1 text-xs font-bold text-blue-600 sm:flex"
           >
             View All
@@ -1085,50 +1265,76 @@ const Packages = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {popularDestinations.map((destination) => (
-            <button
-              type="button"
-              key={destination.name}
-              onClick={() =>
-                setSearchData((prev) => ({
-                  ...prev,
-                  destination: destination.name,
-                }))
-              }
-              className="group relative h-36 overflow-hidden rounded-2xl text-left sm:h-40"
-            >
-              <img
-                src={destination.image}
-                alt={destination.name}
-                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+        {loading ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {[1, 2, 3, 4, 5].map((item) => (
+              <div
+                key={item}
+                className="h-36 animate-pulse rounded-2xl bg-slate-100 sm:h-40"
               />
+            ))}
+          </div>
+        ) : popularDestinations.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {popularDestinations.map((destination) => (
+              <button
+                type="button"
+                key={destination.name}
+                onClick={() =>
+                  setSearchData((prev) => ({
+                    ...prev,
+                    destination: destination.name,
+                  }))
+                }
+                className="group relative h-36 overflow-hidden rounded-2xl text-left sm:h-40"
+              >
+                <img
+                  src={destination.image}
+                  alt={destination.name}
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                />
 
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
 
-              <div className="absolute bottom-3 left-3 right-3 text-white">
-                <p className="text-sm font-extrabold">
-                  {destination.name}
-                </p>
+                <div className="absolute bottom-3 left-3 right-3 text-white">
+                  <p className="text-sm font-extrabold">
+                    {destination.name}
+                  </p>
 
-                <div className="mt-1 flex items-center justify-between gap-2">
-                  <span className="text-[9px] text-white/80">
-                    {destination.duration}
-                  </span>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span className="text-[9px] text-white/80">
+                      {destination.duration}
+                    </span>
 
-                  <span className="text-[10px] font-bold">
-                    {destination.price}
-                  </span>
+                    <span className="text-[10px] font-bold">
+                      ₹
+                      {Number(
+                        destination.price || 0
+                      ).toLocaleString("en-IN")}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
-        </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+            <MapPin
+              size={28}
+              className="mx-auto text-slate-300"
+            />
+
+            <p className="mt-2 text-sm font-bold text-slate-600">
+              No destinations available
+            </p>
+          </div>
+        )}
       </section>
 
       {/* =====================================================
           FEATURED PACKAGES
       ===================================================== */}
+
       <section className="bg-slate-50">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-4 lg:px-8 lg:py-4">
           <div className="mb-5 flex items-end justify-between gap-3">
@@ -1142,12 +1348,21 @@ const Packages = () => {
               </h2>
 
               <p className="mt-1 text-xs text-slate-500">
-                Popular packages with stays, activities and transfers.
+                Popular packages with stays, activities and
+                transfers.
               </p>
             </div>
 
             <button
               type="button"
+              onClick={() =>
+                document
+                  .getElementById("package-results")
+                  ?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  })
+              }
               className="hidden items-center gap-1 text-xs font-bold text-blue-600 sm:flex"
             >
               View All
@@ -1155,103 +1370,149 @@ const Packages = () => {
             </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {packageData
-              .filter((item) => item.featured)
-              .map((item) => (
+          {loading ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((item) => (
                 <div
-                  key={item.id}
-                  className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-                >
-                  <div className="relative h-48 overflow-hidden">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                    />
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-
-                    {item.bestSeller && (
-                      <span className="absolute left-3 top-3 rounded-full bg-blue-600 px-2.5 py-1 text-[9px] font-extrabold text-white">
-                        BEST SELLER
-                      </span>
-                    )}
-
-                    <span className="absolute right-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[9px] font-extrabold text-red-600">
-                      {item.discount}
-                    </span>
-
-                    <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between text-white">
-                      <div>
-                        <p className="text-lg font-black">
-                          {item.destination}
-                        </p>
-                        <p className="text-[10px] text-white/80">
-                          {item.duration}
-                        </p>
-                      </div>
-
-                      <span className="flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-[9px] font-bold backdrop-blur-sm">
-                        <Star
-                          size={11}
-                          className="fill-amber-400 text-amber-400"
-                        />
-                        {item.rating}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-4">
-                    <h3 className="truncate text-base font-extrabold text-slate-900">
-                      {item.title}
-                    </h3>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      {item.inclusions.slice(0, 4).map((inclusion) => (
-                        <div
-                          key={inclusion}
-                          className="flex min-w-0 items-center gap-1.5 text-[9px] font-semibold text-slate-600"
-                        >
-                          <Check
-                            size={11}
-                            className="shrink-0 text-emerald-500"
-                          />
-                          <span className="truncate">{inclusion}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 flex items-end justify-between border-t border-slate-100 pt-3">
-                      <div>
-                        <p className="text-[9px] text-slate-400">
-                          Starting from
-                        </p>
-
-                        <p className="text-lg font-black text-slate-900">
-                          ₹{item.price.toLocaleString("en-IN")}
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/packages/${item.id}`)}
-                        className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3.5 py-2 text-[10px] font-bold text-white hover:bg-blue-700"
-                      >
-                        Explore
-                        <ArrowRight size={12} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                  key={item}
+                  className="h-[390px] animate-pulse rounded-2xl bg-white"
+                />
               ))}
-          </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {normalizedPackages
+                .filter((item) => item.featured)
+                .map((item) => (
+                  <div
+                    key={item.id}
+                    className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={item.image}
+                        alt={item.title}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      />
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+
+                      {item.bestSeller && (
+                        <span className="absolute left-3 top-3 rounded-full bg-blue-600 px-2.5 py-1 text-[9px] font-extrabold text-white">
+                          BEST SELLER
+                        </span>
+                      )}
+
+                      {item.discount && (
+                        <span className="absolute right-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-[9px] font-extrabold text-red-600">
+                          {item.discount}
+                        </span>
+                      )}
+
+                      <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between text-white">
+                        <div>
+                          <p className="text-lg font-black">
+                            {item.destination}
+                          </p>
+
+                          <p className="text-[10px] text-white/80">
+                            {item.duration}
+                          </p>
+                        </div>
+
+                        {item.rating > 0 && (
+                          <span className="flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-[9px] font-bold backdrop-blur-sm">
+                            <Star
+                              size={11}
+                              className="fill-amber-400 text-amber-400"
+                            />
+
+                            {item.rating}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-4">
+                      <h3 className="truncate text-base font-extrabold text-slate-900">
+                        {item.title}
+                      </h3>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        {item.inclusions
+                          .slice(0, 4)
+                          .map((inclusion) => (
+                            <div
+                              key={inclusion}
+                              className="flex min-w-0 items-center gap-1.5 text-[9px] font-semibold text-slate-600"
+                            >
+                              <Check
+                                size={11}
+                                className="shrink-0 text-emerald-500"
+                              />
+
+                              <span className="truncate">
+                                {inclusion}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+
+                      <div className="mt-4 flex items-end justify-between border-t border-slate-100 pt-3">
+                        <div>
+                          <p className="text-[9px] text-slate-400">
+                            Starting from
+                          </p>
+
+                          <p className="text-lg font-black text-slate-900">
+                            ₹
+                            {item.price.toLocaleString(
+                              "en-IN"
+                            )}
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate(
+                              `/packages/${item.id}`
+                            )
+                          }
+                          className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3.5 py-2 text-[10px] font-bold text-white hover:bg-blue-700"
+                        >
+                          Explore
+                          <ArrowRight size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {!loading &&
+            normalizedPackages.filter(
+              (item) => item.featured
+            ).length === 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+                <Sparkles
+                  size={28}
+                  className="mx-auto text-slate-300"
+                />
+
+                <p className="mt-2 text-sm font-bold text-slate-600">
+                  No featured packages available
+                </p>
+              </div>
+            )}
         </div>
       </section>
 
       {/* =====================================================
           TRAVEL TYPE
       ===================================================== */}
+
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-4 lg:px-8 lg:py-4">
         <div className="mb-5">
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">
@@ -1272,10 +1533,11 @@ const Packages = () => {
                 type="button"
                 key={item.name}
                 onClick={() => setActiveType(item.name)}
-                className={`group relative h-32 overflow-hidden rounded-2xl text-left ${activeType === item.name
+                className={`group relative h-32 overflow-hidden rounded-2xl text-left ${
+                  activeType === item.name
                     ? "ring-2 ring-blue-600 ring-offset-2"
                     : ""
-                  }`}
+                }`}
               >
                 <img
                   src={item.image}
@@ -1315,78 +1577,94 @@ const Packages = () => {
       {/* =====================================================
           SPECIAL OFFER
       ===================================================== */}
-      <section className="mx-auto max-w-7xl px-4 pb-1 sm:px-6 sm:pb-4 lg:px-8 lg:pb-4">
-        <div className="overflow-hidden rounded-3xl bg-blue-600">
-          <div className="grid lg:grid-cols-[1fr_1fr]">
-            <div className="relative h-64 lg:h-[340px]">
-              <img
-                src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=85"
-                alt="Bali special offer"
-                className="h-full w-full object-cover"
-              />
 
-              <div className="absolute inset-0 bg-gradient-to-r from-black/45 to-transparent" />
+      {specialOffer && (
+        <section className="mx-auto max-w-7xl px-4 pb-1 sm:px-6 sm:pb-4 lg:px-8 lg:pb-4">
+          <div className="overflow-hidden rounded-3xl bg-blue-600">
+            <div className="grid lg:grid-cols-[1fr_1fr]">
+              <div className="relative h-64 lg:h-[340px]">
+                <img
+                  src={specialOffer.image}
+                  alt={specialOffer.title}
+                  className="h-full w-full object-cover"
+                />
 
-              <div className="absolute left-5 top-5 rounded-full bg-white px-3 py-1.5 text-[10px] font-extrabold text-red-600">
-                LIMITED TIME OFFER
-              </div>
-            </div>
+                <div className="absolute inset-0 bg-gradient-to-r from-black/45 to-transparent" />
 
-            <div className="flex flex-col justify-center p-5 text-white sm:p-7 lg:p-10">
-              <p className="text-[10px] font-extrabold uppercase tracking-widest text-blue-100">
-                Special Holiday Deal
-              </p>
-
-              <h2 className="mt-2 text-2xl font-black sm:text-3xl">
-                Bali Tropical Getaway
-              </h2>
-
-              <p className="mt-2 text-xs leading-5 text-blue-100">
-                Experience beaches, temples, island adventures and
-                unforgettable sunsets with our curated Bali package.
-              </p>
-
-              <div className="mt-5 flex flex-wrap gap-2">
-                {["6 Days / 5 Nights", "4★ Resort", "Breakfast", "Transfers"].map(
-                  (item) => (
-                    <span
-                      key={item}
-                      className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1.5 text-[9px] font-bold"
-                    >
-                      {item}
-                    </span>
-                  )
-                )}
+                <div className="absolute left-5 top-5 rounded-full bg-white px-3 py-1.5 text-[10px] font-extrabold text-red-600">
+                  SPECIAL HOLIDAY DEAL
+                </div>
               </div>
 
-              <div className="mt-5 flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-[10px] text-blue-100">
-                    Starting from
-                  </p>
+              <div className="flex flex-col justify-center p-5 text-white sm:p-7 lg:p-10">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-blue-100">
+                  Special Holiday Deal
+                </p>
 
-                  <p className="text-2xl font-black">₹29,999</p>
+                <h2 className="mt-2 text-2xl font-black sm:text-3xl">
+                  {specialOffer.title}
+                </h2>
+
+                <p className="mt-2 text-xs leading-5 text-blue-100">
+                  {specialOffer.description ||
+                    `Experience ${specialOffer.destination} with our curated holiday package.`}
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1.5 text-[9px] font-bold">
+                    {specialOffer.duration}
+                  </span>
+
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1.5 text-[9px] font-bold">
+                    {specialOffer.type}
+                  </span>
+
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1.5 text-[9px] font-bold">
+                    {specialOffer.destination}
+                  </span>
+
+                  <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1.5 text-[9px] font-bold">
+                    {specialOffer.category}
+                  </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigate(`/packages/1`);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-extrabold text-blue-600 transition hover:bg-blue-50"
-                >
-                  View Deal
-                  <ArrowRight size={14} />
-                </button>
+                <div className="mt-5 flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] text-blue-100">
+                      Starting from
+                    </p>
+
+                    <p className="text-2xl font-black">
+                      ₹
+                      {specialOffer.price.toLocaleString(
+                        "en-IN"
+                      )}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/packages/${specialOffer.id}`
+                      )
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-extrabold text-blue-600 transition hover:bg-blue-50"
+                  >
+                    View Deal
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* =====================================================
           ALL PACKAGES
       ===================================================== */}
+
       <section
         id="package-results"
         className="scroll-mt-20 bg-slate-50"
@@ -1403,11 +1681,12 @@ const Packages = () => {
               </h2>
 
               <p className="mt-1 text-xs text-slate-500">
-                {filteredPackages.length} packages available
+                {loading
+                  ? "Loading packages..."
+                  : `${filteredPackages.length} packages available`}
               </p>
             </div>
 
-            {/* Mobile Filter */}
             <button
               type="button"
               onClick={() => setIsFilterOpen(true)}
@@ -1420,10 +1699,15 @@ const Packages = () => {
 
           <div className="grid gap-5 lg:grid-cols-[220px_1fr]">
             {/* Desktop Sidebar */}
+
             <aside className="hidden rounded-2xl border border-slate-200 bg-white p-4 lg:block lg:self-start">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Filter size={15} className="text-blue-600" />
+                  <Filter
+                    size={15}
+                    className="text-blue-600"
+                  />
+
                   <h3 className="text-sm font-extrabold text-slate-900">
                     Filters
                   </h3>
@@ -1442,8 +1726,10 @@ const Packages = () => {
             </aside>
 
             {/* Results */}
+
             <div className="min-w-0">
               {/* Sort */}
+
               <div className="mb-4 flex items-center justify-between gap-3 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5">
                 <div className="flex min-w-max gap-1">
                   {[
@@ -1456,10 +1742,11 @@ const Packages = () => {
                       key={value}
                       type="button"
                       onClick={() => setActiveSort(value)}
-                      className={`rounded-lg px-3 py-2 text-[10px] font-bold ${activeSort === value
+                      className={`rounded-lg px-3 py-2 text-[10px] font-bold ${
+                        activeSort === value
                           ? "bg-blue-600 text-white"
                           : "text-slate-500 hover:bg-slate-50"
-                        }`}
+                      }`}
                     >
                       {label}
                     </button>
@@ -1471,36 +1758,82 @@ const Packages = () => {
                 </span>
               </div>
 
-              <div className="space-y-4">
-                {filteredPackages.length > 0 ? (
-                  filteredPackages.map((item) => (
-                    <PackageCard key={item.id} item={item} />
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center">
-                    <Search
-                      size={30}
-                      className="mx-auto text-slate-300"
-                    />
+              {/* Loading */}
 
-                    <h3 className="mt-3 text-base font-extrabold text-slate-800">
-                      No packages found
-                    </h3>
+              {loading ? (
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-16 text-center">
+                  <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
 
-                    <p className="mt-1 text-xs text-slate-500">
-                      Try changing your destination or filters.
-                    </p>
+                  <p className="mt-3 text-sm font-bold text-slate-700">
+                    Loading packages...
+                  </p>
 
-                    <button
-                      type="button"
-                      onClick={resetFilters}
-                      className="mt-4 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white"
-                    >
-                      Reset Filters
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Please wait while we load the latest
+                    holiday packages.
+                  </p>
+                </div>
+              ) : error ? (
+                <div className="rounded-2xl border border-red-100 bg-white px-5 py-12 text-center">
+                  <Search
+                    size={30}
+                    className="mx-auto text-red-300"
+                  />
+
+                  <h3 className="mt-3 text-base font-extrabold text-red-600">
+                    Unable to load packages
+                  </h3>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    {error}
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      dispatch(getAllPackages())
+                    }
+                    className="mt-4 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredPackages.length > 0 ? (
+                    filteredPackages.map((item) => (
+                      <PackageCard
+                        key={item.id}
+                        item={item}
+                      />
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center">
+                      <Search
+                        size={30}
+                        className="mx-auto text-slate-300"
+                      />
+
+                      <h3 className="mt-3 text-base font-extrabold text-slate-800">
+                        No packages found
+                      </h3>
+
+                      <p className="mt-1 text-xs text-slate-500">
+                        Try changing your destination or
+                        filters.
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="mt-4 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white"
+                      >
+                        Reset Filters
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1509,6 +1842,7 @@ const Packages = () => {
       {/* =====================================================
           WHY TRIPORA
       ===================================================== */}
+
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-4 lg:px-8 lg:py-4">
         <div className="mb-5 text-center">
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">
@@ -1570,6 +1904,7 @@ const Packages = () => {
       {/* =====================================================
           CUSTOM TRIP
       ===================================================== */}
+
       <section className="mx-auto max-w-7xl px-4 pb-1 sm:px-6 sm:pb-2 lg:px-8 lg:pb-4">
         <div className="overflow-hidden rounded-3xl bg-slate-950">
           <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
@@ -1584,34 +1919,50 @@ const Packages = () => {
               </h2>
 
               <p className="mt-2 max-w-md text-xs leading-5 text-slate-400">
-                Tell us your preferences and create a holiday that matches
-                your budget, style and travel plans.
+                Tell us your preferences and create a holiday
+                that matches your budget, style and travel plans.
               </p>
 
               <div className="mt-5 grid grid-cols-2 gap-3">
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <MapPin size={16} className="text-blue-400" />
+                  <MapPin
+                    size={16}
+                    className="text-blue-400"
+                  />
+
                   <p className="mt-2 text-[10px] font-bold text-white">
                     Choose Destination
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <Tag size={16} className="text-blue-400" />
+                  <Tag
+                    size={16}
+                    className="text-blue-400"
+                  />
+
                   <p className="mt-2 text-[10px] font-bold text-white">
                     Set Your Budget
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <Clock3 size={16} className="text-blue-400" />
+                  <Clock3
+                    size={16}
+                    className="text-blue-400"
+                  />
+
                   <p className="mt-2 text-[10px] font-bold text-white">
                     Select Duration
                   </p>
                 </div>
 
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                  <Heart size={16} className="text-blue-400" />
+                  <Heart
+                    size={16}
+                    className="text-blue-400"
+                  />
+
                   <p className="mt-2 text-[10px] font-bold text-white">
                     Pick Travel Style
                   </p>
@@ -1625,13 +1976,18 @@ const Packages = () => {
               </h3>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {/* Destination */}
+
                 <div>
                   <label className="mb-1.5 block text-[10px] font-bold text-slate-500">
                     Destination
                   </label>
 
                   <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5">
-                    <MapPin size={15} className="text-blue-600" />
+                    <MapPin
+                      size={15}
+                      className="text-blue-600"
+                    />
 
                     <input
                       type="text"
@@ -1648,13 +2004,18 @@ const Packages = () => {
                   </div>
                 </div>
 
+                {/* Budget */}
+
                 <div>
                   <label className="mb-1.5 block text-[10px] font-bold text-slate-500">
                     Budget
                   </label>
 
                   <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5">
-                    <Tag size={15} className="text-blue-600" />
+                    <Tag
+                      size={15}
+                      className="text-blue-600"
+                    />
 
                     <select
                       value={customTrip.budget}
@@ -1666,14 +2027,26 @@ const Packages = () => {
                       }
                       className="w-full bg-transparent text-xs font-semibold outline-none"
                     >
-                      <option value="">Select budget</option>
-                      <option value="under-20k">Under ₹20K</option>
-                      <option value="20-40k">₹20K - ₹40K</option>
-                      <option value="40-60k">₹40K - ₹60K</option>
-                      <option value="60k-plus">₹60K+</option>
+                      <option value="">
+                        Select budget
+                      </option>
+                      <option value="under-20k">
+                        Under ₹20K
+                      </option>
+                      <option value="20-40k">
+                        ₹20K - ₹40K
+                      </option>
+                      <option value="40-60k">
+                        ₹40K - ₹60K
+                      </option>
+                      <option value="60k-plus">
+                        ₹60K+
+                      </option>
                     </select>
                   </div>
                 </div>
+
+                {/* Duration */}
 
                 <div>
                   <label className="mb-1.5 block text-[10px] font-bold text-slate-500">
@@ -1681,7 +2054,10 @@ const Packages = () => {
                   </label>
 
                   <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5">
-                    <Clock3 size={15} className="text-blue-600" />
+                    <Clock3
+                      size={15}
+                      className="text-blue-600"
+                    />
 
                     <select
                       value={customTrip.duration}
@@ -1693,14 +2069,26 @@ const Packages = () => {
                       }
                       className="w-full bg-transparent text-xs font-semibold outline-none"
                     >
-                      <option value="">Select duration</option>
-                      <option value="3-4">3 - 4 Days</option>
-                      <option value="5-6">5 - 6 Days</option>
-                      <option value="7-8">7 - 8 Days</option>
-                      <option value="9-plus">9+ Days</option>
+                      <option value="">
+                        Select duration
+                      </option>
+                      <option value="3-4">
+                        3 - 4 Days
+                      </option>
+                      <option value="5-6">
+                        5 - 6 Days
+                      </option>
+                      <option value="7-8">
+                        7 - 8 Days
+                      </option>
+                      <option value="9-plus">
+                        9+ Days
+                      </option>
                     </select>
                   </div>
                 </div>
+
+                {/* Travel Type */}
 
                 <div>
                   <label className="mb-1.5 block text-[10px] font-bold text-slate-500">
@@ -1708,7 +2096,10 @@ const Packages = () => {
                   </label>
 
                   <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5">
-                    <Heart size={15} className="text-blue-600" />
+                    <Heart
+                      size={15}
+                      className="text-blue-600"
+                    />
 
                     <select
                       value={customTrip.type}
@@ -1746,6 +2137,7 @@ const Packages = () => {
       {/* =====================================================
           INCLUSIONS
       ===================================================== */}
+
       <section className="bg-slate-50">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-4 lg:px-8 lg:py-4">
           <div className="mb-5 text-center">
@@ -1787,6 +2179,7 @@ const Packages = () => {
       {/* =====================================================
           TRAVELER REVIEWS
       ===================================================== */}
+
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-4 lg:px-8 lg:py-4">
         <div className="mb-5 text-center">
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">
@@ -1855,71 +2248,13 @@ const Packages = () => {
       </section>
 
       {/* =====================================================
-          FAQ
-      ===================================================== */}
-      {/* <section className="bg-slate-50">
-        <div className="mx-auto max-w-3xl px-4 py-4 sm:px-6 sm:py-4 lg:px-8 lg:py-4">
-          <div className="mb-5 text-center">
-            <p className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600">
-              Need Help?
-            </p>
-
-            <h2 className="mt-1 text-xl font-black text-slate-900 sm:text-2xl">
-              Frequently Asked Questions
-            </h2>
-          </div>
-
-          <div className="space-y-2.5">
-            {faqs.map((faq, index) => {
-              const isOpen = openFaq === index;
-
-              return (
-                <div
-                  key={faq.question}
-                  className="overflow-hidden rounded-xl border border-slate-200 bg-white"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setOpenFaq(isOpen ? null : index)}
-                    className="flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left"
-                  >
-                    <span className="text-xs font-extrabold text-slate-800">
-                      {faq.question}
-                    </span>
-
-                    {isOpen ? (
-                      <ChevronUp
-                        size={16}
-                        className="shrink-0 text-blue-600"
-                      />
-                    ) : (
-                      <ChevronDown
-                        size={16}
-                        className="shrink-0 text-slate-400"
-                      />
-                    )}
-                  </button>
-
-                  {isOpen && (
-                    <div className="border-t border-slate-100 px-4 pb-4 pt-3">
-                      <p className="text-xs leading-5 text-slate-500">
-                        {faq.answer}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section> */}
-
-      {/* =====================================================
           FINAL CTA
       ===================================================== */}
+
       <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-4 lg:px-8 lg:py-4">
         <div className="relative overflow-hidden rounded-3xl bg-blue-600 px-5 py-8 text-center text-white sm:px-8 sm:py-10">
           <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-white/10" />
+
           <div className="absolute -bottom-24 -left-16 h-48 w-48 rounded-full bg-white/10" />
 
           <div className="relative">
@@ -1933,17 +2268,19 @@ const Packages = () => {
             </h2>
 
             <p className="mx-auto mt-2 max-w-xl text-xs leading-5 text-blue-100">
-              Explore amazing holiday packages and create memories that
-              last a lifetime.
+              Explore amazing holiday packages and create
+              memories that last a lifetime.
             </p>
 
             <button
               type="button"
               onClick={() =>
-                document.getElementById("package-results")?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                })
+                document
+                  .getElementById("package-results")
+                  ?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  })
               }
               className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-xs font-extrabold text-blue-600 shadow-lg transition hover:bg-blue-50"
             >
@@ -1957,6 +2294,7 @@ const Packages = () => {
       {/* =====================================================
           MOBILE FILTER DRAWER
       ===================================================== */}
+
       {isFilterOpen && (
         <div className="fixed inset-0 z-[100] lg:hidden">
           <button
@@ -1969,7 +2307,10 @@ const Packages = () => {
           <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal size={17} className="text-blue-600" />
+                <SlidersHorizontal
+                  size={17}
+                  className="text-blue-600"
+                />
 
                 <h3 className="text-base font-extrabold text-slate-900">
                   Filters
@@ -1998,7 +2339,10 @@ const Packages = () => {
         </div>
       )}
 
-      {/* Mobile Bottom Bar */}
+      {/* =====================================================
+          MOBILE BOTTOM BAR
+      ===================================================== */}
+
       <div className="h-16 lg:hidden" />
 
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 p-2.5 shadow-2xl backdrop-blur-sm lg:hidden">
@@ -2016,13 +2360,18 @@ const Packages = () => {
             type="button"
             onClick={() =>
               setActiveSort(
-                activeSort === "price-low" ? "recommended" : "price-low"
+                activeSort === "price-low"
+                  ? "recommended"
+                  : "price-low"
               )
             }
             className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-xs font-extrabold text-white"
           >
             <ArrowRight size={15} />
-            {activeSort === "price-low" ? "Recommended" : "Cheapest"}
+
+            {activeSort === "price-low"
+              ? "Recommended"
+              : "Cheapest"}
           </button>
         </div>
       </div>
@@ -2031,5 +2380,3 @@ const Packages = () => {
 };
 
 export default Packages;
-
-

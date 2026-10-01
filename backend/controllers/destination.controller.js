@@ -54,37 +54,83 @@ const createDestination = async (req, res) => {
         .filter((item) => item !== "");
     }
 
-    // Upload image to ImgBB
+    // ================================
+    // MAIN IMAGE + MULTIPLE IMAGES
+    // ================================
+
     let imageUrl = "";
     let imageDeleteUrl = "";
 
-    if (req.file) {
+    let images = [];
+    let imageDeleteUrls = [];
+
+    // Main image
+    const mainImageFile = req.files?.image?.[0];
+
+    if (mainImageFile) {
       const uploadResult = await uploadToImgBB(
-        req.file.buffer,
-        req.file.originalname,
+        mainImageFile.buffer,
+        mainImageFile.originalname,
       );
 
       imageUrl = uploadResult.data.url;
       imageDeleteUrl = uploadResult.data.deleteUrl;
     }
 
-    // Create destination
+    // Multiple additional images
+    const galleryFiles = req.files?.images || [];
+
+    if (galleryFiles.length > 0) {
+      const uploadedGalleryImages = await Promise.all(
+        galleryFiles.map(async (file) => {
+          const uploadResult = await uploadToImgBB(
+            file.buffer,
+            file.originalname,
+          );
+
+          return {
+            url: uploadResult.data.url,
+            deleteUrl: uploadResult.data.deleteUrl,
+          };
+        }),
+      );
+
+      images = uploadedGalleryImages.map((item) => item.url);
+
+      imageDeleteUrls = uploadedGalleryImages.map(
+        (item) => item.deleteUrl,
+      );
+    }
+
+    // ================================
+    // CREATE DESTINATION
+    // ================================
+
     const destination = await Destination.create({
       name: name.trim(),
       country: country.trim(),
       region: region.trim(),
       destinationType,
       status: status || "Active",
+
       packagesCount: packagesCount || 0,
       hotelsCount: hotelsCount || 0,
       flightsCount: flightsCount || 0,
+
       rating: rating || 0,
       bestTimeToVisit,
+
+      // Main image
       image: imageUrl,
       imageDeleteUrl,
+
+      // Multiple images
+      images,
+      imageDeleteUrls,
+
       description,
       highlights: highlightsArray,
-      isPopular: isPopular || false,
+      isPopular: isPopular === true || isPopular === "true",
     });
 
     // Success response
@@ -203,8 +249,12 @@ const updateDestination = async (req, res) => {
         .filter((item) => item !== "");
     }
 
-    // Update basic fields
-    destination.name = name !== undefined ? name.trim() : destination.name;
+    // ================================
+    // UPDATE BASIC FIELDS
+    // ================================
+
+    destination.name =
+      name !== undefined ? name.trim() : destination.name;
 
     destination.country =
       country !== undefined ? country.trim() : destination.country;
@@ -217,18 +267,26 @@ const updateDestination = async (req, res) => {
         ? destinationType
         : destination.destinationType;
 
-    destination.status = status !== undefined ? status : destination.status;
+    destination.status =
+      status !== undefined ? status : destination.status;
 
     destination.packagesCount =
-      packagesCount !== undefined ? packagesCount : destination.packagesCount;
+      packagesCount !== undefined
+        ? packagesCount
+        : destination.packagesCount;
 
     destination.hotelsCount =
-      hotelsCount !== undefined ? hotelsCount : destination.hotelsCount;
+      hotelsCount !== undefined
+        ? hotelsCount
+        : destination.hotelsCount;
 
     destination.flightsCount =
-      flightsCount !== undefined ? flightsCount : destination.flightsCount;
+      flightsCount !== undefined
+        ? flightsCount
+        : destination.flightsCount;
 
-    destination.rating = rating !== undefined ? rating : destination.rating;
+    destination.rating =
+      rating !== undefined ? rating : destination.rating;
 
     destination.bestTimeToVisit =
       bestTimeToVisit !== undefined
@@ -236,31 +294,84 @@ const updateDestination = async (req, res) => {
         : destination.bestTimeToVisit;
 
     destination.description =
-      description !== undefined ? description : destination.description;
+      description !== undefined
+        ? description
+        : destination.description;
 
     destination.highlights = highlightsArray;
 
     destination.isPopular =
-      isPopular !== undefined ? isPopular : destination.isPopular;
+      isPopular !== undefined
+        ? isPopular === true || isPopular === "true"
+        : destination.isPopular;
 
-    // Handle new image
-    if (req.file) {
-      // Delete old ImgBB image
+    // ================================
+    // UPDATE MAIN IMAGE
+    // ================================
+
+    const mainImageFile = req.files?.image?.[0];
+
+    if (mainImageFile) {
+      // Delete old image from ImgBB
       if (destination.imageDeleteUrl) {
         await deleteFromImgBB(destination.imageDeleteUrl);
       }
 
-      // Upload new image to ImgBB
+      // Upload new main image
       const uploadResult = await uploadToImgBB(
-        req.file.buffer,
-        req.file.originalname,
+        mainImageFile.buffer,
+        mainImageFile.originalname,
       );
 
       destination.image = uploadResult.data.url;
       destination.imageDeleteUrl = uploadResult.data.deleteUrl;
     }
 
-    // Save updated destination
+    // ================================
+    // ADD NEW MULTIPLE IMAGES
+    // ================================
+
+    const galleryFiles = req.files?.images || [];
+
+    if (galleryFiles.length > 0) {
+      const uploadedGalleryImages = await Promise.all(
+        galleryFiles.map(async (file) => {
+          const uploadResult = await uploadToImgBB(
+            file.buffer,
+            file.originalname,
+          );
+
+          return {
+            url: uploadResult.data.url,
+            deleteUrl: uploadResult.data.deleteUrl,
+          };
+        }),
+      );
+
+      const newImages = uploadedGalleryImages.map(
+        (item) => item.url,
+      );
+
+      const newDeleteUrls = uploadedGalleryImages.map(
+        (item) => item.deleteUrl,
+      );
+
+      // Existing images + new images
+      destination.images = [
+        ...(destination.images || []),
+        ...newImages,
+      ];
+
+      destination.imageDeleteUrls = [
+        ...(destination.imageDeleteUrls || []),
+        ...newDeleteUrls,
+      ];
+    }
+
+    // ================================
+    // SAVE
+    // ================================
+
     const updatedDestination = await destination.save();
 
     return res.status(200).json({

@@ -1,5 +1,18 @@
-import React, { useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
 import {
   ArrowLeft,
   ArrowRight,
@@ -19,6 +32,14 @@ import {
   User,
   Users,
 } from "lucide-react";
+
+import {
+  getSingleBookingById,
+} from "../redux/slicer/hotelBookingSlice";
+
+// ======================================================
+// FALLBACK DATA
+// ======================================================
 
 const fallbackHotel = {
   name: "Marina View Hotel",
@@ -43,6 +64,10 @@ const fallbackBooking = {
   nights: 3,
   guests: 2,
 };
+
+// ======================================================
+// HELPERS
+// ======================================================
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat("en-IN").format(
@@ -76,7 +101,10 @@ const formatDate = (value) => {
   });
 };
 
-const calculateNights = (checkIn, checkOut) => {
+const calculateNights = (
+  checkIn,
+  checkOut
+) => {
   const start = parseDate(checkIn);
   const end = parseDate(checkOut);
 
@@ -93,35 +121,192 @@ const calculateNights = (checkIn, checkOut) => {
   );
 };
 
+// ======================================================
+// COMPONENT
+// ======================================================
+
 const BookingSuccess = () => {
   const { bookingId } = useParams();
+
   const navigate = useNavigate();
+
   const location = useLocation();
 
-  const bookingState = location.state || {};
+  const dispatch = useDispatch();
 
-  const hotel = bookingState.hotel || fallbackHotel;
+  // ====================================================
+  // REDUX BOOKING DATA
+  // ====================================================
 
-  const selectedRoom =
-    bookingState.selectedRoom ||
-    bookingState.room ||
-    fallbackRoom;
+  const {
+    booking,
+    loading,
+    error,
+  } = useSelector(
+    (state) => state.booking || {}
+  );
+
+  // ====================================================
+  // LOCAL STATE
+  // ====================================================
+
+  const [copied, setCopied] = useState(false);
+
+  // ====================================================
+  // OPTIONAL NAVIGATION STATE
+  // ====================================================
+
+  /*
+    Payment page se jo data aa raha hai,
+    wo temporarily available rahega.
+
+    Lekin final source MongoDB booking hoga.
+  */
+
+  const bookingState =
+    location.state || {};
+
+  // ====================================================
+  // FETCH ACTUAL BOOKING
+  // ====================================================
+
+  useEffect(() => {
+    if (!bookingId) {
+      return;
+    }
+
+    dispatch(
+      getSingleBookingById(bookingId)
+    );
+  }, [dispatch, bookingId]);
+
+  // ====================================================
+  // NORMALIZE BOOKING DATA
+  // ====================================================
+
+  const hotel = useMemo(() => {
+    if (booking?.hotelDetails) {
+      return {
+        name:
+          booking.hotelDetails.name ||
+          fallbackHotel.name,
+
+        location:
+          booking.hotelDetails.location ||
+          fallbackHotel.location,
+
+        image:
+          booking.hotelDetails.image ||
+          fallbackHotel.image,
+
+        rating:
+          booking.hotelDetails.rating ||
+          bookingState.hotel?.rating ||
+          fallbackHotel.rating,
+
+        reviews:
+          booking.hotelDetails.reviews ||
+          bookingState.hotel?.reviews ||
+          fallbackHotel.reviews,
+      };
+    }
+
+    return (
+      bookingState.hotel ||
+      fallbackHotel
+    );
+  }, [
+    booking,
+    bookingState.hotel,
+  ]);
+
+  // ====================================================
+  // ROOM
+  // ====================================================
+
+  const selectedRoom = useMemo(() => {
+    if (booking?.roomDetails) {
+      return {
+        name:
+          booking.roomDetails.name ||
+          fallbackRoom.name,
+
+        price:
+          Number(
+            booking.roomDetails.price ||
+              fallbackRoom.price
+          ),
+
+        bed:
+          booking.roomDetails.bed ||
+          fallbackRoom.bed,
+
+        meal:
+          booking.roomDetails.meal ||
+          fallbackRoom.meal,
+
+        cancellation:
+          booking.roomDetails.cancellation ||
+          fallbackRoom.cancellation,
+
+        guests:
+          Number(
+            booking.roomDetails.guests || 2
+          ),
+      };
+    }
+
+    return (
+      bookingState.selectedRoom ||
+      bookingState.room ||
+      fallbackRoom
+    );
+  }, [
+    booking,
+    bookingState.selectedRoom,
+    bookingState.room,
+  ]);
+
+  // ====================================================
+  // DATES
+  // ====================================================
 
   const checkIn =
+    booking?.checkIn ||
     bookingState.checkIn ||
     fallbackBooking.checkIn;
 
   const checkOut =
+    booking?.checkOut ||
     bookingState.checkOut ||
     fallbackBooking.checkOut;
 
+  // ====================================================
+  // GUESTS
+  // ====================================================
+
   const guests =
-    bookingState.guests ||
+    booking?.guests ??
+    bookingState.guests ??
     fallbackBooking.guests;
 
+  // ====================================================
+  // NIGHTS
+  // ====================================================
+
   const nights =
-    bookingState.nights ||
-    calculateNights(checkIn, checkOut);
+    Number(
+      booking?.nights ||
+        bookingState.nights ||
+        calculateNights(
+          checkIn,
+          checkOut
+        )
+    ) || 1;
+
+  // ====================================================
+  // PRICE
+  // ====================================================
 
   const roomPrice = Number(
     selectedRoom.price ||
@@ -129,32 +314,68 @@ const BookingSuccess = () => {
       fallbackRoom.price
   );
 
-  const totalRoomPrice =
-    bookingState.totalRoomPrice ||
-    roomPrice * nights;
-
-  const taxes = Number(
-    bookingState.taxes ||
-      bookingState.tax ||
-      1250
+  const totalRoomPrice = Number(
+    booking?.roomTotal ??
+      bookingState.totalRoomPrice ??
+      roomPrice * nights
   );
 
-  const totalPrice =
-    bookingState.totalPrice ||
-    totalRoomPrice + taxes;
+  const taxes = Number(
+    booking?.taxes ??
+      bookingState.taxes ??
+      0
+  );
+
+  const totalPrice = Number(
+    booking?.totalAmount ??
+      bookingState.totalPrice ??
+      totalRoomPrice + taxes
+  );
+
+  // ====================================================
+  // GUEST DETAILS
+  // ====================================================
 
   const guestDetails =
-    bookingState.guestDetails || {};
+    booking?.guestDetails ||
+    bookingState.guestDetails ||
+    {};
+
+  // ====================================================
+  // PAYMENT METHOD
+  // ====================================================
 
   const paymentMethod =
-    bookingState.paymentMethod || "UPI";
+    booking?.paymentMethod ||
+    bookingState.paymentMethod ||
+    "upi";
 
-  const [copied, setCopied] = useState(false);
+  // ====================================================
+  // PAYMENT STATUS
+  // ====================================================
+
+  const paymentStatus =
+    booking?.paymentStatus ||
+    "paid";
+
+  // ====================================================
+  // BOOKING STATUS
+  // ====================================================
+
+  const bookingStatus =
+    booking?.bookingStatus ||
+    "confirmed";
+
+  // ====================================================
+  // GUEST COUNT TEXT
+  // ====================================================
 
   const guestCountText = useMemo(() => {
     if (typeof guests === "number") {
       return `${guests} ${
-        guests === 1 ? "Guest" : "Guests"
+        guests === 1
+          ? "Guest"
+          : "Guests"
       }`;
     }
 
@@ -162,57 +383,75 @@ const BookingSuccess = () => {
       return guests;
     }
 
-    if (guests?.adults || guests?.children) {
-      const adults = Number(guests.adults || 0);
+    if (
+      guests?.adults ||
+      guests?.children
+    ) {
+      const adults = Number(
+        guests.adults || 0
+      );
+
       const children = Number(
         guests.children || 0
       );
 
-      const total = adults + children;
+      const total =
+        adults + children;
 
       return `${total} ${
-        total === 1 ? "Guest" : "Guests"
+        total === 1
+          ? "Guest"
+          : "Guests"
       }`;
     }
 
     return "2 Guests";
   }, [guests]);
 
+  // ====================================================
+  // COPY BOOKING ID
+  // ====================================================
+
   const displayBookingId =
-    bookingId || "TRP58392147";
+    booking?.bookingId ||
+    bookingId ||
+    "Booking ID";
 
-  const handleCopyBookingId = async () => {
-    try {
-      await navigator.clipboard.writeText(
-        displayBookingId
-      );
+  const handleCopyBookingId =
+    async () => {
+      try {
+        await navigator.clipboard.writeText(
+          displayBookingId
+        );
 
-      setCopied(true);
+        setCopied(true);
 
-      setTimeout(() => {
-        setCopied(false);
-      }, 1800);
-    } catch (error) {
-      console.error(
-        "Unable to copy booking ID:",
-        error
-      );
-    }
-  };
+        setTimeout(() => {
+          setCopied(false);
+        }, 1800);
+      } catch (copyError) {
+        console.error(
+          "Unable to copy booking ID:",
+          copyError
+        );
+      }
+    };
+
+  // ====================================================
+  // DOWNLOAD BOOKING
+  // ====================================================
 
   const handleDownloadBooking = () => {
-    /*
-      Frontend demo download.
-
-      Later this can be replaced with a real
-      PDF booking confirmation generated from
-      your backend.
-    */
-
     const bookingText = `
 TRIPORA - BOOKING CONFIRMATION
 
 Booking ID: ${displayBookingId}
+
+BOOKING STATUS
+${bookingStatus.toUpperCase()}
+
+PAYMENT STATUS
+${paymentStatus.toUpperCase()}
 
 HOTEL
 ${hotel.name || fallbackHotel.name}
@@ -229,7 +468,11 @@ CHECK-OUT
 ${formatDate(checkOut)}
 
 DURATION
-${nights} ${nights === 1 ? "Night" : "Nights"}
+${nights} ${
+      nights === 1
+        ? "Night"
+        : "Nights"
+    }
 
 GUESTS
 ${guestCountText}
@@ -248,7 +491,7 @@ ${guestDetails.mobile || "Not provided"}
 PAYMENT METHOD
 ${paymentMethod.toUpperCase()}
 
-ROOM PRICE
+ROOM TOTAL
 ₹${formatPrice(totalRoomPrice)}
 
 TAXES & FEES
@@ -257,45 +500,124 @@ TAXES & FEES
 TOTAL PAID
 ₹${formatPrice(totalPrice)}
 
-PAYMENT STATUS
-PAID
-
 Thank you for booking with Tripora.
     `.trim();
 
-    const blob = new Blob([bookingText], {
-      type: "text/plain",
-    });
+    const blob = new Blob(
+      [bookingText],
+      {
+        type: "text/plain",
+      }
+    );
 
-    const url = URL.createObjectURL(blob);
+    const url =
+      URL.createObjectURL(blob);
 
-    const link = document.createElement("a");
+    const link =
+      document.createElement("a");
 
     link.href = url;
+
     link.download = `${displayBookingId}-Tripora-Booking.txt`;
 
     document.body.appendChild(link);
+
     link.click();
+
     document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
   };
+
+  // ====================================================
+  // LOADING STATE
+  // ====================================================
+
+  if (loading && !booking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 animate-pulse items-center justify-center rounded-full bg-blue-50 text-blue-600">
+            <Hotel size={26} />
+          </div>
+
+          <h2 className="mt-5 text-xl font-bold text-slate-900">
+            Loading your booking...
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Please wait while we fetch your
+            booking details.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ====================================================
+  // ERROR STATE
+  // ====================================================
+
+  if (error && !booking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
+            <FileText size={26} />
+          </div>
+
+          <h2 className="mt-5 text-xl font-bold text-slate-900">
+            Booking could not be loaded
+          </h2>
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            {error}
+          </p>
+
+          <p className="mt-3 text-xs text-slate-400">
+            Booking ID: {bookingId || "-"}
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              bookingId &&
+              dispatch(
+                getSingleBookingById(
+                  bookingId
+                )
+              )
+            }
+            className="mt-6 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-2">
       {/* =====================================================
           HEADER
       ====================================================== */}
+
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
             <button
               type="button"
-              onClick={() => navigate("/")}
+              onClick={() =>
+                navigate("/")
+              }
               className="flex items-center gap-2 text-sm font-semibold text-slate-700 transition hover:text-blue-600"
             >
               <ArrowLeft size={17} />
-              <span>Tripora Home</span>
+
+              <span>
+                Tripora Home
+              </span>
             </button>
 
             <div className="flex items-center gap-2">
@@ -313,6 +635,7 @@ Thank you for booking with Tripora.
                 size={17}
                 className="text-emerald-600"
               />
+
               Booking Confirmed
             </div>
           </div>
@@ -322,10 +645,12 @@ Thank you for booking with Tripora.
       {/* =====================================================
           PROGRESS
       ====================================================== */}
+
       <div className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
           <div className="mx-auto flex max-w-3xl items-center justify-between">
             {/* Step 1 */}
+
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
                 <Check
@@ -342,6 +667,7 @@ Thank you for booking with Tripora.
             <div className="mx-2 h-px flex-1 bg-emerald-500 sm:mx-4" />
 
             {/* Step 2 */}
+
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
                 <Check
@@ -358,6 +684,7 @@ Thank you for booking with Tripora.
             <div className="mx-2 h-px flex-1 bg-emerald-500 sm:mx-4" />
 
             {/* Step 3 */}
+
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
                 <Check
@@ -374,6 +701,7 @@ Thank you for booking with Tripora.
             <div className="mx-2 h-px flex-1 bg-emerald-500 sm:mx-4" />
 
             {/* Step 4 */}
+
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md shadow-emerald-500/20">
                 <Check
@@ -393,6 +721,7 @@ Thank you for booking with Tripora.
       {/* =====================================================
           SUCCESS HERO
       ====================================================== */}
+
       <section className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-4xl px-4 py-6 text-center sm:px-6 lg:py-6">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/60">
@@ -411,12 +740,14 @@ Thank you for booking with Tripora.
           </h1>
 
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500 sm:text-base">
-            Your hotel booking has been successfully
-            confirmed. We have sent the booking details
-            to your registered email address.
+            Your hotel booking has been
+            successfully confirmed. Your
+            booking details are available
+            below.
           </p>
 
           {/* Booking ID */}
+
           <div className="mx-auto mt-6 max-w-md rounded-2xl border border-blue-100 bg-blue-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-500">
               Booking ID
@@ -429,7 +760,9 @@ Thank you for booking with Tripora.
 
               <button
                 type="button"
-                onClick={handleCopyBookingId}
+                onClick={
+                  handleCopyBookingId
+                }
                 className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-blue-600 shadow-sm transition hover:bg-blue-100"
                 title="Copy booking ID"
               >
@@ -449,24 +782,31 @@ Thank you for booking with Tripora.
           </div>
 
           {/* Actions */}
+
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <button
               type="button"
               onClick={() =>
-                navigate("/my-bookings")
+                navigate(
+                  "/my-bookings"
+                )
               }
               className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
             >
               View My Booking
+
               <ArrowRight size={16} />
             </button>
 
             <button
               type="button"
-              onClick={handleDownloadBooking}
+              onClick={
+                handleDownloadBooking
+              }
               className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
             >
               <Download size={16} />
+
               Download Booking
             </button>
           </div>
@@ -476,13 +816,16 @@ Thank you for booking with Tripora.
       {/* =====================================================
           MAIN CONTENT
       ====================================================== */}
+
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-4">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_370px]">
           {/* =================================================
               LEFT
           ================================================== */}
+
           <div className="space-y-6">
             {/* Hotel Details */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
@@ -497,6 +840,7 @@ Thank you for booking with Tripora.
 
                 <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
                   <CheckCircle2 size={14} />
+
                   Confirmed
                 </span>
               </div>
@@ -527,7 +871,8 @@ Thank you for booking with Tripora.
                         fill="currentColor"
                       />
 
-                      {hotel.rating || 4.6}
+                      {hotel.rating ||
+                        fallbackHotel.rating}
                     </span>
 
                     <span className="text-xs text-slate-500">
@@ -536,7 +881,8 @@ Thank you for booking with Tripora.
 
                     {hotel.reviews && (
                       <span className="text-xs text-slate-400">
-                        ({hotel.reviews} reviews)
+                        ({hotel.reviews}{" "}
+                        reviews)
                       </span>
                     )}
                   </div>
@@ -574,6 +920,7 @@ Thank you for booking with Tripora.
             </section>
 
             {/* Stay Details */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <div className="mb-5">
                 <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
@@ -589,6 +936,7 @@ Thank you for booking with Tripora.
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                     <CalendarDays size={15} />
+
                     Check-in
                   </div>
 
@@ -604,6 +952,7 @@ Thank you for booking with Tripora.
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                     <CalendarDays size={15} />
+
                     Check-out
                   </div>
 
@@ -619,6 +968,7 @@ Thank you for booking with Tripora.
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
                     <Clock3 size={15} />
+
                     Duration
                   </div>
 
@@ -637,6 +987,7 @@ Thank you for booking with Tripora.
             </section>
 
             {/* Guest Details */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <div className="mb-5">
                 <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
@@ -657,23 +1008,30 @@ Thank you for booking with Tripora.
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-slate-900">
                       {guestDetails.firstName ||
-                        "Vishal"}{" "}
+                        "Guest"}{" "}
                       {guestDetails.lastName ||
-                        "Kumar"}
+                        ""}
                     </p>
 
                     <div className="mt-2 space-y-1.5">
                       <p className="flex items-center gap-2 text-xs text-slate-500">
                         <Mail size={13} />
+
                         {guestDetails.email ||
-                          "guest@example.com"}
+                          "Not provided"}
                       </p>
 
                       <p className="flex items-center gap-2 text-xs text-slate-500">
                         <Phone size={13} />
+
                         {guestDetails.mobile
-                          ? `+91 ${guestDetails.mobile}`
-                          : "+91 XXXXX XXXXX"}
+                          ? `${
+                              guestDetails.countryCode ||
+                              "+91"
+                            } ${
+                              guestDetails.mobile
+                            }`
+                          : "Not provided"}
                       </p>
                     </div>
                   </div>
@@ -687,13 +1045,16 @@ Thank you for booking with Tripora.
                   </p>
 
                   <p className="mt-2 text-sm leading-6 text-slate-700">
-                    {guestDetails.specialRequest}
+                    {
+                      guestDetails.specialRequest
+                    }
                   </p>
                 </div>
               )}
             </section>
 
             {/* Important Information */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <div className="mb-5">
                 <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
@@ -778,6 +1139,7 @@ Thank you for booking with Tripora.
             </section>
 
             {/* What's Next */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <div className="mb-5">
                 <p className="text-xs font-bold uppercase tracking-wide text-blue-600">
@@ -797,12 +1159,14 @@ Thank you for booking with Tripora.
 
                   <div>
                     <p className="text-sm font-bold text-slate-800">
-                      Booking confirmation sent
+                      Booking confirmation
+                      saved
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Your booking details have been
-                      prepared for your trip.
+                      Your booking has been
+                      successfully saved in
+                      Tripora.
                     </p>
                   </div>
                 </div>
@@ -818,8 +1182,8 @@ Thank you for booking with Tripora.
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Your room has been reserved
-                      successfully.
+                      Your room has been
+                      reserved successfully.
                     </p>
                   </div>
                 </div>
@@ -835,8 +1199,10 @@ Thank you for booking with Tripora.
                     </p>
 
                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Use {displayBookingId} whenever
-                      you need help with this booking.
+                      Use{" "}
+                      {displayBookingId}{" "}
+                      whenever you need
+                      help with this booking.
                     </p>
                   </div>
                 </div>
@@ -847,9 +1213,11 @@ Thank you for booking with Tripora.
           {/* =================================================
               RIGHT SUMMARY
           ================================================== */}
+
           <aside className="lg:sticky lg:top-5 lg:self-start">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               {/* Header */}
+
               <div className="border-b border-slate-200 px-5 py-4">
                 <h2 className="text-lg font-bold text-slate-900">
                   Payment Summary
@@ -858,14 +1226,18 @@ Thank you for booking with Tripora.
 
               <div className="p-5">
                 {/* Payment status */}
+
                 <div className="flex items-center justify-between rounded-xl bg-emerald-50 p-4">
                   <div>
                     <p className="text-xs font-medium text-emerald-600">
                       Payment Status
                     </p>
 
-                    <p className="mt-1 text-sm font-bold text-emerald-800">
-                      Payment Successful
+                    <p className="mt-1 text-sm font-bold capitalize text-emerald-800">
+                      {paymentStatus ===
+                      "paid"
+                        ? "Payment Successful"
+                        : paymentStatus}
                     </p>
                   </div>
 
@@ -875,6 +1247,7 @@ Thank you for booking with Tripora.
                 </div>
 
                 {/* Booking ID */}
+
                 <div className="mt-4 rounded-xl border border-slate-200 p-4">
                   <p className="text-xs font-medium text-slate-400">
                     Booking ID
@@ -887,7 +1260,9 @@ Thank you for booking with Tripora.
 
                     <button
                       type="button"
-                      onClick={handleCopyBookingId}
+                      onClick={
+                        handleCopyBookingId
+                      }
                       className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
                     >
                       {copied ? (
@@ -906,11 +1281,15 @@ Thank you for booking with Tripora.
                 </div>
 
                 {/* Room price */}
+
                 <div className="mt-5 space-y-3">
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <span>
-                      Room ₹{formatPrice(roomPrice)} ×{" "}
-                      {nights}{" "}
+                      Room ₹
+                      {formatPrice(
+                        roomPrice
+                      )}{" "}
+                      × {nights}{" "}
                       {nights === 1
                         ? "night"
                         : "nights"}
@@ -925,10 +1304,15 @@ Thank you for booking with Tripora.
                   </div>
 
                   <div className="flex items-center justify-between text-sm text-slate-600">
-                    <span>Taxes & Fees</span>
+                    <span>
+                      Taxes & Fees
+                    </span>
 
                     <span className="font-semibold text-slate-800">
-                      ₹{formatPrice(taxes)}
+                      ₹
+                      {formatPrice(
+                        taxes
+                      )}
                     </span>
                   </div>
 
@@ -940,18 +1324,23 @@ Thank you for booking with Tripora.
                         </p>
 
                         <p className="mt-0.5 text-xs text-slate-400">
-                          Including applicable taxes
+                          Including applicable
+                          taxes
                         </p>
                       </div>
 
                       <p className="text-xl font-extrabold text-blue-600">
-                        ₹{formatPrice(totalPrice)}
+                        ₹
+                        {formatPrice(
+                          totalPrice
+                        )}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Payment Method */}
+
                 <div className="mt-5 rounded-xl bg-slate-50 p-4">
                   <p className="text-xs font-medium text-slate-400">
                     Payment Method
@@ -963,6 +1352,7 @@ Thank you for booking with Tripora.
                 </div>
 
                 {/* Hotel mini info */}
+
                 <div className="mt-5 border-t border-slate-100 pt-5">
                   <div className="flex gap-3">
                     <img
@@ -989,7 +1379,8 @@ Thank you for booking with Tripora.
                           fill="currentColor"
                         />
 
-                        {hotel.rating || 4.6}
+                        {hotel.rating ||
+                          fallbackHotel.rating}
                       </div>
 
                       <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
@@ -1005,48 +1396,60 @@ Thank you for booking with Tripora.
                 </div>
 
                 {/* Download */}
+
                 <button
                   type="button"
-                  onClick={handleDownloadBooking}
+                  onClick={
+                    handleDownloadBooking
+                  }
                   className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 >
                   <Download size={16} />
+
                   Download Booking
                 </button>
               </div>
             </div>
 
             {/* Support Card */}
+
             <div className="mt-4 rounded-2xl bg-slate-900 p-5 text-white shadow-lg">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10">
                 <ShieldCheck size={19} />
               </div>
 
               <h3 className="mt-4 text-base font-bold">
-                Need help with your booking?
+                Need help with your
+                booking?
               </h3>
 
               <p className="mt-2 text-xs leading-5 text-slate-300">
-                Our Tripora support team is available
-                24/7 to help you with your reservation.
+                Our Tripora support team is
+                available 24/7 to help you
+                with your reservation.
               </p>
 
               <div className="mt-4 grid gap-2">
                 <button
                   type="button"
                   onClick={() =>
-                    navigate("/my-bookings")
+                    navigate(
+                      "/my-bookings"
+                    )
                   }
                   className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100"
                 >
                   Manage Booking
+
                   <ArrowRight size={15} />
                 </button>
 
                 <button
                   type="button"
                   onClick={() =>
-                    navigate("/contact")
+                    navigate(
+                      "/contact"
+                    )
                   }
                   className="flex items-center justify-center gap-2 rounded-xl border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
                 >
@@ -1060,6 +1463,7 @@ Thank you for booking with Tripora.
         {/* =====================================================
             FINAL CTA
         ====================================================== */}
+
         <section className="mt-8 overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white shadow-lg sm:p-8">
           <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-center">
             <div>
@@ -1072,17 +1476,21 @@ Thank you for booking with Tripora.
               </h2>
 
               <p className="mt-1.5 max-w-xl text-sm leading-6 text-blue-100">
-                Discover more destinations, hotels and
-                holiday experiences with Tripora.
+                Discover more destinations,
+                hotels and holiday
+                experiences with Tripora.
               </p>
             </div>
 
             <button
               type="button"
-              onClick={() => navigate("/")}
+              onClick={() =>
+                navigate("/")
+              }
               className="flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-blue-600 transition hover:bg-blue-50"
             >
               Explore Tripora
+
               <ArrowRight size={16} />
             </button>
           </div>

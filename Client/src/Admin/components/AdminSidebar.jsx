@@ -72,21 +72,21 @@ const AdminSidebar = ({
       path: "/admin/adminusers",
       icon: Users,
     },
-    {
-      label: "Payments",
-      path: "/admin/adminpayment",
-      icon: CircleDollarSign,
-    },
-    {
-      label: "Reviews",
-      path: "/admin/adminreview",
-      icon: Star,
-    },
-    {
-      label: "Content",
-      path: "/admin/content",
-      icon: FileText,
-    },
+    // {
+    //   label: "Payments",
+    //   path: "/admin/adminpayment",
+    //   icon: CircleDollarSign,
+    // },
+    // {
+    //   label: "Reviews",
+    //   path: "/admin/adminreview",
+    //   icon: Star,
+    // },
+    // {
+    //   label: "Content",
+    //   path: "/admin/content",
+    //   icon: FileText,
+    // },
   ];
 
   const bottomMenu = [

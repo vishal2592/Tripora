@@ -1,140 +1,211 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../api";
-import { getAllHotel } from "./hotelSlice";
 
-// save hotel //
+// ===============================
+// Save Hotel
+// ===============================
 
 export const savedHotel = createAsyncThunk(
-    "/admin/savedHotel",
-    async (id, { rejectWithValue }) => {
-        try {
-            const response = await api.post(`/saved-hotels/${id}`)
-            return response.data;
-        } catch (error) {
-            return rejectWithValue(
-                error.response?.data?.message || " Hotel Not Saved "
-            );
-        }
+  "/saved/savedHotel",
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/saved-hotels/${id}`);
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Hotel not saved"
+      );
     }
+  }
 );
 
-                // get All savedHotel //
+// ===============================
+// Get All Saved Hotels
+// ===============================
 
 export const getAllSavedHotel = createAsyncThunk(
-    "/admin/getAllSavedHotel",
-    async(_, {rejectWithValue}) =>{
-        try {
-            const response = await api.get("/saved-hotels")
-            return response.data
-        } catch (error) {
-            return rejectWithValue(
-                error.response?.data?.message || "All saved data are not found"
-            );
-        }
+  "/saved/getAllSavedHotel",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get("/saved-hotels");
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Saved hotels could not be fetched"
+      );
     }
+  }
 );
+
+// ===============================
+// Remove Saved Hotel
+// ===============================
 
 export const removeSavedHotel = createAsyncThunk(
-    "/admin/removeSavedHotel",
-    async(id, {rejectWithValue}) => {
-        try {
-            const response = await api.delete(`/saved-hotels/${id}`)
-            return response.data;
-        } catch (error) {
-            return rejectWithValue(
-                error.response?.data?.message || "SavedHotel Not removed"
-            );
-        }
+  "/saved/removeSavedHotel",
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await api.delete(`/saved-hotels/${id}`);
+
+      return {
+        ...response.data,
+        hotelId: id,
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Saved hotel could not be removed"
+      );
     }
+  }
 );
 
+// ===============================
+// Initial State
+// ===============================
 
 const initialState = {
-    loading : false,
-    success : false,
-    error : null,
-    saved : null,
-    savedData : [],
-    message : " ",
-}
+  loading: false,
+  success: false,
+  error: null,
+  saved: null,
+  savedData: [],
+  message: "",
+};
 
+// ===============================
+// Slice
+// ===============================
 
 const savedSlice = createSlice({
-    name : "saved",
-    initialState,
+  name: "saved",
+  initialState,
 
-    extraReducers : (builder) =>{
-        builder 
+  reducers: {
+    clearSavedMessage: (state) => {
+      state.message = "";
+      state.error = null;
+      state.success = false;
+    },
+  },
 
-        // extraReducers for savedHotel 
+  extraReducers: (builder) => {
+    builder
 
-    .addCase(savedHotel.pending, (state) =>{
+      // =================================
+      // Save Hotel
+      // =================================
+
+      .addCase(savedHotel.pending, (state) => {
         state.loading = true;
         state.success = false;
         state.error = null;
-    })
+      })
 
-    .addCase(savedHotel.fulfilled, (state,action) =>{
+      .addCase(savedHotel.fulfilled, (state, action) => {
         state.loading = false;
         state.success = true;
         state.message = action.payload.message;
-        state.saved = action.payload.saved;
+        state.saved = action.payload.savedHotel;
         state.error = null;
-    })
 
-    .addCase(savedHotel.rejected, (state,action) => {
+        // Agar savedHotel successfully create hua hai
+        // to list me bhi add kar do
+        if (action.payload.savedHotel) {
+          const alreadyExists = state.savedData.some(
+            (item) =>
+              item._id === action.payload.savedHotel._id
+          );
+
+          if (!alreadyExists) {
+            state.savedData.unshift(
+              action.payload.savedHotel
+            );
+          }
+        }
+      })
+
+      .addCase(savedHotel.rejected, (state, action) => {
         state.loading = false;
         state.success = false;
         state.error = action.payload;
-    })
+      })
 
-    // extraReducers for getAllHotel //
+      // =================================
+      // Get All Saved Hotels
+      // =================================
 
-    .addCase(getAllSavedHotel.pending, (state) =>{
+      .addCase(getAllSavedHotel.pending, (state) => {
         state.loading = true;
         state.success = false;
         state.error = null;
-    })
+      })
 
-    .addCase(getAllSavedHotel.fulfilled, (state,action) => {
-        state.loading = false;
-        state.success = true;
-        state.messsage = action.payload.message;
-        state.savedData = action.payload.savedData;
-        state.error = null; 
-    })
+      .addCase(
+        getAllSavedHotel.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.success = true;
+          state.message = action.payload.message;
+          state.savedData =
+            action.payload.savedHotels || [];
+          state.error = null;
+        }
+      )
 
-    .addCase(getAllSavedHotel.rejected, (state,action) =>{
-        state.loading = false;
-        state.success = false;
-        state.error = action.payload;
-    })
+      .addCase(
+        getAllSavedHotel.rejected,
+        (state, action) => {
+          state.loading = false;
+          state.success = false;
+          state.error = action.payload;
+        }
+      )
 
+      // =================================
+      // Remove Saved Hotel
+      // =================================
 
-            // extraReducers for remove saved hotel //
-
-    .addCase(removeSavedHotel.pending, (state) =>{
+      .addCase(removeSavedHotel.pending, (state) => {
         state.loading = true;
         state.success = false;
         state.error = null;
-    })
+      })
 
-    .addCase(removeSavedHotel.fulfilled, (state,action) =>{
-        state.loading = false;
-        state.success = true;
-        state.saved = action.payload.saved;
-        state.error = null;
-    })
+      .addCase(
+        removeSavedHotel.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.success = true;
+          state.message = action.payload.message;
+          state.error = null;
 
-    .addCase(removeSavedHotel.rejected, (state,action) =>{
-        state.loading = false;
-        state.success = false;
-        state.error = action.payload;
-    })
+          // Removed hotel ko Redux list se bhi remove karo
+          state.savedData =
+            state.savedData.filter(
+              (item) =>
+                item.hotel !== action.payload.hotelId
+            );
 
+          state.saved = null;
+        }
+      )
 
-
-    }
+      .addCase(
+        removeSavedHotel.rejected,
+        (state, action) => {
+          state.loading = false;
+          state.success = false;
+          state.error = action.payload;
+        }
+      );
+  },
 });
+
+export const { clearSavedMessage } =
+  savedSlice.actions;
 
 export default savedSlice.reducer;

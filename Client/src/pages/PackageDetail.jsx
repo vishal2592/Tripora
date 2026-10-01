@@ -1,6 +1,19 @@
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import React, { useMemo, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
+import {
+  useDispatch,
+  useSelector,
+} from "react-redux";
+
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,710 +33,14 @@ import {
   ShieldCheck,
   Star,
   Users,
-  Wallet,
   X,
   XCircle,
 } from "lucide-react";
 
-/* =========================================================
-   PACKAGE DATA
-========================================================= */
-
-const packageData = {
-  "dubai-explorer": {
-    id: "dubai-explorer",
-    name: "Dubai Explorer",
-    destination: "Dubai",
-    country: "UAE",
-
-    rating: 4.8,
-    reviews: 324,
-
-    duration: "5 Days / 4 Nights",
-
-    price: 34999,
-    oldPrice: 42999,
-    savings: 8000,
-
-    travelers: 2,
-
-    tag: "Best Seller",
-
-    shortDescription:
-      "Experience the best of Dubai with luxury stays, iconic attractions, desert safari and comfortable transfers.",
-
-    description:
-      "Experience the best of Dubai with our carefully designed 5-day holiday package. Explore the iconic Burj Khalifa, discover Dubai Marina, enjoy an exciting desert safari and relax at a premium hotel. This package combines sightseeing, comfort and memorable experiences for a hassle-free Dubai holiday.",
-
-    images: [
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1400&q=85",
-      "https://images.unsplash.com/photo-1518684079-3c830dcef090?auto=format&fit=crop&w=900&q=85",
-      "https://images.unsplash.com/photo-1539650116574-75c0c6d73f6e?auto=format&fit=crop&w=900&q=85",
-      "https://images.unsplash.com/photo-1526495124232-a04e1849168c?auto=format&fit=crop&w=900&q=85",
-    ],
-
-    overview: [
-      {
-        icon: <CalendarDays size={18} />,
-        label: "Duration",
-        value: "5 Days / 4 Nights",
-      },
-      {
-        icon: <Users size={18} />,
-        label: "Travellers",
-        value: "2 People",
-      },
-      {
-        icon: <Hotel size={18} />,
-        label: "Stay",
-        value: "4 Star Hotel",
-      },
-      {
-        icon: <Plane size={18} />,
-        label: "Flights",
-        value: "Included",
-      },
-    ],
-
-    highlights: [
-      {
-        icon: "🏙️",
-        title: "Burj Khalifa",
-        description:
-          "Visit the world's iconic skyscraper and enjoy stunning city views.",
-      },
-      {
-        icon: "🏜️",
-        title: "Desert Safari",
-        description:
-          "Enjoy dune bashing, camel rides, BBQ dinner and live entertainment.",
-      },
-      {
-        icon: "🚤",
-        title: "Marina Cruise",
-        description:
-          "Relax on a beautiful evening cruise around Dubai Marina.",
-      },
-      {
-        icon: "🛍️",
-        title: "Dubai Mall",
-        description:
-          "Explore one of the world's largest shopping and entertainment destinations.",
-      },
-    ],
-
-    itinerary: [
-      {
-        day: "Day 1",
-        title: "Dubai Arrival",
-        description:
-          "Arrive at Dubai International Airport and transfer to your hotel.",
-        activities: [
-          "Airport Pickup",
-          "Hotel Check-in",
-          "Welcome Assistance",
-          "Evening at Leisure",
-        ],
-      },
-      {
-        day: "Day 2",
-        title: "Dubai City Tour",
-        description:
-          "Explore Dubai's most famous landmarks and attractions.",
-        activities: [
-          "Burj Khalifa",
-          "Dubai Mall",
-          "Jumeirah Mosque",
-          "Palm Jumeirah",
-          "Photo Stop at Atlantis",
-        ],
-      },
-      {
-        day: "Day 3",
-        title: "Desert Safari",
-        description:
-          "Spend an exciting evening in the Dubai desert.",
-        activities: [
-          "Desert Dune Bashing",
-          "Camel Ride",
-          "Sunset Photography",
-          "Live Entertainment",
-          "BBQ Dinner",
-        ],
-      },
-      {
-        day: "Day 4",
-        title: "Dubai Marina & Leisure",
-        description:
-          "Enjoy Dubai Marina and spend the rest of the day at leisure.",
-        activities: [
-          "Dubai Marina",
-          "Marina Cruise",
-          "Palm Jumeirah",
-          "Shopping",
-          "Evening Leisure",
-        ],
-      },
-      {
-        day: "Day 5",
-        title: "Departure",
-        description:
-          "Enjoy breakfast before checking out and transferring to the airport.",
-        activities: [
-          "Breakfast",
-          "Hotel Check-out",
-          "Airport Transfer",
-          "Departure",
-        ],
-      },
-    ],
-
-    inclusions: [
-      "4 nights accommodation in a 4-star hotel",
-      "Daily breakfast",
-      "Return economy class flights",
-      "Airport pickup and drop",
-      "Dubai city sightseeing",
-      "Desert safari with BBQ dinner",
-      "Marina cruise",
-      "Professional assistance",
-    ],
-
-    exclusions: [
-      "Personal expenses",
-      "Travel insurance",
-      "Visa charges",
-      "Tips and gratuities",
-      "Extra activities",
-      "Meals not mentioned",
-    ],
-
-    hotel: {
-      name: "Dubai Grand Hotel",
-      rating: 4.5,
-      room: "Deluxe Room",
-      nights: 4,
-      meal: "Breakfast Included",
-      image:
-        "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1000&q=85",
-      location: "Dubai, UAE",
-    },
-
-    flights: {
-      departure: {
-        airline: "IndiGo",
-        flight: "6E 1453",
-        from: "Delhi",
-        fromCode: "DEL",
-        fromTime: "06:30 AM",
-        to: "Dubai",
-        toCode: "DXB",
-        toTime: "09:15 AM",
-        duration: "3h 45m",
-      },
-
-      return: {
-        airline: "IndiGo",
-        flight: "6E 1454",
-        from: "Dubai",
-        fromCode: "DXB",
-        fromTime: "10:30 AM",
-        to: "Delhi",
-        toCode: "DEL",
-        toTime: "03:25 PM",
-        duration: "3h 55m",
-      },
-    },
-
-    importantInfo: [
-      "Passport should be valid for at least 6 months from the travel date.",
-      "Flight timings are subject to airline availability.",
-      "Hotel check-in and check-out timings depend on the hotel.",
-      "Some attractions may require advance reservation.",
-      "The itinerary can change due to weather or operational reasons.",
-    ],
-
-    cancellation: [
-      "Free cancellation up to 15 days before departure.",
-      "50% cancellation fee between 7 and 14 days before departure.",
-      "100% cancellation fee within 7 days of departure.",
-      "Flight cancellation charges are subject to airline policy.",
-    ],
-  },
-
-  "bali-escape": {
-    id: "bali-escape",
-    name: "Bali Escape",
-    destination: "Bali",
-    country: "Indonesia",
-
-    rating: 4.7,
-    reviews: 286,
-
-    duration: "5 Days / 4 Nights",
-
-    price: 39999,
-    oldPrice: 47999,
-    savings: 8000,
-
-    travelers: 2,
-
-    tag: "Popular",
-
-    shortDescription:
-      "Discover Bali's beaches, temples, waterfalls and tropical landscapes with a comfortable 5-day holiday.",
-
-    description:
-      "Explore the beauty of Bali with a perfect mix of beaches, culture, adventure and relaxation. Visit iconic temples, discover waterfalls and enjoy beautiful sunsets while staying in a comfortable hotel.",
-
-    images: [
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1400&q=85",
-      "https://images.unsplash.com/photo-1539367628448-4bc5c9d171c8?auto=format&fit=crop&w=900&q=85",
-      "https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?auto=format&fit=crop&w=900&q=85",
-      "https://images.unsplash.com/photo-1555400038-5f4f5f6f6f0e?auto=format&fit=crop&w=900&q=85",
-    ],
-
-    overview: [
-      {
-        icon: <CalendarDays size={18} />,
-        label: "Duration",
-        value: "5 Days / 4 Nights",
-      },
-      {
-        icon: <Users size={18} />,
-        label: "Travellers",
-        value: "2 People",
-      },
-      {
-        icon: <Hotel size={18} />,
-        label: "Stay",
-        value: "4 Star Hotel",
-      },
-      {
-        icon: <Plane size={18} />,
-        label: "Flights",
-        value: "Included",
-      },
-    ],
-
-    highlights: [
-      {
-        icon: "🏝️",
-        title: "Beautiful Beaches",
-        description:
-          "Relax at some of Bali's most beautiful tropical beaches.",
-      },
-      {
-        icon: "🛕",
-        title: "Temple Tour",
-        description:
-          "Explore Bali's famous temples and cultural landmarks.",
-      },
-      {
-        icon: "🌊",
-        title: "Waterfalls",
-        description:
-          "Discover Bali's beautiful waterfalls surrounded by nature.",
-      },
-      {
-        icon: "🌅",
-        title: "Sunset Experience",
-        description:
-          "Enjoy unforgettable tropical sunsets during your stay.",
-      },
-    ],
-
-    itinerary: [
-      {
-        day: "Day 1",
-        title: "Bali Arrival",
-        description:
-          "Airport pickup and hotel transfer followed by leisure time.",
-        activities: [
-          "Airport Pickup",
-          "Hotel Check-in",
-          "Welcome Assistance",
-          "Evening Leisure",
-        ],
-      },
-      {
-        day: "Day 2",
-        title: "Ubud Exploration",
-        description:
-          "Explore Ubud's temples, rice terraces and cultural attractions.",
-        activities: [
-          "Ubud Palace",
-          "Rice Terraces",
-          "Monkey Forest",
-          "Local Market",
-        ],
-      },
-      {
-        day: "Day 3",
-        title: "Temple & Waterfall Tour",
-        description:
-          "Discover Bali's famous temples and natural attractions.",
-        activities: [
-          "Temple Visit",
-          "Waterfall Visit",
-          "Photography",
-          "Local Lunch",
-        ],
-      },
-      {
-        day: "Day 4",
-        title: "Beach & Sunset",
-        description:
-          "Relax at the beach and enjoy a beautiful Bali sunset.",
-        activities: [
-          "Beach Visit",
-          "Leisure Time",
-          "Sunset Point",
-          "Dinner",
-        ],
-      },
-      {
-        day: "Day 5",
-        title: "Departure",
-        description:
-          "Breakfast, checkout and airport transfer.",
-        activities: [
-          "Breakfast",
-          "Hotel Check-out",
-          "Airport Transfer",
-          "Departure",
-        ],
-      },
-    ],
-
-    inclusions: [
-      "4 nights hotel accommodation",
-      "Daily breakfast",
-      "Return economy flights",
-      "Airport transfers",
-      "Ubud sightseeing",
-      "Temple tour",
-      "Waterfall visit",
-      "Local assistance",
-    ],
-
-    exclusions: [
-      "Visa charges",
-      "Personal expenses",
-      "Travel insurance",
-      "Tips",
-      "Extra activities",
-      "Meals not mentioned",
-    ],
-
-    hotel: {
-      name: "Bali Paradise Resort",
-      rating: 4.6,
-      room: "Premium Room",
-      nights: 4,
-      meal: "Breakfast Included",
-      image:
-        "https://images.unsplash.com/photo-1582610116397-edb318620f90?auto=format&fit=crop&w=1000&q=85",
-      location: "Bali, Indonesia",
-    },
-
-    flights: {
-      departure: {
-        airline: "IndiGo",
-        flight: "6E 101",
-        from: "Delhi",
-        fromCode: "DEL",
-        fromTime: "08:00 AM",
-        to: "Bali",
-        toCode: "DPS",
-        toTime: "05:30 PM",
-        duration: "8h 30m",
-      },
-
-      return: {
-        airline: "IndiGo",
-        flight: "6E 102",
-        from: "Bali",
-        fromCode: "DPS",
-        fromTime: "09:00 AM",
-        to: "Delhi",
-        toCode: "DEL",
-        toTime: "05:00 PM",
-        duration: "8h",
-      },
-    },
-
-    importantInfo: [
-      "Passport should be valid for at least 6 months.",
-      "Flight timings are subject to availability.",
-      "Weather can affect outdoor activities.",
-      "Some activities require advance confirmation.",
-      "The itinerary may change based on local conditions.",
-    ],
-
-    cancellation: [
-      "Free cancellation up to 15 days before departure.",
-      "50% cancellation fee between 7 and 14 days.",
-      "100% cancellation fee within 7 days.",
-      "Flight cancellation follows airline policy.",
-    ],
-  },
-
-  "thailand-adventure": {
-    id: "thailand-adventure",
-    name: "Thailand Adventure",
-    destination: "Thailand",
-    country: "Thailand",
-
-    rating: 4.6,
-    reviews: 198,
-
-    duration: "5 Days / 4 Nights",
-
-    price: 29999,
-    oldPrice: 36999,
-    savings: 7000,
-
-    travelers: 2,
-
-    tag: "Great Value",
-
-    shortDescription:
-      "Enjoy Thailand's beaches, island tours, nightlife and cultural attractions in one memorable holiday.",
-
-    description:
-      "Discover Thailand with a carefully planned holiday package covering beautiful beaches, cultural landmarks and exciting island experiences. Perfect for couples, friends and first-time travellers.",
-
-    images: [
-      "https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=1400&q=85",
-      "https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&w=900&q=85",
-      "https://images.unsplash.com/photo-1506665531195-3566af2b4dfa?auto=format&fit=crop&w=900&q=85",
-      "https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?auto=format&fit=crop&w=900&q=85",
-    ],
-
-    overview: [
-      {
-        icon: <CalendarDays size={18} />,
-        label: "Duration",
-        value: "5 Days / 4 Nights",
-      },
-      {
-        icon: <Users size={18} />,
-        label: "Travellers",
-        value: "2 People",
-      },
-      {
-        icon: <Hotel size={18} />,
-        label: "Stay",
-        value: "4 Star Hotel",
-      },
-      {
-        icon: <Plane size={18} />,
-        label: "Flights",
-        value: "Included",
-      },
-    ],
-
-    highlights: [
-      {
-        icon: "🏝️",
-        title: "Island Tour",
-        description:
-          "Explore Thailand's stunning islands and crystal-clear waters.",
-      },
-      {
-        icon: "🛕",
-        title: "Temple Tour",
-        description:
-          "Experience Thailand's rich culture and beautiful temples.",
-      },
-      {
-        icon: "🌊",
-        title: "Beach Activities",
-        description:
-          "Enjoy relaxing beach time and exciting water activities.",
-      },
-      {
-        icon: "🌃",
-        title: "Night Market",
-        description:
-          "Experience Thailand's vibrant local markets and food.",
-      },
-    ],
-
-    itinerary: [
-      {
-        day: "Day 1",
-        title: "Thailand Arrival",
-        description:
-          "Airport pickup followed by hotel check-in.",
-        activities: [
-          "Airport Pickup",
-          "Hotel Check-in",
-          "Welcome Assistance",
-          "Evening Leisure",
-        ],
-      },
-      {
-        day: "Day 2",
-        title: "City & Temple Tour",
-        description:
-          "Discover famous temples and cultural attractions.",
-        activities: [
-          "Temple Visit",
-          "City Tour",
-          "Local Market",
-          "Thai Lunch",
-        ],
-      },
-      {
-        day: "Day 3",
-        title: "Island Adventure",
-        description:
-          "Spend the day exploring beautiful islands.",
-        activities: [
-          "Boat Ride",
-          "Island Visit",
-          "Snorkeling",
-          "Beach Time",
-        ],
-      },
-      {
-        day: "Day 4",
-        title: "Leisure & Shopping",
-        description:
-          "Enjoy a relaxed day with shopping and local experiences.",
-        activities: [
-          "Breakfast",
-          "Shopping",
-          "Night Market",
-          "Dinner",
-        ],
-      },
-      {
-        day: "Day 5",
-        title: "Departure",
-        description:
-          "Breakfast, checkout and airport transfer.",
-        activities: [
-          "Breakfast",
-          "Hotel Check-out",
-          "Airport Transfer",
-          "Departure",
-        ],
-      },
-    ],
-
-    inclusions: [
-      "4 nights hotel accommodation",
-      "Daily breakfast",
-      "Return economy flights",
-      "Airport transfers",
-      "City sightseeing",
-      "Island tour",
-      "Selected activities",
-      "Travel assistance",
-    ],
-
-    exclusions: [
-      "Visa charges",
-      "Travel insurance",
-      "Personal expenses",
-      "Tips",
-      "Optional activities",
-      "Meals not mentioned",
-    ],
-
-    hotel: {
-      name: "Thailand Beach Resort",
-      rating: 4.4,
-      room: "Deluxe Room",
-      nights: 4,
-      meal: "Breakfast Included",
-      image:
-        "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=1000&q=85",
-      location: "Phuket, Thailand",
-    },
-
-    flights: {
-      departure: {
-        airline: "IndiGo",
-        flight: "6E 105",
-        from: "Delhi",
-        fromCode: "DEL",
-        fromTime: "07:00 AM",
-        to: "Phuket",
-        toCode: "HKT",
-        toTime: "03:30 PM",
-        duration: "8h 30m",
-      },
-
-      return: {
-        airline: "IndiGo",
-        flight: "6E 106",
-        from: "Phuket",
-        fromCode: "HKT",
-        fromTime: "10:00 AM",
-        to: "Delhi",
-        toCode: "DEL",
-        toTime: "06:30 PM",
-        duration: "8h 30m",
-      },
-    },
-
-    importantInfo: [
-      "Passport should be valid for at least 6 months.",
-      "International travel documents must be carried.",
-      "Flight timings can change.",
-      "Island activities depend on weather.",
-      "The itinerary can be adjusted if required.",
-    ],
-
-    cancellation: [
-      "Free cancellation up to 15 days before departure.",
-      "50% cancellation fee between 7 and 14 days.",
-      "100% cancellation fee within 7 days.",
-      "Airline cancellation rules apply separately.",
-    ],
-  },
-};
-
-/* =========================================================
-   SIMILAR PACKAGES
-========================================================= */
-
-const similarPackages = [
-  {
-    id: "dubai-explorer",
-    name: "Dubai Explorer",
-    destination: "Dubai",
-    duration: "5 Days / 4 Nights",
-    price: 34999,
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    id: "bali-escape",
-    name: "Bali Escape",
-    destination: "Bali",
-    duration: "5 Days / 4 Nights",
-    price: 39999,
-    rating: 4.7,
-    image:
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=700&q=85",
-  },
-  {
-    id: "thailand-adventure",
-    name: "Thailand Adventure",
-    destination: "Thailand",
-    duration: "5 Days / 4 Nights",
-    price: 29999,
-    rating: 4.6,
-    image:
-      "https://images.unsplash.com/photo-1528181304800-259b08848526?auto=format&fit=crop&w=700&q=85",
-  },
-];
+import {
+  getPackageById,
+  getAllPackages,
+} from "../redux/slicer/packageSlice";
 
 /* =========================================================
    MAIN COMPONENT
@@ -732,7 +49,22 @@ const similarPackages = [
 const PackageDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const location = useLocation();
+  const dispatch = useDispatch();
+
+  /* =======================================================
+     REDUX
+  ======================================================= */
+
+  const {
+    package: backendPackage,
+    packages,
+    singleLoading,
+    error,
+  } = useSelector((state) => state.package);
+
+  /* =======================================================
+     LOCAL STATE
+  ======================================================= */
 
   const [activeImage, setActiveImage] = useState(0);
 
@@ -742,83 +74,716 @@ const PackageDetail = () => {
 
   const [travelDate, setTravelDate] = useState("");
 
+  /* =======================================================
+     GET PACKAGE BY ID
+  ======================================================= */
+
+  useEffect(() => {
+    if (!id) return;
+
+    dispatch(getPackageById(id));
+  }, [dispatch, id]);
+
+  /* =======================================================
+     GET ALL PACKAGES
+     
+     Used for Similar Packages section.
+  ======================================================= */
+
+  useEffect(() => {
+    dispatch(getAllPackages());
+  }, [dispatch]);
+
+  /* =======================================================
+     RESET IMAGE WHEN PACKAGE CHANGES
+  ======================================================= */
+
+  useEffect(() => {
+    setActiveImage(0);
+    setOpenDay(0);
+  }, [id]);
+
+  /* =======================================================
+     NORMALIZE BACKEND PACKAGE
+  ======================================================= */
+
   const packageItem = useMemo(() => {
-    if (id && packageData[id]) {
-      return packageData[id];
+    if (!backendPackage) {
+      return null;
     }
 
-    const destination =
-      new URLSearchParams(location.search).get(
-        "destination"
-      );
+    /* -------------------------------------------------------
+       IMAGES
+    ------------------------------------------------------- */
 
-    if (destination) {
-      const slug = destination
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, "-");
+    const imageList = [];
 
-      const found = Object.values(packageData).find(
+    /*
+      Main image
+    */
+    if (backendPackage.image) {
+      imageList.push(backendPackage.image);
+    }
+
+    /*
+      Gallery images
+
+      Backend structure:
+
+      images: [
+        {
+          url: "...",
+          deleteUrl: "..."
+        }
+      ]
+    */
+
+    if (Array.isArray(backendPackage.images)) {
+      backendPackage.images.forEach((item) => {
+        const imageUrl =
+          typeof item === "string"
+            ? item
+            : item?.url;
+
+        if (
+          imageUrl &&
+          !imageList.includes(imageUrl)
+        ) {
+          imageList.push(imageUrl);
+        }
+      });
+    }
+
+    /*
+      Fallback image
+    */
+
+    const finalImages =
+      imageList.length > 0
+        ? imageList
+        : [
+            "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1400&q=85",
+          ];
+
+    /* -------------------------------------------------------
+       DESTINATION
+    ------------------------------------------------------- */
+
+    const destinationName =
+      typeof backendPackage.destination ===
+      "object"
+        ? backendPackage.destination?.name
+        : backendPackage.destination;
+
+    const destinationCountry =
+      backendPackage.country ||
+      (typeof backendPackage.destination ===
+      "object"
+        ? backendPackage.destination?.country
+        : "");
+
+    /* -------------------------------------------------------
+       DURATION
+    ------------------------------------------------------- */
+
+    const duration =
+      backendPackage.duration ||
+      `${
+        Number(backendPackage.days) || 0
+      } Days / ${
+        Number(backendPackage.nights) || 0
+      } Nights`;
+
+    /* -------------------------------------------------------
+       PRICE
+    ------------------------------------------------------- */
+
+    const price =
+      Number(backendPackage.price) || 0;
+
+    const oldPrice =
+      Number(backendPackage.oldPrice) || 0;
+
+    const savings =
+      oldPrice > price
+        ? oldPrice - price
+        : 0;
+
+    /* -------------------------------------------------------
+       HIGHLIGHTS
+    ------------------------------------------------------- */
+
+    let highlights = [];
+
+    if (
+      Array.isArray(
+        backendPackage.highlights
+      )
+    ) {
+      highlights =
+        backendPackage.highlights.map(
+          (item, index) => {
+            /*
+              If backend stores string
+            */
+
+            if (typeof item === "string") {
+              return {
+                icon: "✦",
+                title: item,
+                description: "",
+              };
+            }
+
+            /*
+              If backend stores object
+            */
+
+            return {
+              icon:
+                item?.icon ||
+                "✦",
+
+              title:
+                item?.title ||
+                item?.name ||
+                `Highlight ${
+                  index + 1
+                }`,
+
+              description:
+                item?.description ||
+                "",
+            };
+          }
+        );
+    }
+
+    /* -------------------------------------------------------
+       INCLUSIONS
+    ------------------------------------------------------- */
+
+    const inclusions =
+      Array.isArray(
+        backendPackage.inclusions
+      )
+        ? backendPackage.inclusions
+        : [];
+
+    /* -------------------------------------------------------
+       EXCLUSIONS
+    ------------------------------------------------------- */
+
+    const exclusions =
+      Array.isArray(
+        backendPackage.exclusions
+      )
+        ? backendPackage.exclusions
+        : [];
+
+    /* -------------------------------------------------------
+       ITINERARY
+    ------------------------------------------------------- */
+
+    const itinerary =
+      Array.isArray(
+        backendPackage.itinerary
+      )
+        ? backendPackage.itinerary.map(
+            (day, index) => ({
+              day:
+                day?.day ||
+                `Day ${index + 1}`,
+
+              title:
+                day?.title ||
+                `Day ${index + 1}`,
+
+              description:
+                day?.description ||
+                "",
+
+              activities:
+                Array.isArray(
+                  day?.activities
+                )
+                  ? day.activities
+                  : [],
+            })
+          )
+        : [];
+
+    /* -------------------------------------------------------
+       IMPORTANT INFO
+    ------------------------------------------------------- */
+
+    const importantInfo =
+      Array.isArray(
+        backendPackage.importantInfo
+      )
+        ? backendPackage.importantInfo
+        : [];
+
+    /* -------------------------------------------------------
+       CANCELLATION
+    ------------------------------------------------------- */
+
+    const cancellation =
+      Array.isArray(
+        backendPackage.cancellation
+      )
+        ? backendPackage.cancellation
+        : [];
+
+    /* -------------------------------------------------------
+       HOTEL
+    ------------------------------------------------------- */
+
+    let hotelData = null;
+
+    if (
+      backendPackage.hotel &&
+      typeof backendPackage.hotel ===
+        "object"
+    ) {
+      const hotel = backendPackage.hotel;
+
+      const hotelImage =
+        hotel.image ||
+        (
+          Array.isArray(hotel.images) &&
+          hotel.images.length > 0
+        )
+          ? typeof hotel.images[0] ===
+            "string"
+            ? hotel.images[0]
+            : hotel.images[0]?.url
+          : finalImages[0];
+
+      hotelData = {
+        name:
+          hotel.hotelName ||
+          hotel.name ||
+          "Hotel Included",
+
+        rating:
+          Number(
+            hotel.rating ||
+              hotel.starRating
+          ) || 0,
+
+        room:
+          hotel.room ||
+          hotel.roomType ||
+          "Standard Room",
+
+        nights:
+          Number(
+            backendPackage.nights
+          ) || 0,
+
+        meal:
+          hotel.meal ||
+          "Breakfast Included",
+
+        image:
+          hotelImage ||
+          finalImages[0],
+
+        location:
+          hotel.location ||
+          [
+            hotel.city,
+            hotel.state,
+            hotel.country,
+          ]
+            .filter(Boolean)
+            .join(", ") ||
+          destinationName ||
+          "",
+      };
+    } else {
+      hotelData = {
+        name: "Hotel Included",
+        rating: 0,
+        room: "Standard Room",
+        nights:
+          Number(
+            backendPackage.nights
+          ) || 0,
+        meal: "As per package",
+        image: finalImages[0],
+        location:
+          destinationName || "",
+      };
+    }
+
+    /* -------------------------------------------------------
+       FLIGHTS
+    ------------------------------------------------------- */
+
+    const flights =
+      backendPackage.flights &&
+      typeof backendPackage.flights ===
+        "object"
+        ? backendPackage.flights
+        : {
+            departure: null,
+            return: null,
+          };
+
+    /* -------------------------------------------------------
+       RETURN FINAL OBJECT
+    ------------------------------------------------------- */
+
+    return {
+      ...backendPackage,
+
+      /*
+        MongoDB ID
+      */
+      id: backendPackage._id,
+
+      name:
+        backendPackage.name ||
+        "Holiday Package",
+
+      destination:
+        destinationName ||
+        "Destination",
+
+      country:
+        destinationCountry || "",
+
+      rating:
+        Number(backendPackage.rating) || 0,
+
+      reviews:
+        Number(backendPackage.reviews) || 0,
+
+      duration,
+
+      price,
+
+      oldPrice,
+
+      savings,
+
+      travelers: 2,
+
+      tag:
+        backendPackage.tag ||
+        (
+          backendPackage.status ===
+          "Active"
+            ? "Popular"
+            : "Package"
+        ),
+
+      shortDescription:
+        backendPackage.shortDescription ||
+        backendPackage.description ||
+        "",
+
+      description:
+        backendPackage.description ||
+        "",
+
+      images: finalImages,
+
+      overview: [
+        {
+          icon: (
+            <CalendarDays size={18} />
+          ),
+          label: "Duration",
+          value: duration,
+        },
+
+        {
+          icon: <Users size={18} />,
+          label: "Travellers",
+          value: "2 People",
+        },
+
+        {
+          icon: <Hotel size={18} />,
+          label: "Stay",
+          value:
+            hotelData?.name ||
+            "Hotel Included",
+        },
+
+        {
+          icon: <Plane size={18} />,
+          label: "Flights",
+          value:
+            flights?.departure ||
+            flights?.return
+              ? "Included"
+              : "Not Included",
+        },
+      ],
+
+      highlights,
+
+      itinerary,
+
+      inclusions,
+
+      exclusions,
+
+      hotel: hotelData,
+
+      flights,
+
+      importantInfo,
+
+      cancellation,
+    };
+  }, [backendPackage]);
+
+  /* =======================================================
+     SIMILAR PACKAGES
+  ======================================================= */
+
+  const similarPackages = useMemo(() => {
+    if (!Array.isArray(packages)) {
+      return [];
+    }
+
+    return packages
+      .filter(
         (item) =>
-          item.destination.toLowerCase() ===
-            destination.toLowerCase() ||
-          item.id.includes(slug)
-      );
+          item?._id &&
+          item._id !== id
+      )
+      .slice(0, 6)
+      .map((item) => {
+        let destination = "";
 
-      if (found) return found;
-    }
+        if (
+          item.destination &&
+          typeof item.destination ===
+            "object"
+        ) {
+          destination =
+            item.destination.name ||
+            "";
+        } else {
+          destination =
+            item.destination || "";
+        }
 
-    return packageData["dubai-explorer"];
-  }, [id, location.search]);
+        let image =
+          item.image || "";
+
+        if (
+          !image &&
+          Array.isArray(item.images) &&
+          item.images.length > 0
+        ) {
+          image =
+            typeof item.images[0] ===
+            "string"
+              ? item.images[0]
+              : item.images[0]?.url ||
+                "";
+        }
+
+        return {
+          id: item._id,
+
+          name:
+            item.name ||
+            "Holiday Package",
+
+          destination,
+
+          duration:
+            item.duration ||
+            `${
+              Number(item.days) || 0
+            } Days / ${
+              Number(item.nights) || 0
+            } Nights`,
+
+          price:
+            Number(item.price) || 0,
+
+          rating:
+            Number(item.rating) || 0,
+
+          image:
+            image ||
+            "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=700&q=85",
+        };
+      });
+  }, [packages, id]);
 
   /* =======================================================
      BOOK NOW
   ======================================================= */
 
-const handleBookNow = () => {
-  const safePackageData = {
-    id: packageItem.id,
-    title: packageItem.title,
-    destination: packageItem.destination,
-    duration: packageItem.duration,
-    image: packageItem.image,
-    price: Number(packageItem.price) || 0,
-    oldPrice: Number(packageItem.oldPrice) || 0,
-    rating: Number(packageItem.rating) || 0,
-    reviews: Number(packageItem.reviews) || 0,
-  };
+  const handleBookNow = () => {
+    if (!packageItem) {
+      return;
+    }
 
-  navigate(`/package-booking/${packageItem.id}`, {
-    state: {
-      packageData: safePackageData,
-      travellers: {
-        adults: Number(travellers.adults) || 1,
-        children: Number(travellers.children) || 0,
-        infants: Number(travellers.infants) || 0,
-      },
-      travelDate: travelDate || "",
-    },
-  });
-};
+    const safePackageData = {
+      id: packageItem.id,
+
+      title:
+        packageItem.name,
+
+      name:
+        packageItem.name,
+
+      destination:
+        packageItem.destination,
+
+      country:
+        packageItem.country,
+
+      duration:
+        packageItem.duration,
+
+      image:
+        packageItem.images?.[0] ||
+        "",
+
+      price:
+        Number(packageItem.price) ||
+        0,
+
+      oldPrice:
+        Number(packageItem.oldPrice) ||
+        0,
+
+      rating:
+        Number(packageItem.rating) ||
+        0,
+
+      reviews:
+        Number(packageItem.reviews) ||
+        0,
+    };
+
+    navigate(
+      `/package-booking/${packageItem.id}`,
+      {
+        state: {
+          packageData:
+            safePackageData,
+
+          travellers: {
+            adults:
+              Number(travellers) || 1,
+
+            children: 0,
+
+            infants: 0,
+          },
+
+          travelDate:
+            travelDate || "",
+        },
+      }
+    );
+  };
 
   /* =======================================================
      IMAGE CONTROLS
   ======================================================= */
 
   const nextImage = () => {
+    if (
+      !packageItem?.images?.length
+    ) {
+      return;
+    }
+
     setActiveImage(
       (prev) =>
-        (prev + 1) % packageItem.images.length
+        (prev + 1) %
+        packageItem.images.length
     );
   };
 
   const previousImage = () => {
+    if (
+      !packageItem?.images?.length
+    ) {
+      return;
+    }
+
     setActiveImage(
       (prev) =>
-        (prev - 1 + packageItem.images.length) %
+        (prev -
+          1 +
+          packageItem.images.length) %
         packageItem.images.length
     );
   };
+
+  /* =======================================================
+     LOADING
+  ======================================================= */
+
+  if (singleLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="text-center">
+
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+
+          <p className="mt-4 text-sm font-semibold text-slate-600">
+            Loading package...
+          </p>
+
+        </div>
+      </div>
+    );
+  }
+
+  /* =======================================================
+     ERROR / NOT FOUND
+  ======================================================= */
+
+  if (error || !packageItem) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+
+        <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
+            <XCircle size={24} />
+          </div>
+
+          <h2 className="mt-4 text-xl font-black text-slate-900">
+            Package Not Found
+          </h2>
+
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            {error ||
+              "The package you are looking for does not exist."}
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/packages")
+            }
+            className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+          >
+            Browse Packages
+          </button>
+
+        </div>
+
+      </div>
+    );
+  }
 
   /* =======================================================
      PAGE
@@ -839,7 +804,9 @@ const handleBookNow = () => {
 
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() =>
+                navigate(-1)
+              }
               className="flex items-center gap-1.5 font-semibold text-slate-600 transition hover:text-blue-600"
             >
               <ArrowLeft size={14} />
@@ -853,7 +820,9 @@ const handleBookNow = () => {
 
             <button
               type="button"
-              onClick={() => navigate("/packages")}
+              onClick={() =>
+                navigate("/packages")
+              }
               className="hidden transition hover:text-blue-600 sm:block"
             >
               Packages
@@ -883,7 +852,11 @@ const handleBookNow = () => {
         <div className="relative overflow-hidden rounded-3xl bg-slate-900">
 
           <img
-            src={packageItem.images[activeImage]}
+            src={
+              packageItem.images[
+                activeImage
+              ]
+            }
             alt={packageItem.name}
             className="h-[280px] w-full object-cover sm:h-[360px] lg:h-[430px]"
           />
@@ -892,21 +865,34 @@ const handleBookNow = () => {
 
           {/* Image Controls */}
 
-          <button
-            type="button"
-            onClick={previousImage}
-            className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition hover:bg-black/55"
-          >
-            <ChevronLeft size={18} />
-          </button>
+          {packageItem.images.length >
+            1 && (
+            <>
+              <button
+                type="button"
+                onClick={
+                  previousImage
+                }
+                className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition hover:bg-black/55"
+              >
+                <ChevronLeft
+                  size={18}
+                />
+              </button>
 
-          <button
-            type="button"
-            onClick={nextImage}
-            className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition hover:bg-black/55"
-          >
-            <ChevronRight size={18} />
-          </button>
+              <button
+                type="button"
+                onClick={
+                  nextImage
+                }
+                className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition hover:bg-black/55"
+              >
+                <ChevronRight
+                  size={18}
+                />
+              </button>
+            </>
+          )}
 
           {/* Hero Content */}
 
@@ -926,8 +912,17 @@ const handleBookNow = () => {
 
                 <span className="flex items-center gap-1.5">
                   <MapPin size={14} />
-                  {packageItem.destination},{" "}
-                  {packageItem.country}
+
+                  {packageItem.destination}
+
+                  {packageItem.country && (
+                    <>
+                      ,{" "}
+                      {
+                        packageItem.country
+                      }
+                    </>
+                  )}
                 </span>
 
                 <span className="flex items-center gap-1.5">
@@ -936,19 +931,35 @@ const handleBookNow = () => {
                 </span>
 
                 <span className="flex items-center gap-1.5">
+
                   <Star
                     size={14}
                     fill="currentColor"
                     className="text-yellow-400"
                   />
-                  {packageItem.rating} (
-                  {packageItem.reviews} Reviews)
+
+                  {packageItem.rating}
+
+                  {packageItem.reviews >
+                    0 && (
+                    <>
+                      {" "}
+                      (
+                      {
+                        packageItem.reviews
+                      }{" "}
+                      Reviews)
+                    </>
+                  )}
+
                 </span>
 
               </div>
 
               <p className="mt-3 max-w-2xl text-xs leading-5 text-white/80 sm:text-sm">
-                {packageItem.shortDescription}
+                {
+                  packageItem.shortDescription
+                }
               </p>
 
             </div>
@@ -959,28 +970,40 @@ const handleBookNow = () => {
 
         {/* Thumbnails */}
 
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        {packageItem.images.length >
+          0 && (
+          <div className="mt-3 grid grid-cols-4 gap-2">
 
-          {packageItem.images.map((image, index) => (
-            <button
-              type="button"
-              key={image}
-              onClick={() => setActiveImage(index)}
-              className={`overflow-hidden rounded-xl border-2 transition ${
-                activeImage === index
-                  ? "border-blue-600"
-                  : "border-transparent"
-              }`}
-            >
-              <img
-                src={image}
-                alt={`${packageItem.name} ${index + 1}`}
-                className="h-16 w-full object-cover sm:h-20"
-              />
-            </button>
-          ))}
+            {packageItem.images.map(
+              (image, index) => (
+                <button
+                  type="button"
+                  key={`${image}-${index}`}
+                  onClick={() =>
+                    setActiveImage(
+                      index
+                    )
+                  }
+                  className={`overflow-hidden rounded-xl border-2 transition ${
+                    activeImage ===
+                    index
+                      ? "border-blue-600"
+                      : "border-transparent"
+                  }`}
+                >
+                  <img
+                    src={image}
+                    alt={`${packageItem.name} ${
+                      index + 1
+                    }`}
+                    className="h-16 w-full object-cover sm:h-20"
+                  />
+                </button>
+              )
+            )}
 
-        </div>
+          </div>
+        )}
 
       </section>
 
@@ -992,26 +1015,28 @@ const handleBookNow = () => {
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
 
-          {packageItem.overview.map((item) => (
-            <div
-              key={item.label}
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-            >
+          {packageItem.overview.map(
+            (item) => (
+              <div
+                key={item.label}
+                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
 
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                {item.icon}
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  {item.icon}
+                </div>
+
+                <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                  {item.label}
+                </p>
+
+                <p className="mt-1 text-xs font-black text-slate-900 sm:text-sm">
+                  {item.value}
+                </p>
+
               </div>
-
-              <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                {item.label}
-              </p>
-
-              <p className="mt-1 text-xs font-black text-slate-900 sm:text-sm">
-                {item.value}
-              </p>
-
-            </div>
-          ))}
+            )
+          )}
 
         </div>
 
@@ -1036,12 +1061,16 @@ const handleBookNow = () => {
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
               <SectionTitle
-                icon={<Info size={18} />}
+                icon={
+                  <Info size={18} />
+                }
                 title="About This Package"
               />
 
               <p className="mt-4 text-sm leading-7 text-slate-600">
-                {packageItem.description}
+                {
+                  packageItem.description
+                }
               </p>
 
               <div className="mt-5 flex flex-wrap gap-2">
@@ -1070,232 +1099,314 @@ const handleBookNow = () => {
 
             {/* Highlights */}
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            {packageItem.highlights
+              .length > 0 && (
+              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
-              <SectionTitle
-                icon={<Star size={18} />}
-                title="Package Highlights"
-              />
+                <SectionTitle
+                  icon={
+                    <Star size={18} />
+                  }
+                  title="Package Highlights"
+                />
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
 
-                {packageItem.highlights.map(
-                  (highlight) => (
-                    <div
-                      key={highlight.title}
-                      className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
-                    >
+                  {packageItem.highlights.map(
+                    (
+                      highlight,
+                      index
+                    ) => (
+                      <div
+                        key={`${highlight.title}-${index}`}
+                        className="rounded-2xl border border-slate-100 bg-slate-50 p-4"
+                      >
 
-                      <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-3">
 
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
-                          {highlight.icon}
-                        </div>
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-xl shadow-sm">
+                            {
+                              highlight.icon
+                            }
+                          </div>
 
-                        <div className="min-w-0">
+                          <div className="min-w-0">
 
-                          <h3 className="text-sm font-black text-slate-900">
-                            {highlight.title}
-                          </h3>
+                            <h3 className="text-sm font-black text-slate-900">
+                              {
+                                highlight.title
+                              }
+                            </h3>
 
-                          <p className="mt-1 text-xs leading-5 text-slate-500">
-                            {highlight.description}
-                          </p>
+                            {highlight.description && (
+                              <p className="mt-1 text-xs leading-5 text-slate-500">
+                                {
+                                  highlight.description
+                                }
+                              </p>
+                            )}
+
+                          </div>
 
                         </div>
 
                       </div>
+                    )
+                  )}
 
-                    </div>
-                  )
-                )}
+                </div>
 
-              </div>
-
-            </section>
+              </section>
+            )}
 
             {/* Itinerary */}
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            {packageItem.itinerary
+              .length > 0 && (
+              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
-              <SectionTitle
-                icon={<CalendarDays size={18} />}
-                title="Day-by-Day Itinerary"
-              />
+                <SectionTitle
+                  icon={
+                    <CalendarDays
+                      size={18}
+                    />
+                  }
+                  title="Day-by-Day Itinerary"
+                />
 
-              <div className="mt-5 space-y-3">
+                <div className="mt-5 space-y-3">
 
-                {packageItem.itinerary.map(
-                  (day, index) => {
-                    const isOpen =
-                      openDay === index;
+                  {packageItem.itinerary.map(
+                    (day, index) => {
+                      const isOpen =
+                        openDay ===
+                        index;
 
-                    return (
-                      <div
-                        key={day.day}
-                        className={`overflow-hidden rounded-2xl border transition ${
-                          isOpen
-                            ? "border-blue-200 bg-blue-50/40"
-                            : "border-slate-200 bg-white"
-                        }`}
-                      >
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenDay(
-                              isOpen ? -1 : index
-                            )
-                          }
-                          className="flex w-full items-center gap-3 p-4 text-left"
+                      return (
+                        <div
+                          key={`${day.day}-${index}`}
+                          className={`overflow-hidden rounded-2xl border transition ${
+                            isOpen
+                              ? "border-blue-200 bg-blue-50/40"
+                              : "border-slate-200 bg-white"
+                          }`}
                         >
 
-                          <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
-                              isOpen
-                                ? "bg-blue-600 text-white"
-                                : "bg-slate-100 text-slate-600"
-                            }`}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenDay(
+                                isOpen
+                                  ? -1
+                                  : index
+                              )
+                            }
+                            className="flex w-full items-center gap-3 p-4 text-left"
                           >
-                            {index + 1}
-                          </div>
 
-                          <div className="min-w-0 flex-1">
+                            <div
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
+                                isOpen
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {index + 1}
+                            </div>
 
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-blue-600">
-                              {day.day}
-                            </p>
+                            <div className="min-w-0 flex-1">
 
-                            <h3 className="mt-0.5 text-sm font-black text-slate-900">
-                              {day.title}
-                            </h3>
+                              <p className="text-[10px] font-bold uppercase tracking-wide text-blue-600">
+                                {day.day}
+                              </p>
 
-                          </div>
-
-                          <ChevronDown
-                            size={18}
-                            className={`shrink-0 text-slate-400 transition ${
-                              isOpen
-                                ? "rotate-180 text-blue-600"
-                                : ""
-                            }`}
-                          />
-
-                        </button>
-
-                        {isOpen && (
-                          <div className="border-t border-blue-100 px-4 pb-4 pt-3">
-
-                            <p className="text-xs leading-6 text-slate-600">
-                              {day.description}
-                            </p>
-
-                            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-
-                              {day.activities.map(
-                                (activity) => (
-                                  <div
-                                    key={activity}
-                                    className="flex items-center gap-2 text-xs font-medium text-slate-600"
-                                  >
-                                    <Check
-                                      size={14}
-                                      className="shrink-0 text-emerald-600"
-                                    />
-                                    {activity}
-                                  </div>
-                                )
-                              )}
+                              <h3 className="mt-0.5 text-sm font-black text-slate-900">
+                                {day.title}
+                              </h3>
 
                             </div>
 
-                          </div>
-                        )}
+                            <ChevronDown
+                              size={18}
+                              className={`shrink-0 text-slate-400 transition ${
+                                isOpen
+                                  ? "rotate-180 text-blue-600"
+                                  : ""
+                              }`}
+                            />
 
-                      </div>
-                    );
-                  }
-                )}
+                          </button>
 
-              </div>
+                          {isOpen && (
+                            <div className="border-t border-blue-100 px-4 pb-4 pt-3">
 
-            </section>
+                              {day.description && (
+                                <p className="text-xs leading-6 text-slate-600">
+                                  {
+                                    day.description
+                                  }
+                                </p>
+                              )}
+
+                              {day.activities
+                                ?.length >
+                                0 && (
+                                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+
+                                  {day.activities.map(
+                                    (
+                                      activity,
+                                      activityIndex
+                                    ) => (
+                                      <div
+                                        key={`${activity}-${activityIndex}`}
+                                        className="flex items-center gap-2 text-xs font-medium text-slate-600"
+                                      >
+                                        <Check
+                                          size={
+                                            14
+                                          }
+                                          className="shrink-0 text-emerald-600"
+                                        />
+                                        {
+                                          activity
+                                        }
+                                      </div>
+                                    )
+                                  )}
+
+                                </div>
+                              )}
+
+                            </div>
+                          )}
+
+                        </div>
+                      );
+                    }
+                  )}
+
+                </div>
+
+              </section>
+            )}
 
             {/* Inclusions */}
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            {(packageItem.inclusions
+              .length > 0 ||
+              packageItem.exclusions
+                .length > 0) && (
+              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
-              <SectionTitle
-                icon={<Check size={18} />}
-                title="Inclusions & Exclusions"
-              />
+                <SectionTitle
+                  icon={
+                    <Check size={18} />
+                  }
+                  title="Inclusions & Exclusions"
+                />
 
-              <div className="mt-5 grid gap-5 md:grid-cols-2">
+                <div className="mt-5 grid gap-5 md:grid-cols-2">
 
-                <div>
+                  {/* Included */}
 
-                  <h3 className="text-sm font-black text-slate-900">
-                    What's Included
-                  </h3>
+                  <div>
 
-                  <div className="mt-3 space-y-2.5">
+                    <h3 className="text-sm font-black text-slate-900">
+                      What's Included
+                    </h3>
 
-                    {packageItem.inclusions.map(
-                      (item) => (
-                        <div
-                          key={item}
-                          className="flex items-start gap-2.5 text-xs leading-5 text-slate-600"
-                        >
-                          <Check
-                            size={15}
-                            className="mt-0.5 shrink-0 text-emerald-600"
-                          />
-                          <span>{item}</span>
-                        </div>
-                      )
-                    )}
+                    <div className="mt-3 space-y-2.5">
+
+                      {packageItem.inclusions
+                        .length > 0 ? (
+                        packageItem.inclusions.map(
+                          (
+                            item,
+                            index
+                          ) => (
+                            <div
+                              key={`${item}-${index}`}
+                              className="flex items-start gap-2.5 text-xs leading-5 text-slate-600"
+                            >
+                              <Check
+                                size={
+                                  15
+                                }
+                                className="mt-0.5 shrink-0 text-emerald-600"
+                              />
+                              <span>
+                                {item}
+                              </span>
+                            </div>
+                          )
+                        )
+                      ) : (
+                        <p className="text-xs text-slate-400">
+                          No inclusion details available.
+                        </p>
+                      )}
+
+                    </div>
+
+                  </div>
+
+                  {/* Excluded */}
+
+                  <div>
+
+                    <h3 className="text-sm font-black text-slate-900">
+                      What's Not Included
+                    </h3>
+
+                    <div className="mt-3 space-y-2.5">
+
+                      {packageItem.exclusions
+                        .length > 0 ? (
+                        packageItem.exclusions.map(
+                          (
+                            item,
+                            index
+                          ) => (
+                            <div
+                              key={`${item}-${index}`}
+                              className="flex items-start gap-2.5 text-xs leading-5 text-slate-600"
+                            >
+                              <X
+                                size={
+                                  15
+                                }
+                                className="mt-0.5 shrink-0 text-red-500"
+                              />
+                              <span>
+                                {item}
+                              </span>
+                            </div>
+                          )
+                        )
+                      ) : (
+                        <p className="text-xs text-slate-400">
+                          No exclusion details available.
+                        </p>
+                      )}
+
+                    </div>
 
                   </div>
 
                 </div>
 
-                <div>
-
-                  <h3 className="text-sm font-black text-slate-900">
-                    What's Not Included
-                  </h3>
-
-                  <div className="mt-3 space-y-2.5">
-
-                    {packageItem.exclusions.map(
-                      (item) => (
-                        <div
-                          key={item}
-                          className="flex items-start gap-2.5 text-xs leading-5 text-slate-600"
-                        >
-                          <X
-                            size={15}
-                            className="mt-0.5 shrink-0 text-red-500"
-                          />
-                          <span>{item}</span>
-                        </div>
-                      )
-                    )}
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            </section>
+              </section>
+            )}
 
             {/* Hotel */}
 
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
               <SectionTitle
-                icon={<Hotel size={18} />}
+                icon={
+                  <Hotel size={18} />
+                }
                 title="Stay Details"
               />
 
@@ -1306,8 +1417,14 @@ const handleBookNow = () => {
                   <div className="h-48 w-full shrink-0 sm:h-auto sm:w-52">
 
                     <img
-                      src={packageItem.hotel.image}
-                      alt={packageItem.hotel.name}
+                      src={
+                        packageItem.hotel
+                          ?.image
+                      }
+                      alt={
+                        packageItem.hotel
+                          ?.name
+                      }
                       className="h-full w-full object-cover"
                     />
 
@@ -1320,44 +1437,81 @@ const handleBookNow = () => {
                       <div>
 
                         <h3 className="text-base font-black text-slate-900">
-                          {packageItem.hotel.name}
+                          {
+                            packageItem.hotel
+                              ?.name
+                          }
                         </h3>
 
                         <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-                          <MapPin size={13} />
-                          {packageItem.hotel.location}
+                          <MapPin
+                            size={13}
+                          />
+
+                          {
+                            packageItem.hotel
+                              ?.location
+                          }
                         </p>
 
                       </div>
 
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">
-                        <Star
-                          size={12}
-                          fill="currentColor"
-                        />
-                        {packageItem.hotel.rating}
-                      </span>
+                      {packageItem.hotel
+                        ?.rating >
+                        0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-bold text-amber-700">
+
+                          <Star
+                            size={12}
+                            fill="currentColor"
+                          />
+
+                          {
+                            packageItem.hotel
+                              .rating
+                          }
+
+                        </span>
+                      )}
 
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
 
                       <SmallInfo
-                        icon={<BedDouble size={14} />}
+                        icon={
+                          <BedDouble
+                            size={14}
+                          />
+                        }
                         label="Room"
-                        value={packageItem.hotel.room}
+                        value={
+                          packageItem.hotel
+                            ?.room ||
+                          "Standard Room"
+                        }
                       />
 
                       <SmallInfo
-                        icon={<MoonIcon />}
+                        icon={
+                          <MoonIcon />
+                        }
                         label="Stay"
-                        value={`${packageItem.hotel.nights} Nights`}
+                        value={`${packageItem.hotel?.nights || 0} Nights`}
                       />
 
                       <SmallInfo
-                        icon={<Coffee size={14} />}
+                        icon={
+                          <Coffee
+                            size={14}
+                          />
+                        }
                         label="Meal"
-                        value={packageItem.hotel.meal}
+                        value={
+                          packageItem.hotel
+                            ?.meal ||
+                          "As per package"
+                        }
                       />
 
                     </div>
@@ -1375,89 +1529,138 @@ const handleBookNow = () => {
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
               <SectionTitle
-                icon={<Plane size={18} />}
+                icon={
+                  <Plane size={18} />
+                }
                 title="Flight Details"
               />
 
-              <div className="mt-5 space-y-3">
+              {packageItem.flights
+                ?.departure ||
+              packageItem.flights
+                ?.return ? (
+                <div className="mt-5 space-y-3">
 
-                <FlightRow
-                  label="Departure"
-                  flight={
-                    packageItem.flights.departure
-                  }
-                />
+                  {packageItem.flights
+                    ?.departure && (
+                    <FlightRow
+                      label="Departure"
+                      flight={
+                        packageItem
+                          .flights
+                          .departure
+                      }
+                    />
+                  )}
 
-                <FlightRow
-                  label="Return"
-                  flight={
-                    packageItem.flights.return
-                  }
-                />
+                  {packageItem.flights
+                    ?.return && (
+                    <FlightRow
+                      label="Return"
+                      flight={
+                        packageItem
+                          .flights
+                          .return
+                      }
+                    />
+                  )}
 
-              </div>
+                </div>
+              ) : (
+                <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+
+                  <p className="text-sm font-semibold text-slate-600">
+                    Flight details are not available for this package.
+                  </p>
+
+                </div>
+              )}
 
             </section>
 
             {/* Important Information */}
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            {packageItem
+              .importantInfo
+              .length > 0 && (
+              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
-              <SectionTitle
-                icon={<FileText size={18} />}
-                title="Important Information"
-              />
+                <SectionTitle
+                  icon={
+                    <FileText
+                      size={18}
+                    />
+                  }
+                  title="Important Information"
+                />
 
-              <div className="mt-4 space-y-3">
+                <div className="mt-4 space-y-3">
 
-                {packageItem.importantInfo.map(
-                  (item) => (
-                    <div
-                      key={item}
-                      className="flex items-start gap-2.5 text-xs leading-5 text-slate-600"
-                    >
-                      <Info
-                        size={15}
-                        className="mt-0.5 shrink-0 text-blue-600"
-                      />
-                      {item}
-                    </div>
-                  )
-                )}
+                  {packageItem.importantInfo.map(
+                    (
+                      item,
+                      index
+                    ) => (
+                      <div
+                        key={`${item}-${index}`}
+                        className="flex items-start gap-2.5 text-xs leading-5 text-slate-600"
+                      >
+                        <Info
+                          size={15}
+                          className="mt-0.5 shrink-0 text-blue-600"
+                        />
 
-              </div>
+                        {item}
+                      </div>
+                    )
+                  )}
 
-            </section>
+                </div>
+
+              </section>
+            )}
 
             {/* Cancellation */}
 
-            <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            {packageItem
+              .cancellation
+              .length > 0 && (
+              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
 
-              <SectionTitle
-                icon={<ShieldCheck size={18} />}
-                title="Cancellation Policy"
-              />
+                <SectionTitle
+                  icon={
+                    <ShieldCheck
+                      size={18}
+                    />
+                  }
+                  title="Cancellation Policy"
+                />
 
-              <div className="mt-4 space-y-3">
+                <div className="mt-4 space-y-3">
 
-                {packageItem.cancellation.map(
-                  (item) => (
-                    <div
-                      key={item}
-                      className="flex items-start gap-2.5 text-xs leading-5 text-slate-600"
-                    >
-                      <Check
-                        size={15}
-                        className="mt-0.5 shrink-0 text-emerald-600"
-                      />
-                      {item}
-                    </div>
-                  )
-                )}
+                  {packageItem.cancellation.map(
+                    (
+                      item,
+                      index
+                    ) => (
+                      <div
+                        key={`${item}-${index}`}
+                        className="flex items-start gap-2.5 text-xs leading-5 text-slate-600"
+                      >
+                        <Check
+                          size={15}
+                          className="mt-0.5 shrink-0 text-emerald-600"
+                        />
 
-              </div>
+                        {item}
+                      </div>
+                    )
+                  )}
 
-            </section>
+                </div>
+
+              </section>
+            )}
 
           </div>
 
@@ -1465,15 +1668,27 @@ const handleBookNow = () => {
               RIGHT BOOKING CARD
           ================================================= */}
 
-          <aside className="hidden lg:block lg:sticky lg:top-5">
+          <aside className="hidden lg:sticky lg:top-5 lg:block">
 
             <BookingCard
-              packageItem={packageItem}
-              travellers={travellers}
-              setTravellers={setTravellers}
-              travelDate={travelDate}
-              setTravelDate={setTravelDate}
-              onBook={handleBookNow}
+              packageItem={
+                packageItem
+              }
+              travellers={
+                travellers
+              }
+              setTravellers={
+                setTravellers
+              }
+              travelDate={
+                travelDate
+              }
+              setTravelDate={
+                setTravelDate
+              }
+              onBook={
+                handleBookNow
+              }
             />
 
           </aside>
@@ -1484,42 +1699,41 @@ const handleBookNow = () => {
             SIMILAR PACKAGES
         =================================================== */}
 
-        <section className="mt-7">
+        {similarPackages.length >
+          0 && (
+          <section className="mt-7">
 
-          <div className="mb-4">
+            <div className="mb-4">
 
-            <p className="text-[10px] font-black uppercase tracking-wider text-blue-600">
-              More trips
-            </p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-blue-600">
+                More trips
+              </p>
 
-            <h2 className="mt-1 text-xl font-black text-slate-900 sm:text-2xl">
-              Similar Packages
-            </h2>
+              <h2 className="mt-1 text-xl font-black text-slate-900 sm:text-2xl">
+                Similar Packages
+              </h2>
 
-          </div>
+            </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
-            {similarPackages
-              .filter(
-                (item) =>
-                  item.id !== packageItem.id
-              )
-              .map((item) => (
-                <SimilarPackageCard
-                  key={item.id}
-                  item={item}
-                  onClick={() =>
-                    navigate(
-                      `/packages/${item.id}`
-                    )
-                  }
-                />
-              ))}
+              {similarPackages
+                .map((item) => (
+                  <SimilarPackageCard
+                    key={item.id}
+                    item={item}
+                    onClick={() =>
+                      navigate(
+                        `/packages/${item.id}`
+                      )
+                    }
+                  />
+                ))}
 
-          </div>
+            </div>
 
-        </section>
+          </section>
+        )}
 
       </main>
 
@@ -1546,12 +1760,15 @@ const handleBookNow = () => {
                 )}
               </p>
 
-              <span className="text-[10px] text-slate-400 line-through">
-                ₹
-                {packageItem.oldPrice.toLocaleString(
-                  "en-IN"
-                )}
-              </span>
+              {packageItem.oldPrice >
+                packageItem.price && (
+                <span className="text-[10px] text-slate-400 line-through">
+                  ₹
+                  {packageItem.oldPrice.toLocaleString(
+                    "en-IN"
+                  )}
+                </span>
+              )}
 
             </div>
 
@@ -1559,11 +1776,15 @@ const handleBookNow = () => {
 
           <button
             type="button"
-            onClick={handleBookNow}
+            onClick={
+              handleBookNow
+            }
             className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-xs font-black text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800"
           >
             Book Now
-            <ArrowRight size={15} />
+            <ArrowRight
+              size={15}
+            />
           </button>
 
         </div>
@@ -1604,21 +1825,27 @@ const BookingCard = ({
             )}
           </h2>
 
-          <span className="pb-1 text-xs text-slate-400 line-through">
-            ₹
-            {packageItem.oldPrice.toLocaleString(
-              "en-IN"
-            )}
-          </span>
+          {packageItem.oldPrice >
+            packageItem.price && (
+            <span className="pb-1 text-xs text-slate-400 line-through">
+              ₹
+              {packageItem.oldPrice.toLocaleString(
+                "en-IN"
+              )}
+            </span>
+          )}
 
         </div>
 
-        <p className="mt-1 text-[11px] font-bold text-emerald-600">
-          Save ₹
-          {packageItem.savings.toLocaleString(
-            "en-IN"
-          )}
-        </p>
+        {packageItem.savings >
+          0 && (
+          <p className="mt-1 text-[11px] font-bold text-emerald-600">
+            Save ₹
+            {packageItem.savings.toLocaleString(
+              "en-IN"
+            )}
+          </p>
+        )}
 
         <div className="my-5 h-px bg-slate-100" />
 
@@ -1631,21 +1858,29 @@ const BookingCard = ({
         <div className="mt-2 flex h-11 items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3">
 
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+
             <Users
               size={15}
               className="text-blue-600"
             />
+
             {travellers} Travellers
+
           </div>
 
           <div className="flex items-center gap-1">
 
             <button
               type="button"
-              disabled={travellers <= 1}
+              disabled={
+                travellers <= 1
+              }
               onClick={() =>
                 setTravellers(
-                  Math.max(1, travellers - 1)
+                  Math.max(
+                    1,
+                    travellers - 1
+                  )
                 )
               }
               className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
@@ -1657,7 +1892,10 @@ const BookingCard = ({
               type="button"
               onClick={() =>
                 setTravellers(
-                  Math.min(10, travellers + 1)
+                  Math.min(
+                    10,
+                    travellers + 1
+                  )
                 )
               }
               className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-bold text-slate-600"
@@ -1686,7 +1924,9 @@ const BookingCard = ({
             type="date"
             value={travelDate}
             onChange={(e) =>
-              setTravelDate(e.target.value)
+              setTravelDate(
+                e.target.value
+              )
             }
             min={
               new Date()
@@ -1706,7 +1946,9 @@ const BookingCard = ({
           className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800"
         >
           Book Now
-          <ArrowRight size={17} />
+          <ArrowRight
+            size={17}
+          />
         </button>
 
         <div className="mt-4 space-y-2">
@@ -1794,11 +2036,13 @@ const SmallInfo = ({
     <div className="rounded-xl bg-slate-50 p-3">
 
       <div className="flex items-center gap-1.5 text-slate-400">
+
         {icon}
 
         <span className="text-[9px] font-bold uppercase tracking-wide">
           {label}
         </span>
+
       </div>
 
       <p className="mt-1 text-[11px] font-bold text-slate-800">
@@ -1817,6 +2061,10 @@ const FlightRow = ({
   label,
   flight,
 }) => {
+  if (!flight) {
+    return null;
+  }
+
   return (
     <div className="rounded-2xl border border-slate-200 p-4">
 
@@ -1829,11 +2077,13 @@ const FlightRow = ({
           </p>
 
           <p className="mt-1 text-xs font-black text-slate-900">
-            {flight.airline}
+            {flight.airline ||
+              "Airline"}
           </p>
 
           <p className="mt-0.5 text-[10px] text-slate-400">
-            {flight.flight}
+            {flight.flight ||
+              "Flight"}
           </p>
 
         </div>
@@ -1843,15 +2093,18 @@ const FlightRow = ({
           <div className="min-w-0">
 
             <p className="text-lg font-black text-slate-900">
-              {flight.fromCode}
+              {flight.fromCode ||
+                "---"}
             </p>
 
             <p className="text-[10px] font-bold text-slate-700">
-              {flight.from}
+              {flight.from ||
+                ""}
             </p>
 
             <p className="mt-1 text-[10px] text-slate-400">
-              {flight.fromTime}
+              {flight.fromTime ||
+                ""}
             </p>
 
           </div>
@@ -1872,15 +2125,17 @@ const FlightRow = ({
           <div className="min-w-0 text-right">
 
             <p className="text-lg font-black text-slate-900">
-              {flight.toCode}
+              {flight.toCode ||
+                "---"}
             </p>
 
             <p className="text-[10px] font-bold text-slate-700">
-              {flight.to}
+              {flight.to || ""}
             </p>
 
             <p className="mt-1 text-[10px] text-slate-400">
-              {flight.toTime}
+              {flight.toTime ||
+                ""}
             </p>
 
           </div>
@@ -1888,8 +2143,12 @@ const FlightRow = ({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 text-[10px] font-semibold text-slate-500 sm:w-16 sm:flex-col sm:items-end sm:gap-0.5">
+
           <Clock3 size={12} />
-          {flight.duration}
+
+          {flight.duration ||
+            "N/A"}
+
         </div>
 
       </div>
@@ -1902,7 +2161,9 @@ const FlightRow = ({
    TRUST ITEM
 ========================================================= */
 
-const TrustItem = ({ text }) => {
+const TrustItem = ({
+  text,
+}) => {
   return (
     <div className="flex items-center gap-2 text-[10px] font-semibold text-slate-500">
 
@@ -1940,14 +2201,19 @@ const SimilarPackageCard = ({
           className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
         />
 
-        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-slate-700 shadow-sm">
-          <Star
-            size={11}
-            fill="currentColor"
-            className="text-yellow-500"
-          />
-          {item.rating}
-        </div>
+        {item.rating > 0 && (
+          <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-slate-700 shadow-sm">
+
+            <Star
+              size={11}
+              fill="currentColor"
+              className="text-yellow-500"
+            />
+
+            {item.rating}
+
+          </div>
+        )}
 
       </div>
 
@@ -1958,8 +2224,12 @@ const SimilarPackageCard = ({
         </h3>
 
         <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+
           <MapPin size={13} />
-          {item.destination}
+
+          {item.destination ||
+            "Destination"}
+
         </p>
 
         <div className="mt-3 flex items-center justify-between gap-2">
@@ -1980,7 +2250,11 @@ const SimilarPackageCard = ({
           </div>
 
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
-            <ArrowRight size={15} />
+
+            <ArrowRight
+              size={15}
+            />
+
           </span>
 
         </div>
@@ -2004,6 +2278,3 @@ const MoonIcon = () => {
 };
 
 export default PackageDetail;
-
-
-

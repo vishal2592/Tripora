@@ -6,6 +6,9 @@ import destinationReducer from "./slicer/destinationSlice";
 import hotelReducer from './slicer/hotelSlice';
 import bookingReducer from './slicer/hotelBookingSlice';
 import savedReducer from './slicer/savedHotelSlice';
+import packageReducer from './slicer/packageSlice'
+import offerReducer from './slicer/offferSlice'
+import adminUserReducer from './slicer/adminUserSlice'
 
 const store = configureStore({
   reducer: {
@@ -15,6 +18,9 @@ const store = configureStore({
     hotel : hotelReducer,
     booking : bookingReducer,
     saved : savedReducer,
+    package : packageReducer,
+    offer : offerReducer,
+    users : adminUserReducer,
   },
 });
 

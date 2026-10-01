@@ -335,7 +335,7 @@ Thank you for booking with Tripora.
               <div className="mt-6">
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                   {/* Departure */}
-                  <div className="text-left">
+                  {/* <div className="text-left">
                     <p className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
                       {flight.from.time}
                     </p>
@@ -353,7 +353,7 @@ Thank you for booking with Tripora.
                     <p className="mt-1 max-w-[190px] text-[10px] leading-4 text-slate-400 sm:text-xs">
                       {flight.from.airport}
                     </p>
-                  </div>
+                  </div> */}
 
                   {/* Center */}
                   <div className="flex min-w-[95px] flex-col items-center">
@@ -377,7 +377,7 @@ Thank you for booking with Tripora.
                   </div>
 
                   {/* Arrival */}
-                  <div className="text-right">
+                  {/* <div className="text-right">
                     <p className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl">
                       {flight.to.time}
                     </p>
@@ -395,7 +395,7 @@ Thank you for booking with Tripora.
                     <p className="ml-auto mt-1 max-w-[190px] text-[10px] leading-4 text-slate-400 sm:text-xs">
                       {flight.to.airport}
                     </p>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
