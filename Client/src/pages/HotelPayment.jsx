@@ -1,5 +1,7 @@
+
 import React, { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,6 +22,12 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { createHotelBooking } from "../redux/slicer/hotelBookingSlice";
+
+// ============================================================
+// FALLBACK DATA
+// ============================================================
+
 const fallbackHotel = {
   name: "Marina View Hotel",
   location: "Dubai Marina, Dubai",
@@ -33,7 +41,7 @@ const fallbackRoom = {
   name: "Deluxe Room",
   price: 7499,
   bed: "1 King Bed",
-  guests: "2 Guests",
+  guests: 2,
   meal: "Breakfast Included",
   cancellation: "Free Cancellation",
 };
@@ -45,8 +53,14 @@ const fallbackBooking = {
   guests: 2,
 };
 
+// ============================================================
+// HELPERS
+// ============================================================
+
 const formatPrice = (price) => {
-  return new Intl.NumberFormat("en-IN").format(price);
+  return new Intl.NumberFormat("en-IN").format(
+    Number(price || 0)
+  );
 };
 
 const parseDate = (value) => {
@@ -83,27 +97,47 @@ const calculateNights = (checkIn, checkOut) => {
     return 1;
   }
 
-  const difference = end.getTime() - start.getTime();
+  const difference =
+    end.getTime() - start.getTime();
 
   return Math.max(
     1,
-    Math.ceil(difference / (1000 * 60 * 60 * 24))
+    Math.ceil(
+      difference /
+        (1000 * 60 * 60 * 24)
+    )
   );
 };
 
+// ============================================================
+// COMPONENT
+// ============================================================
+
 const HotelPayment = () => {
   const { id } = useParams();
+
   const navigate = useNavigate();
+
   const location = useLocation();
+
+  const dispatch = useDispatch();
+
+  // ==========================================================
+  // BOOKING STATE FROM HOTEL BOOK NOW
+  // ==========================================================
 
   const bookingState = location.state || {};
 
-  const hotel = bookingState.hotel || fallbackHotel;
+  const hotel =
+    bookingState.hotel || fallbackHotel;
 
   const selectedRoom =
     bookingState.selectedRoom ||
     bookingState.room ||
     fallbackRoom;
+
+  const hotelId =
+    bookingState.hotelId || id;
 
   const checkIn =
     bookingState.checkIn ||
@@ -114,12 +148,19 @@ const HotelPayment = () => {
     fallbackBooking.checkOut;
 
   const guests =
-    bookingState.guests ||
+    bookingState.guests ??
     fallbackBooking.guests;
 
   const nights =
-    bookingState.nights ||
-    calculateNights(checkIn, checkOut);
+    Number(bookingState.nights) ||
+    calculateNights(
+      checkIn,
+      checkOut
+    );
+
+  // ==========================================================
+  // PRICE CALCULATION
+  // ==========================================================
 
   const roomPrice = Number(
     selectedRoom.price ||
@@ -127,42 +168,63 @@ const HotelPayment = () => {
       fallbackRoom.price
   );
 
-  const totalRoomPrice =
-    bookingState.totalRoomPrice ||
-    roomPrice * nights;
-
-  const taxes = Number(
-    bookingState.taxes ||
-      bookingState.tax ||
-      1250
+  const totalRoomPrice = Number(
+    bookingState.totalRoomPrice ??
+      roomPrice * nights
   );
 
-  const totalPrice =
-    bookingState.totalPrice ||
-    totalRoomPrice + taxes;
+  const taxes = Number(
+    bookingState.taxes ??
+      bookingState.tax ??
+      Math.round(
+        totalRoomPrice * 0.12
+      )
+  );
 
-  const guestDetails = bookingState.guestDetails || {};
+  const totalPrice = Number(
+    bookingState.totalPrice ??
+      totalRoomPrice + taxes
+  );
+
+  // ==========================================================
+  // GUEST DETAILS
+  // ==========================================================
+
+  const guestDetails =
+    bookingState.guestDetails || {};
+
+  // ==========================================================
+  // PAYMENT STATE
+  // ==========================================================
 
   const [paymentMethod, setPaymentMethod] =
-    useState("upi");
+    useState(
+      bookingState.paymentMethod ||
+        "upi"
+    );
 
-  const [upiId, setUpiId] = useState("");
+  const [upiId, setUpiId] =
+    useState("");
 
-  const [cardData, setCardData] = useState({
-    number: "",
-    holder: "",
-    expiry: "",
-    cvv: "",
-  });
+  const [cardData, setCardData] =
+    useState({
+      number: "",
+      holder: "",
+      expiry: "",
+      cvv: "",
+    });
 
-  const [bank, setBank] = useState("");
+  const [bank, setBank] =
+    useState("");
 
-  const [wallet, setWallet] = useState("");
+  const [wallet, setWallet] =
+    useState("");
 
   const [agreeTerms, setAgreeTerms] =
     useState(false);
 
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] =
+    useState({});
 
   const [isProcessing, setIsProcessing] =
     useState(false);
@@ -170,10 +232,16 @@ const HotelPayment = () => {
   const [showSuccess, setShowSuccess] =
     useState(false);
 
+  // ==========================================================
+  // GUEST COUNT TEXT
+  // ==========================================================
+
   const guestCountText = useMemo(() => {
     if (typeof guests === "number") {
       return `${guests} ${
-        guests === 1 ? "Guest" : "Guests"
+        guests === 1
+          ? "Guest"
+          : "Guests"
       }`;
     }
 
@@ -181,24 +249,40 @@ const HotelPayment = () => {
       return guests;
     }
 
-    if (guests?.adults || guests?.children) {
-      const adults = Number(guests.adults || 0);
+    if (
+      guests?.adults ||
+      guests?.children
+    ) {
+      const adults = Number(
+        guests.adults || 0
+      );
+
       const children = Number(
         guests.children || 0
       );
 
-      const total = adults + children;
+      const total =
+        adults + children;
 
       return `${total} ${
-        total === 1 ? "Guest" : "Guests"
+        total === 1
+          ? "Guest"
+          : "Guests"
       }`;
     }
 
     return "2 Guests";
   }, [guests]);
 
+  // ==========================================================
+  // CARD CHANGE
+  // ==========================================================
+
   const handleCardChange = (event) => {
-    const { name, value } = event.target;
+    const {
+      name,
+      value,
+    } = event.target;
 
     setCardData((previous) => ({
       ...previous,
@@ -208,33 +292,94 @@ const HotelPayment = () => {
     setErrors((previous) => ({
       ...previous,
       [name]: "",
+      payment: "",
     }));
   };
 
+  // ==========================================================
+  // PAYMENT VALIDATION
+  // ==========================================================
+
   const validatePayment = () => {
     const newErrors = {};
+
+    // --------------------------------------------------------
+    // HOTEL ID
+    // --------------------------------------------------------
+
+    if (!hotelId) {
+      newErrors.payment =
+        "Hotel information is missing. Please go back and select the hotel again.";
+    }
+
+    // --------------------------------------------------------
+    // GUEST DETAILS
+    // --------------------------------------------------------
+
+    if (
+      !guestDetails.firstName?.trim()
+    ) {
+      newErrors.payment =
+        "Guest first name is missing. Please go back and enter your details.";
+    }
+
+    if (
+      !guestDetails.lastName?.trim()
+    ) {
+      newErrors.payment =
+        "Guest last name is missing. Please go back and enter your details.";
+    }
+
+    if (
+      !guestDetails.email?.trim()
+    ) {
+      newErrors.payment =
+        "Guest email is missing. Please go back and enter your details.";
+    }
+
+    if (
+      !guestDetails.mobile?.trim()
+    ) {
+      newErrors.payment =
+        "Guest mobile number is missing. Please go back and enter your details.";
+    }
+
+    // --------------------------------------------------------
+    // UPI
+    // --------------------------------------------------------
 
     if (paymentMethod === "upi") {
       if (!upiId.trim()) {
         newErrors.upiId =
           "Please enter your UPI ID";
       } else if (
-        !/^[\w.-]+@[\w.-]+$/.test(upiId)
+        !/^[\w.-]+@[\w.-]+$/.test(
+          upiId
+        )
       ) {
         newErrors.upiId =
           "Please enter a valid UPI ID";
       }
     }
 
+    // --------------------------------------------------------
+    // CARD
+    // --------------------------------------------------------
+
     if (paymentMethod === "card") {
       const cleanCardNumber =
-        cardData.number.replace(/\s/g, "");
+        cardData.number.replace(
+          /\s/g,
+          ""
+        );
 
       if (!cleanCardNumber) {
         newErrors.number =
           "Card number is required";
       } else if (
-        !/^\d{16}$/.test(cleanCardNumber)
+        !/^\d{16}$/.test(
+          cleanCardNumber
+        )
       ) {
         newErrors.number =
           "Enter a valid 16-digit card number";
@@ -254,26 +399,44 @@ const HotelPayment = () => {
         newErrors.cvv =
           "CVV is required";
       } else if (
-        !/^\d{3,4}$/.test(cardData.cvv)
+        !/^\d{3,4}$/.test(
+          cardData.cvv
+        )
       ) {
         newErrors.cvv =
           "Enter a valid CVV";
       }
     }
 
-    if (paymentMethod === "netbanking") {
+    // --------------------------------------------------------
+    // NET BANKING
+    // --------------------------------------------------------
+
+    if (
+      paymentMethod === "netbanking"
+    ) {
       if (!bank) {
         newErrors.bank =
           "Please select your bank";
       }
     }
 
-    if (paymentMethod === "wallet") {
+    // --------------------------------------------------------
+    // WALLET
+    // --------------------------------------------------------
+
+    if (
+      paymentMethod === "wallet"
+    ) {
       if (!wallet) {
         newErrors.wallet =
           "Please select a wallet";
       }
     }
+
+    // --------------------------------------------------------
+    // TERMS
+    // --------------------------------------------------------
 
     if (!agreeTerms) {
       newErrors.terms =
@@ -282,11 +445,24 @@ const HotelPayment = () => {
 
     setErrors(newErrors);
 
-    return Object.keys(newErrors).length === 0;
+    return (
+      Object.keys(newErrors)
+        .length === 0
+    );
   };
 
-  const handlePayment = (event) => {
+  // ==========================================================
+  // CREATE BOOKING AFTER PAYMENT
+  // ==========================================================
+
+  const handlePayment = async (
+    event
+  ) => {
     event.preventDefault();
+
+    // --------------------------------------------------------
+    // VALIDATE PAYMENT
+    // --------------------------------------------------------
 
     if (!validatePayment()) {
       return;
@@ -294,53 +470,297 @@ const HotelPayment = () => {
 
     setIsProcessing(true);
 
-    /*
-      This is only a frontend demo payment flow.
+    setErrors({});
 
-      Later you can replace this with your
-      actual Razorpay / payment gateway API call.
-    */
+    try {
+      // ======================================================
+      // NORMALIZE GUEST COUNT
+      // ======================================================
 
-    setTimeout(() => {
+      let numericGuests = 1;
+
+      if (
+        typeof guests === "number"
+      ) {
+        numericGuests = guests;
+      } else if (
+        typeof guests === "string"
+      ) {
+        numericGuests =
+          Number(guests) || 1;
+      } else if (
+        guests &&
+        typeof guests === "object"
+      ) {
+        numericGuests =
+          Number(
+            guests.adults || 0
+          ) +
+          Number(
+            guests.children || 0
+          );
+      }
+
+      numericGuests = Math.max(
+        1,
+        numericGuests
+      );
+
+      // ======================================================
+      // BOOKING PAYLOAD
+      // ======================================================
+
+      const bookingPayload = {
+        // ----------------------------------------------------
+        // HOTEL
+        // ----------------------------------------------------
+
+        hotelId,
+
+        hotelDetails: {
+          name:
+            hotel.name ||
+            hotel.hotelName ||
+            fallbackHotel.name,
+
+          image:
+            hotel.image ||
+            hotel.images?.[0] ||
+            fallbackHotel.image,
+
+          location:
+            hotel.location ||
+            `${hotel.city || ""}${
+              hotel.state
+                ? `, ${hotel.state}`
+                : ""
+            }` ||
+            fallbackHotel.location,
+        },
+
+        // ----------------------------------------------------
+        // ROOM
+        // ----------------------------------------------------
+
+        roomDetails: {
+          name:
+            selectedRoom.name ||
+            fallbackRoom.name,
+
+          price: roomPrice,
+
+          bed:
+            selectedRoom.bed ||
+            fallbackRoom.bed,
+
+          guests: Number(
+            selectedRoom.guests ||
+              fallbackRoom.guests ||
+              2
+          ),
+
+          meal:
+            selectedRoom.meal ||
+            fallbackRoom.meal,
+
+          cancellation:
+            selectedRoom.cancellation ||
+            fallbackRoom.cancellation,
+        },
+
+        // ----------------------------------------------------
+        // DATES
+        // ----------------------------------------------------
+
+        checkIn,
+
+        checkOut,
+
+        nights: Number(nights),
+
+        guests: numericGuests,
+
+        // ----------------------------------------------------
+        // PRIMARY GUEST
+        // ----------------------------------------------------
+
+        guestDetails: {
+          firstName:
+            guestDetails.firstName ||
+            "",
+
+          lastName:
+            guestDetails.lastName ||
+            "",
+
+          email:
+            guestDetails.email ||
+            "",
+
+          countryCode:
+            guestDetails.countryCode ||
+            "+91",
+
+          mobile:
+            guestDetails.mobile ||
+            "",
+
+          specialRequest:
+            guestDetails.specialRequest ||
+            "",
+        },
+
+        // ----------------------------------------------------
+        // PRICE
+        // ----------------------------------------------------
+
+        roomTotal: Number(
+          totalRoomPrice
+        ),
+
+        taxes: Number(taxes),
+
+        totalAmount: Number(
+          totalPrice
+        ),
+
+        // ----------------------------------------------------
+        // PAYMENT METHOD
+        // ----------------------------------------------------
+
+        paymentMethod,
+      };
+
+      console.log(
+        "Hotel Booking Payload:",
+        bookingPayload
+      );
+
+      // ======================================================
+      // CREATE BOOKING IN BACKEND
+      // ======================================================
+
+      const result = await dispatch(
+        createHotelBooking(
+          bookingPayload
+        )
+      ).unwrap();
+
+      console.log(
+        "Hotel Booking Response:",
+        result
+      );
+
+      // ======================================================
+      // GET REAL BOOKING
+      // ======================================================
+
+      const createdBooking =
+        result?.booking;
+
       const bookingId =
-        `TRP${Date.now().toString().slice(-8)}`;
+        createdBooking?.bookingId;
+
+      // ======================================================
+      // CHECK BOOKING ID
+      // ======================================================
+
+      if (!bookingId) {
+        throw new Error(
+          "Booking ID was not received from server."
+        );
+      }
+
+      // ======================================================
+      // PAYMENT COMPLETE
+      // ======================================================
 
       setIsProcessing(false);
 
-      navigate(`/booking-success/${bookingId}`, {
-        state: {
-          bookingId,
-          hotel,
-          selectedRoom,
-          checkIn,
-          checkOut,
-          guests,
-          nights,
-          taxes,
-          totalRoomPrice,
-          totalPrice,
-          guestDetails,
-          paymentMethod,
-        },
+      setShowSuccess(true);
+
+      // Small delay so user sees success state
+      setTimeout(() => {
+        navigate(
+          `/booking-success/${bookingId}`,
+          {
+            state: {
+              bookingId,
+
+              hotel,
+
+              selectedRoom,
+
+              checkIn,
+
+              checkOut,
+
+              guests,
+
+              nights,
+
+              taxes,
+
+              totalRoomPrice,
+
+              totalPrice,
+
+              guestDetails,
+
+              paymentMethod,
+
+              booking:
+                createdBooking,
+            },
+          }
+        );
+      }, 700);
+    } catch (error) {
+      console.error(
+        "Hotel Booking Error:",
+        error
+      );
+
+      setIsProcessing(false);
+
+      setShowSuccess(false);
+
+      setErrors({
+        payment:
+          typeof error ===
+          "string"
+            ? error
+            : error?.message ||
+              "Payment/booking failed. Please try again.",
       });
-    }, 1800);
+    }
   };
+
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
       {/* =====================================================
           HEADER
       ====================================================== */}
+
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-4">
             <button
               type="button"
-              onClick={() => navigate(-1)}
+              onClick={() =>
+                navigate(-1)
+              }
               className="flex items-center gap-2 text-sm font-semibold text-slate-700 transition hover:text-blue-600"
             >
               <ArrowLeft size={17} />
-              <span>Back to Booking</span>
+
+              <span>
+                Back to Booking
+              </span>
             </button>
 
             <div className="flex items-center gap-2">
@@ -358,6 +778,7 @@ const HotelPayment = () => {
                 size={16}
                 className="text-emerald-600"
               />
+
               Secure Payment
             </div>
           </div>
@@ -367,10 +788,12 @@ const HotelPayment = () => {
       {/* =====================================================
           PROGRESS
       ====================================================== */}
+
       <div className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
           <div className="mx-auto flex max-w-3xl items-center justify-between">
             {/* Step 1 */}
+
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
                 <Check
@@ -387,6 +810,7 @@ const HotelPayment = () => {
             <div className="mx-2 h-px flex-1 bg-emerald-500 sm:mx-4" />
 
             {/* Step 2 */}
+
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
                 <Check
@@ -403,6 +827,7 @@ const HotelPayment = () => {
             <div className="mx-2 h-px flex-1 bg-blue-600 sm:mx-4" />
 
             {/* Step 3 */}
+
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-md shadow-blue-600/20">
                 3
@@ -416,6 +841,7 @@ const HotelPayment = () => {
             <div className="mx-2 h-px flex-1 bg-slate-200 sm:mx-4" />
 
             {/* Step 4 */}
+
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-400">
                 4
@@ -432,8 +858,10 @@ const HotelPayment = () => {
       {/* =====================================================
           MAIN
       ====================================================== */}
+
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-        {/* Page Heading */}
+        {/* Heading */}
+
         <div className="mb-6">
           <p className="mb-1 text-sm font-semibold text-blue-600">
             SECURE CHECKOUT
@@ -444,21 +872,24 @@ const HotelPayment = () => {
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            Choose your preferred payment method to
-            confirm your hotel booking.
+            Choose your preferred payment
+            method to confirm your hotel
+            booking.
           </p>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_390px]">
           {/* =================================================
-              LEFT PAYMENT SECTION
+              LEFT
           ================================================== */}
+
           <div>
             <form
               onSubmit={handlePayment}
               className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
             >
               {/* Section Header */}
+
               <div className="mb-6 flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                   <CreditCard size={19} />
@@ -470,24 +901,41 @@ const HotelPayment = () => {
                   </h2>
 
                   <p className="mt-0.5 text-sm text-slate-500">
-                    Select how you would like to pay.
+                    Select how you would
+                    like to pay.
                   </p>
                 </div>
               </div>
 
+              {/* Backend / Booking Error */}
+
+              {errors.payment && (
+                <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4">
+                  <p className="text-sm font-semibold text-red-700">
+                    {errors.payment}
+                  </p>
+                </div>
+              )}
+
               {/* =================================================
-                  PAYMENT METHOD BUTTONS
+                  PAYMENT BUTTONS
               ================================================== */}
+
               <div className="grid gap-3">
                 {/* UPI */}
+
                 <button
                   type="button"
                   onClick={() => {
-                    setPaymentMethod("upi");
+                    setPaymentMethod(
+                      "upi"
+                    );
+
                     setErrors({});
                   }}
                   className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition ${
-                    paymentMethod === "upi"
+                    paymentMethod ===
+                    "upi"
                       ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
                       : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
                   }`}
@@ -495,12 +943,15 @@ const HotelPayment = () => {
                   <div className="flex items-center gap-3">
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                        paymentMethod === "upi"
+                        paymentMethod ===
+                        "upi"
                           ? "bg-blue-600 text-white"
                           : "bg-slate-100 text-slate-600"
                       }`}
                     >
-                      <Smartphone size={19} />
+                      <Smartphone
+                        size={19}
+                      />
                     </div>
 
                     <div>
@@ -515,19 +966,23 @@ const HotelPayment = () => {
                       </div>
 
                       <p className="mt-0.5 text-xs text-slate-500">
-                        Google Pay, PhonePe and other UPI apps
+                        Google Pay,
+                        PhonePe and
+                        other UPI apps
                       </p>
                     </div>
                   </div>
 
                   <div
                     className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                      paymentMethod === "upi"
+                      paymentMethod ===
+                      "upi"
                         ? "border-blue-600 bg-blue-600"
                         : "border-slate-300"
                     }`}
                   >
-                    {paymentMethod === "upi" && (
+                    {paymentMethod ===
+                      "upi" && (
                       <Check
                         size={13}
                         className="text-white"
@@ -537,14 +992,19 @@ const HotelPayment = () => {
                 </button>
 
                 {/* Card */}
+
                 <button
                   type="button"
                   onClick={() => {
-                    setPaymentMethod("card");
+                    setPaymentMethod(
+                      "card"
+                    );
+
                     setErrors({});
                   }}
                   className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition ${
-                    paymentMethod === "card"
+                    paymentMethod ===
+                    "card"
                       ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
                       : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
                   }`}
@@ -552,12 +1012,15 @@ const HotelPayment = () => {
                   <div className="flex items-center gap-3">
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                        paymentMethod === "card"
+                        paymentMethod ===
+                        "card"
                           ? "bg-blue-600 text-white"
                           : "bg-slate-100 text-slate-600"
                       }`}
                     >
-                      <CreditCard size={19} />
+                      <CreditCard
+                        size={19}
+                      />
                     </div>
 
                     <div>
@@ -566,19 +1029,22 @@ const HotelPayment = () => {
                       </p>
 
                       <p className="mt-0.5 text-xs text-slate-500">
-                        Visa, Mastercard and RuPay
+                        Visa, Mastercard
+                        and RuPay
                       </p>
                     </div>
                   </div>
 
                   <div
                     className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                      paymentMethod === "card"
+                      paymentMethod ===
+                      "card"
                         ? "border-blue-600 bg-blue-600"
                         : "border-slate-300"
                     }`}
                   >
-                    {paymentMethod === "card" && (
+                    {paymentMethod ===
+                      "card" && (
                       <Check
                         size={13}
                         className="text-white"
@@ -588,14 +1054,19 @@ const HotelPayment = () => {
                 </button>
 
                 {/* Net Banking */}
+
                 <button
                   type="button"
                   onClick={() => {
-                    setPaymentMethod("netbanking");
+                    setPaymentMethod(
+                      "netbanking"
+                    );
+
                     setErrors({});
                   }}
                   className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition ${
-                    paymentMethod === "netbanking"
+                    paymentMethod ===
+                    "netbanking"
                       ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
                       : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
                   }`}
@@ -603,12 +1074,15 @@ const HotelPayment = () => {
                   <div className="flex items-center gap-3">
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                        paymentMethod === "netbanking"
+                        paymentMethod ===
+                        "netbanking"
                           ? "bg-blue-600 text-white"
                           : "bg-slate-100 text-slate-600"
                       }`}
                     >
-                      <WalletCards size={19} />
+                      <WalletCards
+                        size={19}
+                      />
                     </div>
 
                     <div>
@@ -617,19 +1091,22 @@ const HotelPayment = () => {
                       </p>
 
                       <p className="mt-0.5 text-xs text-slate-500">
-                        Pay directly from your bank account
+                        Pay directly from
+                        your bank account
                       </p>
                     </div>
                   </div>
 
                   <div
                     className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                      paymentMethod === "netbanking"
+                      paymentMethod ===
+                      "netbanking"
                         ? "border-blue-600 bg-blue-600"
                         : "border-slate-300"
                     }`}
                   >
-                    {paymentMethod === "netbanking" && (
+                    {paymentMethod ===
+                      "netbanking" && (
                       <Check
                         size={13}
                         className="text-white"
@@ -639,14 +1116,19 @@ const HotelPayment = () => {
                 </button>
 
                 {/* Wallet */}
+
                 <button
                   type="button"
                   onClick={() => {
-                    setPaymentMethod("wallet");
+                    setPaymentMethod(
+                      "wallet"
+                    );
+
                     setErrors({});
                   }}
                   className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition ${
-                    paymentMethod === "wallet"
+                    paymentMethod ===
+                    "wallet"
                       ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500"
                       : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
                   }`}
@@ -654,12 +1136,15 @@ const HotelPayment = () => {
                   <div className="flex items-center gap-3">
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                        paymentMethod === "wallet"
+                        paymentMethod ===
+                        "wallet"
                           ? "bg-blue-600 text-white"
                           : "bg-slate-100 text-slate-600"
                       }`}
                     >
-                      <WalletCards size={19} />
+                      <WalletCards
+                        size={19}
+                      />
                     </div>
 
                     <div>
@@ -668,19 +1153,22 @@ const HotelPayment = () => {
                       </p>
 
                       <p className="mt-0.5 text-xs text-slate-500">
-                        Pay using supported digital wallets
+                        Pay using supported
+                        digital wallets
                       </p>
                     </div>
                   </div>
 
                   <div
                     className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-                      paymentMethod === "wallet"
+                      paymentMethod ===
+                      "wallet"
                         ? "border-blue-600 bg-blue-600"
                         : "border-slate-300"
                     }`}
                   >
-                    {paymentMethod === "wallet" && (
+                    {paymentMethod ===
+                      "wallet" && (
                       <Check
                         size={13}
                         className="text-white"
@@ -691,9 +1179,11 @@ const HotelPayment = () => {
               </div>
 
               {/* =================================================
-                  UPI FORM
+                  UPI
               ================================================== */}
-              {paymentMethod === "upi" && (
+
+              {paymentMethod ===
+                "upi" && (
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <div className="mb-5">
                     <h3 className="text-base font-bold text-slate-900">
@@ -701,7 +1191,8 @@ const HotelPayment = () => {
                     </h3>
 
                     <p className="mt-1 text-xs text-slate-500">
-                      Enter your UPI ID to continue.
+                      Enter your UPI ID
+                      to continue.
                     </p>
                   </div>
 
@@ -722,13 +1213,25 @@ const HotelPayment = () => {
                       id="upiId"
                       type="text"
                       value={upiId}
-                      onChange={(event) => {
-                        setUpiId(event.target.value);
+                      onChange={(
+                        event
+                      ) => {
+                        setUpiId(
+                          event.target
+                            .value
+                        );
 
-                        setErrors((previous) => ({
-                          ...previous,
-                          upiId: "",
-                        }));
+                        setErrors(
+                          (
+                            previous
+                          ) => ({
+                            ...previous,
+                            upiId:
+                              "",
+                            payment:
+                              "",
+                          })
+                        );
                       }}
                       placeholder="example@upi"
                       className={`h-12 w-full rounded-xl border bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
@@ -741,7 +1244,9 @@ const HotelPayment = () => {
 
                   {errors.upiId && (
                     <p className="mt-1.5 text-xs font-medium text-red-500">
-                      {errors.upiId}
+                      {
+                        errors.upiId
+                      }
                     </p>
                   )}
 
@@ -757,7 +1262,9 @@ const HotelPayment = () => {
 
                   <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white py-7">
                     <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
-                      <QrCode size={34} />
+                      <QrCode
+                        size={34}
+                      />
                     </div>
 
                     <p className="mt-3 text-sm font-bold text-slate-800">
@@ -765,17 +1272,22 @@ const HotelPayment = () => {
                     </p>
 
                     <p className="mt-1 text-xs text-slate-500">
-                      QR payment will be available with
-                      payment gateway integration.
+                      QR payment will
+                      be available
+                      with payment
+                      gateway
+                      integration.
                     </p>
                   </div>
                 </div>
               )}
 
               {/* =================================================
-                  CARD FORM
+                  CARD
               ================================================== */}
-              {paymentMethod === "card" && (
+
+              {paymentMethod ===
+                "card" && (
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <div className="mb-5">
                     <h3 className="text-base font-bold text-slate-900">
@@ -783,11 +1295,11 @@ const HotelPayment = () => {
                     </h3>
 
                     <p className="mt-1 text-xs text-slate-500">
-                      Enter your card details securely.
+                      Enter your card
+                      details securely.
                     </p>
                   </div>
 
-                  {/* Card Number */}
                   <div>
                     <label
                       htmlFor="cardNumber"
@@ -808,8 +1320,12 @@ const HotelPayment = () => {
                         type="text"
                         inputMode="numeric"
                         maxLength={19}
-                        value={cardData.number}
-                        onChange={(event) => {
+                        value={
+                          cardData.number
+                        }
+                        onChange={(
+                          event
+                        ) => {
                           const numbers =
                             event.target.value.replace(
                               /\D/g,
@@ -818,22 +1334,37 @@ const HotelPayment = () => {
 
                           const formatted =
                             numbers
-                              .slice(0, 16)
+                              .slice(
+                                0,
+                                16
+                              )
                               .replace(
                                 /(.{4})/g,
                                 "$1 "
                               )
                               .trim();
 
-                          setCardData((previous) => ({
-                            ...previous,
-                            number: formatted,
-                          }));
+                          setCardData(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+                              number:
+                                formatted,
+                            })
+                          );
 
-                          setErrors((previous) => ({
-                            ...previous,
-                            number: "",
-                          }));
+                          setErrors(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+                              number:
+                                "",
+                              payment:
+                                "",
+                            })
+                          );
                         }}
                         placeholder="1234 5678 9012 3456"
                         className={`h-12 w-full rounded-xl border bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
@@ -846,12 +1377,13 @@ const HotelPayment = () => {
 
                     {errors.number && (
                       <p className="mt-1.5 text-xs font-medium text-red-500">
-                        {errors.number}
+                        {
+                          errors.number
+                        }
                       </p>
                     )}
                   </div>
 
-                  {/* Card Holder */}
                   <div className="mt-4">
                     <label
                       htmlFor="cardHolder"
@@ -870,8 +1402,12 @@ const HotelPayment = () => {
                         id="cardHolder"
                         name="holder"
                         type="text"
-                        value={cardData.holder}
-                        onChange={handleCardChange}
+                        value={
+                          cardData.holder
+                        }
+                        onChange={
+                          handleCardChange
+                        }
                         placeholder="Name on card"
                         className={`h-12 w-full rounded-xl border bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
                           errors.holder
@@ -883,12 +1419,13 @@ const HotelPayment = () => {
 
                     {errors.holder && (
                       <p className="mt-1.5 text-xs font-medium text-red-500">
-                        {errors.holder}
+                        {
+                          errors.holder
+                        }
                       </p>
                     )}
                   </div>
 
-                  {/* Expiry + CVV */}
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>
                       <label
@@ -903,30 +1440,55 @@ const HotelPayment = () => {
                         name="expiry"
                         type="text"
                         maxLength={5}
-                        value={cardData.expiry}
-                        onChange={(event) => {
+                        value={
+                          cardData.expiry
+                        }
+                        onChange={(
+                          event
+                        ) => {
                           let value =
                             event.target.value.replace(
                               /\D/g,
                               ""
                             );
 
-                          if (value.length > 2) {
+                          if (
+                            value.length >
+                            2
+                          ) {
                             value =
-                              value.slice(0, 2) +
+                              value.slice(
+                                0,
+                                2
+                              ) +
                               "/" +
-                              value.slice(2, 4);
+                              value.slice(
+                                2,
+                                4
+                              );
                           }
 
-                          setCardData((previous) => ({
-                            ...previous,
-                            expiry: value,
-                          }));
+                          setCardData(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+                              expiry:
+                                value,
+                            })
+                          );
 
-                          setErrors((previous) => ({
-                            ...previous,
-                            expiry: "",
-                          }));
+                          setErrors(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+                              expiry:
+                                "",
+                              payment:
+                                "",
+                            })
+                          );
                         }}
                         placeholder="MM / YY"
                         className={`h-12 w-full rounded-xl border bg-white px-4 text-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
@@ -938,7 +1500,9 @@ const HotelPayment = () => {
 
                       {errors.expiry && (
                         <p className="mt-1.5 text-xs font-medium text-red-500">
-                          {errors.expiry}
+                          {
+                            errors.expiry
+                          }
                         </p>
                       )}
                     </div>
@@ -957,23 +1521,37 @@ const HotelPayment = () => {
                         type="password"
                         inputMode="numeric"
                         maxLength={4}
-                        value={cardData.cvv}
-                        onChange={(event) => {
+                        value={
+                          cardData.cvv
+                        }
+                        onChange={(
+                          event
+                        ) => {
                           const value =
                             event.target.value.replace(
                               /\D/g,
                               ""
                             );
 
-                          setCardData((previous) => ({
-                            ...previous,
-                            cvv: value,
-                          }));
+                          setCardData(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+                              cvv: value,
+                            })
+                          );
 
-                          setErrors((previous) => ({
-                            ...previous,
-                            cvv: "",
-                          }));
+                          setErrors(
+                            (
+                              previous
+                            ) => ({
+                              ...previous,
+                              cvv: "",
+                              payment:
+                                "",
+                            })
+                          );
                         }}
                         placeholder="•••"
                         className={`h-12 w-full rounded-xl border bg-white px-4 text-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
@@ -985,7 +1563,9 @@ const HotelPayment = () => {
 
                       {errors.cvv && (
                         <p className="mt-1.5 text-xs font-medium text-red-500">
-                          {errors.cvv}
+                          {
+                            errors.cvv
+                          }
                         </p>
                       )}
                     </div>
@@ -996,25 +1576,38 @@ const HotelPayment = () => {
               {/* =================================================
                   NET BANKING
               ================================================== */}
-              {paymentMethod === "netbanking" && (
+
+              {paymentMethod ===
+                "netbanking" && (
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <h3 className="text-base font-bold text-slate-900">
                     Select Your Bank
                   </h3>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    Choose your bank to continue.
+                    Choose your bank to
+                    continue.
                   </p>
 
                   <select
                     value={bank}
-                    onChange={(event) => {
-                      setBank(event.target.value);
+                    onChange={(
+                      event
+                    ) => {
+                      setBank(
+                        event.target.value
+                      );
 
-                      setErrors((previous) => ({
-                        ...previous,
-                        bank: "",
-                      }));
+                      setErrors(
+                        (
+                          previous
+                        ) => ({
+                          ...previous,
+                          bank: "",
+                          payment:
+                            "",
+                        })
+                      );
                     }}
                     className={`mt-5 h-12 w-full rounded-xl border bg-white px-4 text-sm text-slate-700 outline-none transition focus:ring-4 ${
                       errors.bank
@@ -1027,7 +1620,8 @@ const HotelPayment = () => {
                     </option>
 
                     <option value="sbi">
-                      State Bank of India
+                      State Bank of
+                      India
                     </option>
 
                     <option value="hdfc">
@@ -1043,13 +1637,16 @@ const HotelPayment = () => {
                     </option>
 
                     <option value="kotak">
-                      Kotak Mahindra Bank
+                      Kotak Mahindra
+                      Bank
                     </option>
                   </select>
 
                   {errors.bank && (
                     <p className="mt-1.5 text-xs font-medium text-red-500">
-                      {errors.bank}
+                      {
+                        errors.bank
+                      }
                     </p>
                   )}
                 </div>
@@ -1058,76 +1655,108 @@ const HotelPayment = () => {
               {/* =================================================
                   WALLET
               ================================================== */}
-              {paymentMethod === "wallet" && (
+
+              {paymentMethod ===
+                "wallet" && (
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <h3 className="text-base font-bold text-slate-900">
                     Select Wallet
                   </h3>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    Choose your preferred wallet.
+                    Choose your preferred
+                    wallet.
                   </p>
 
                   <div className="mt-5 grid gap-3 sm:grid-cols-3">
                     {[
                       {
-                        value: "paytm",
-                        label: "Paytm",
+                        value:
+                          "paytm",
+                        label:
+                          "Paytm",
                       },
                       {
-                        value: "phonepe",
-                        label: "PhonePe",
+                        value:
+                          "phonepe",
+                        label:
+                          "PhonePe",
                       },
                       {
-                        value: "amazonpay",
-                        label: "Amazon Pay",
+                        value:
+                          "amazonpay",
+                        label:
+                          "Amazon Pay",
                       },
-                    ].map((item) => (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => {
-                          setWallet(item.value);
+                    ].map(
+                      (item) => (
+                        <button
+                          key={
+                            item.value
+                          }
+                          type="button"
+                          onClick={() => {
+                            setWallet(
+                              item.value
+                            );
 
-                          setErrors((previous) => ({
-                            ...previous,
-                            wallet: "",
-                          }));
-                        }}
-                        className={`rounded-xl border p-4 text-sm font-semibold transition ${
-                          wallet === item.value
-                            ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
+                            setErrors(
+                              (
+                                previous
+                              ) => ({
+                                ...previous,
+                                wallet:
+                                  "",
+                                payment:
+                                  "",
+                              })
+                            );
+                          }}
+                          className={`rounded-xl border p-4 text-sm font-semibold transition ${
+                            wallet ===
+                            item.value
+                              ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"
+                          }`}
+                        >
+                          {
+                            item.label
+                          }
+                        </button>
+                      )
+                    )}
                   </div>
 
                   {errors.wallet && (
                     <p className="mt-2 text-xs font-medium text-red-500">
-                      {errors.wallet}
+                      {
+                        errors.wallet
+                      }
                     </p>
                   )}
                 </div>
               )}
 
               {/* =================================================
-                  SECURITY NOTE
+                  SECURITY
               ================================================== */}
+
               <div className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-600 shadow-sm">
-                  <ShieldCheck size={18} />
+                  <ShieldCheck
+                    size={18}
+                  />
                 </div>
 
                 <div>
                   <p className="text-sm font-bold text-emerald-800">
-                    Your payment is secure
+                    Your payment is
+                    secure
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-emerald-700">
-                    Your payment details are protected with
+                    Your payment details
+                    are protected with
                     secure encryption.
                   </p>
                 </div>
@@ -1136,6 +1765,7 @@ const HotelPayment = () => {
               {/* =================================================
                   TERMS
               ================================================== */}
+
               <div
                 className={`mt-5 rounded-xl border p-4 ${
                   errors.terms
@@ -1146,22 +1776,35 @@ const HotelPayment = () => {
                 <label className="flex cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"
-                    checked={agreeTerms}
-                    onChange={(event) => {
+                    checked={
+                      agreeTerms
+                    }
+                    onChange={(
+                      event
+                    ) => {
                       setAgreeTerms(
-                        event.target.checked
+                        event.target
+                          .checked
                       );
 
-                      setErrors((previous) => ({
-                        ...previous,
-                        terms: "",
-                      }));
+                      setErrors(
+                        (
+                          previous
+                        ) => ({
+                          ...previous,
+                          terms:
+                            "",
+                          payment:
+                            "",
+                        })
+                      );
                     }}
                     className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
 
                   <span className="text-sm leading-6 text-slate-600">
-                    I agree to Tripora's{" "}
+                    I agree to
+                    Tripora's{" "}
                     <button
                       type="button"
                       onClick={() =>
@@ -1171,31 +1814,42 @@ const HotelPayment = () => {
                       }
                       className="font-semibold text-blue-600 hover:underline"
                     >
-                      Terms & Conditions
+                      Terms &
+                      Conditions
                     </button>{" "}
-                    and payment policies.
+                    and payment
+                    policies.
                   </span>
                 </label>
 
                 {errors.terms && (
                   <p className="mt-2 text-xs font-medium text-red-500">
-                    {errors.terms}
+                    {
+                      errors.terms
+                    }
                   </p>
                 )}
               </div>
 
-              {/* Desktop Pay Button */}
+              {/* Desktop Pay */}
+
               <button
                 type="submit"
-                disabled={isProcessing}
+                disabled={
+                  isProcessing
+                }
                 className="mt-6 hidden w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 lg:flex"
               >
                 {isProcessing
                   ? "Processing Payment..."
-                  : `Pay ₹${formatPrice(totalPrice)}`}
+                  : `Pay ₹${formatPrice(
+                      totalPrice
+                    )}`}
 
                 {!isProcessing && (
-                  <ArrowRight size={17} />
+                  <ArrowRight
+                    size={17}
+                  />
                 )}
               </button>
             </form>
@@ -1203,6 +1857,7 @@ const HotelPayment = () => {
             {/* =================================================
                 TRUST FEATURES
             ================================================== */}
+
             <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
               <h3 className="text-base font-bold text-slate-900">
                 Why pay with Tripora?
@@ -1211,7 +1866,9 @@ const HotelPayment = () => {
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                    <LockKeyhole size={17} />
+                    <LockKeyhole
+                      size={17}
+                    />
                   </div>
 
                   <div>
@@ -1220,14 +1877,17 @@ const HotelPayment = () => {
                     </p>
 
                     <p className="text-xs text-slate-500">
-                      Protected payment experience
+                      Protected payment
+                      experience
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                    <CheckCircle2 size={17} />
+                    <CheckCircle2
+                      size={17}
+                    />
                   </div>
 
                   <div>
@@ -1236,14 +1896,17 @@ const HotelPayment = () => {
                     </p>
 
                     <p className="text-xs text-slate-500">
-                      Get booking confirmation quickly
+                      Get booking
+                      confirmation quickly
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-                    <Clock3 size={17} />
+                    <Clock3
+                      size={17}
+                    />
                   </div>
 
                   <div>
@@ -1252,14 +1915,17 @@ const HotelPayment = () => {
                     </p>
 
                     <p className="text-xs text-slate-500">
-                      We're always here to help
+                      We're always here
+                      to help
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-                    <Phone size={17} />
+                    <Phone
+                      size={17}
+                    />
                   </div>
 
                   <div>
@@ -1268,7 +1934,8 @@ const HotelPayment = () => {
                     </p>
 
                     <p className="text-xs text-slate-500">
-                      Help whenever you need it
+                      Help whenever you
+                      need it
                     </p>
                   </div>
                 </div>
@@ -1277,11 +1944,11 @@ const HotelPayment = () => {
           </div>
 
           {/* =================================================
-              RIGHT BOOKING SUMMARY
+              RIGHT SUMMARY
           ================================================== */}
+
           <aside className="lg:sticky lg:top-5 lg:self-start">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              {/* Header */}
               <div className="border-b border-slate-200 px-5 py-4">
                 <h2 className="text-lg font-bold text-slate-900">
                   Booking Summary
@@ -1290,14 +1957,17 @@ const HotelPayment = () => {
 
               <div className="p-5">
                 {/* Hotel */}
+
                 <div className="flex gap-4">
                   <img
                     src={
                       hotel.image ||
+                      hotel.images?.[0] ||
                       fallbackHotel.image
                     }
                     alt={
                       hotel.name ||
+                      hotel.hotelName ||
                       "Hotel"
                     }
                     className="h-24 w-24 shrink-0 rounded-xl object-cover"
@@ -1306,6 +1976,7 @@ const HotelPayment = () => {
                   <div className="min-w-0">
                     <h3 className="line-clamp-2 text-base font-bold text-slate-900">
                       {hotel.name ||
+                        hotel.hotelName ||
                         fallbackHotel.name}
                     </h3>
 
@@ -1316,7 +1987,9 @@ const HotelPayment = () => {
                           fill="currentColor"
                         />
 
-                        {hotel.rating || 4.6}
+                        {hotel.rating ||
+                          hotel.guestRating ||
+                          4.6}
                       </span>
 
                       <span className="text-xs text-slate-500">
@@ -1332,6 +2005,11 @@ const HotelPayment = () => {
 
                       <span>
                         {hotel.location ||
+                          `${hotel.city || ""}${
+                            hotel.state
+                              ? `, ${hotel.state}`
+                              : ""
+                          }` ||
                           fallbackHotel.location}
                       </span>
                     </div>
@@ -1339,34 +2017,49 @@ const HotelPayment = () => {
                 </div>
 
                 {/* Dates */}
+
                 <div className="mt-5 grid grid-cols-2 gap-3">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                      <CalendarDays size={14} />
+                      <CalendarDays
+                        size={14}
+                      />
+
                       Check-in
                     </div>
 
                     <p className="mt-1 text-sm font-bold text-slate-900">
-                      {formatDate(checkIn)}
+                      {formatDate(
+                        checkIn
+                      )}
                     </p>
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                      <CalendarDays size={14} />
+                      <CalendarDays
+                        size={14}
+                      />
+
                       Check-out
                     </div>
 
                     <p className="mt-1 text-sm font-bold text-slate-900">
-                      {formatDate(checkOut)}
+                      {formatDate(
+                        checkOut
+                      )}
                     </p>
                   </div>
                 </div>
 
                 {/* Guests */}
+
                 <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-500">
                   <span className="flex items-center gap-1.5">
-                    <Clock3 size={14} />
+                    <Clock3
+                      size={14}
+                    />
+
                     {nights}{" "}
                     {nights === 1
                       ? "Night"
@@ -1374,12 +2067,16 @@ const HotelPayment = () => {
                   </span>
 
                   <span className="flex items-center gap-1.5">
-                    <User size={14} />
+                    <User
+                      size={14}
+                    />
+
                     {guestCountText}
                   </span>
                 </div>
 
                 {/* Room */}
+
                 <div className="mt-5 rounded-xl border border-slate-200 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -1395,20 +2092,27 @@ const HotelPayment = () => {
                     </div>
 
                     <span className="whitespace-nowrap text-sm font-bold text-slate-900">
-                      ₹{formatPrice(roomPrice)}
+                      ₹
+                      {formatPrice(
+                        roomPrice
+                      )}
                     </span>
                   </div>
 
                   <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
                     <div className="flex items-center gap-2 text-xs text-emerald-600">
-                      <CheckCircle2 size={14} />
+                      <CheckCircle2
+                        size={14}
+                      />
 
                       {selectedRoom.meal ||
                         fallbackRoom.meal}
                     </div>
 
                     <div className="flex items-center gap-2 text-xs text-emerald-600">
-                      <CheckCircle2 size={14} />
+                      <CheckCircle2
+                        size={14}
+                      />
 
                       {selectedRoom.cancellation ||
                         fallbackRoom.cancellation}
@@ -1417,6 +2121,7 @@ const HotelPayment = () => {
                 </div>
 
                 {/* Guest */}
+
                 {guestDetails.firstName && (
                   <div className="mt-4 rounded-xl bg-slate-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -1424,24 +2129,34 @@ const HotelPayment = () => {
                     </p>
 
                     <p className="mt-1 text-sm font-bold text-slate-800">
-                      {guestDetails.firstName}{" "}
-                      {guestDetails.lastName}
+                      {
+                        guestDetails.firstName
+                      }{" "}
+                      {
+                        guestDetails.lastName
+                      }
                     </p>
 
                     {guestDetails.email && (
                       <p className="mt-1 text-xs text-slate-500">
-                        {guestDetails.email}
+                        {
+                          guestDetails.email
+                        }
                       </p>
                     )}
                   </div>
                 )}
 
                 {/* Price */}
+
                 <div className="mt-5 space-y-3">
                   <div className="flex items-center justify-between text-sm text-slate-600">
                     <span>
-                      Room ₹{formatPrice(roomPrice)} ×{" "}
-                      {nights}{" "}
+                      Room ₹
+                      {formatPrice(
+                        roomPrice
+                      )}{" "}
+                      × {nights}{" "}
                       {nights === 1
                         ? "night"
                         : "nights"}
@@ -1456,10 +2171,15 @@ const HotelPayment = () => {
                   </div>
 
                   <div className="flex items-center justify-between text-sm text-slate-600">
-                    <span>Taxes & Fees</span>
+                    <span>
+                      Taxes & Fees
+                    </span>
 
                     <span className="font-semibold text-slate-800">
-                      ₹{formatPrice(taxes)}
+                      ₹
+                      {formatPrice(
+                        taxes
+                      )}
                     </span>
                   </div>
 
@@ -1471,18 +2191,23 @@ const HotelPayment = () => {
                         </p>
 
                         <p className="mt-0.5 text-xs text-slate-400">
-                          Inclusive of applicable taxes
+                          Inclusive of
+                          applicable taxes
                         </p>
                       </div>
 
                       <p className="text-xl font-extrabold text-blue-600">
-                        ₹{formatPrice(totalPrice)}
+                        ₹
+                        {formatPrice(
+                          totalPrice
+                        )}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Cancellation */}
+
                 <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
                   <div className="flex items-start gap-2">
                     <CheckCircle2
@@ -1496,18 +2221,25 @@ const HotelPayment = () => {
                       </p>
 
                       <p className="mt-1 text-[11px] leading-4 text-emerald-700">
-                        Cancellation policy depends on the
-                        selected room and hotel.
+                        Cancellation policy
+                        depends on the
+                        selected room and
+                        hotel.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Mobile Pay Button */}
+                {/* Mobile Pay */}
+
                 <button
                   type="button"
-                  onClick={handlePayment}
-                  disabled={isProcessing}
+                  onClick={
+                    handlePayment
+                  }
+                  disabled={
+                    isProcessing
+                  }
                   className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 lg:hidden"
                 >
                   {isProcessing
@@ -1517,7 +2249,9 @@ const HotelPayment = () => {
                       )}`}
 
                   {!isProcessing && (
-                    <ArrowRight size={17} />
+                    <ArrowRight
+                      size={17}
+                    />
                   )}
                 </button>
 
@@ -1528,9 +2262,12 @@ const HotelPayment = () => {
                   />
 
                   <p className="text-[11px] leading-4 text-slate-400">
-                    Your payment is processed securely.
-                    You will receive your booking
-                    confirmation after successful payment.
+                    Your payment is
+                    processed securely.
+                    You will receive your
+                    booking confirmation
+                    after successful
+                    payment.
                   </p>
                 </div>
               </div>
@@ -1542,6 +2279,7 @@ const HotelPayment = () => {
       {/* =====================================================
           PROCESSING OVERLAY
       ====================================================== */}
+
       {isProcessing && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-2xl">
@@ -1557,8 +2295,10 @@ const HotelPayment = () => {
             </h3>
 
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Please wait while we process your payment.
-              Do not close or refresh this page.
+              Please wait while we
+              process your payment. Do
+              not close or refresh this
+              page.
             </p>
 
             <div className="mx-auto mt-5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
@@ -1569,22 +2309,27 @@ const HotelPayment = () => {
       )}
 
       {/* =====================================================
-          DEMO SUCCESS STATE
+          SUCCESS STATE
       ====================================================== */}
+
       {showSuccess && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-7 text-center shadow-2xl">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-              <CheckCircle2 size={34} />
+              <CheckCircle2
+                size={34}
+              />
             </div>
 
             <h3 className="mt-5 text-xl font-bold text-slate-900">
-              Payment Successful
+              Booking Created
             </h3>
 
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Your hotel booking has been confirmed
-              successfully.
+              Your hotel booking has
+              been created successfully.
+              Redirecting to your
+              confirmation...
             </p>
           </div>
         </div>
@@ -1594,3 +2339,4 @@ const HotelPayment = () => {
 };
 
 export default HotelPayment;
+

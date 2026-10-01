@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -22,33 +21,58 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+
 import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 import {
   getProfile,
   logout,
+  updateProfile,
+  clearUpdateProfileState,
 } from "../redux/slicer/userSlice";
+
+// =====================================================
+// PROFILE
+// =====================================================
 
 const Profile = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // Redux auth data
+  // ===================================================
+  // REDUX AUTH DATA
+  // ===================================================
+
   const {
     user: authUser,
     token,
     loading,
     error,
+
+    // Update profile states
+    updateProfileLoading,
+    updateProfileSuccess,
+    updateProfileError,
+    updateProfileMessage,
   } = useSelector((state) => state.auth);
 
-  // Menu
+  // ===================================================
+  // MENU
+  // ===================================================
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Edit modal
+  // ===================================================
+  // EDIT MODAL
+  // ===================================================
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  // Profile data used by UI
+  // ===================================================
+  // PROFILE DATA
+  // ===================================================
+
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
@@ -57,13 +81,16 @@ const Profile = () => {
     dob: "",
     gender: "",
     avatar: "",
-    preferredDestination: "Dubai",
-    travelType: "Leisure",
-    seatPreference: "Window",
-    mealPreference: "Vegetarian",
+    preferredDestination: "",
+    travelType: "",
+    seatPreference: "",
+    mealPreference: "",
   });
 
-  // Edit form
+  // ===================================================
+  // EDIT FORM
+  // ===================================================
+
   const [editForm, setEditForm] = useState({
     name: "",
     email: "",
@@ -71,93 +98,127 @@ const Profile = () => {
     location: "",
     dob: "",
     gender: "",
-    preferredDestination: "Dubai",
-    travelType: "Leisure",
-    seatPreference: "Window",
-    mealPreference: "Vegetarian",
+    preferredDestination: "",
+    travelType: "",
+    seatPreference: "",
+    mealPreference: "",
   });
 
-  /*
-   * Get profile from backend when user is logged in
-   */
+  // ===================================================
+  // GET PROFILE
+  // ===================================================
+
   useEffect(() => {
     if (token) {
       dispatch(getProfile());
     }
   }, [dispatch, token]);
 
-  /*
-   * Convert backend user data into UI profile data
-   *
-   * Backend:
-   * fullName
-   * mobileNumber
-   *
-   * UI:
-   * name
-   * mobile
-   */
+  // ===================================================
+  // CONVERT BACKEND USER DATA TO UI DATA
+  // ===================================================
+
   useEffect(() => {
     if (!authUser) return;
 
-    setProfileData((prev) => ({
-      ...prev,
-
+    setProfileData({
       name: authUser.fullName || "",
       email: authUser.email || "",
       mobile: authUser.mobileNumber || "",
-    }));
+      location: authUser.location || "",
+      dob: authUser.dob || "",
+      gender: authUser.gender || "",
+      avatar: authUser.avatar || "",
+      preferredDestination:
+        authUser.preferredDestination || "",
+      travelType: authUser.travelType || "",
+      seatPreference:
+        authUser.seatPreference || "",
+      mealPreference:
+        authUser.mealPreference || "",
+    });
   }, [authUser]);
 
-  /*
-   * Update edit form when profile data changes
-   */
+  // ===================================================
+  // UPDATE EDIT FORM WHEN PROFILE DATA CHANGES
+  // ===================================================
+
   useEffect(() => {
     setEditForm({
-      name: profileData.name,
-      email: profileData.email,
-      mobile: profileData.mobile,
-      location: profileData.location,
-      dob: profileData.dob,
-      gender: profileData.gender,
-      preferredDestination: profileData.preferredDestination,
-      travelType: profileData.travelType,
-      seatPreference: profileData.seatPreference,
-      mealPreference: profileData.mealPreference,
+      name: profileData.name || "",
+      email: profileData.email || "",
+      mobile: profileData.mobile || "",
+      location: profileData.location || "",
+      dob: profileData.dob || "",
+      gender: profileData.gender || "",
+      preferredDestination:
+        profileData.preferredDestination || "",
+      travelType: profileData.travelType || "",
+      seatPreference:
+        profileData.seatPreference || "",
+      mealPreference:
+        profileData.mealPreference || "",
     });
   }, [profileData]);
 
-  /*
-   * Logout
-   */
+  // ===================================================
+  // UPDATE PROFILE SUCCESS
+  // ===================================================
+
+  useEffect(() => {
+    if (!updateProfileSuccess) return;
+
+    // Close modal after successful update
+    setIsEditModalOpen(false);
+
+    // Clear update state after success
+    const timer = setTimeout(() => {
+      dispatch(clearUpdateProfileState());
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [updateProfileSuccess, dispatch]);
+
+  // ===================================================
+  // LOGOUT
+  // ===================================================
+
   const handleLogout = () => {
     dispatch(logout());
     navigate("/login");
   };
 
-  /*
-   * Open edit modal
-   */
+  // ===================================================
+  // OPEN EDIT MODAL
+  // ===================================================
+
   const handleEditProfile = () => {
     setEditForm({
-      name: profileData.name,
-      email: profileData.email,
-      mobile: profileData.mobile,
-      location: profileData.location,
-      dob: profileData.dob,
-      gender: profileData.gender,
-      preferredDestination: profileData.preferredDestination,
-      travelType: profileData.travelType,
-      seatPreference: profileData.seatPreference,
-      mealPreference: profileData.mealPreference,
+      name: profileData.name || "",
+      email: profileData.email || "",
+      mobile: profileData.mobile || "",
+      location: profileData.location || "",
+      dob: profileData.dob || "",
+      gender: profileData.gender || "",
+      preferredDestination:
+        profileData.preferredDestination || "",
+      travelType: profileData.travelType || "",
+      seatPreference:
+        profileData.seatPreference || "",
+      mealPreference:
+        profileData.mealPreference || "",
     });
+
+    // Clear previous update error
+    dispatch(clearUpdateProfileState());
 
     setIsEditModalOpen(true);
   };
 
-  /*
-   * Edit form input change
-   */
+  // ===================================================
+  // EDIT FORM INPUT CHANGE
+  // ===================================================
+
   const handleEditChange = (e) => {
     const { name, value } = e.target;
 
@@ -167,36 +228,66 @@ const Profile = () => {
     }));
   };
 
-  /*
-   * Save profile
-   *
-   * NOTE:
-   * Currently this updates frontend state only.
-   *
-   * Backend update API is not created yet.
-   */
-  const handleSaveProfile = (e) => {
+  // ===================================================
+  // SAVE PROFILE
+  // ===================================================
+
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
 
-    setProfileData((prev) => ({
-      ...prev,
-      ...editForm,
-    }));
+    // Remove email because backend doesn't update email
+    const profilePayload = {
+      name: editForm.name.trim(),
+      mobile: editForm.mobile.trim(),
+      location: editForm.location.trim(),
+      dob: editForm.dob,
+      gender: editForm.gender,
+      preferredDestination:
+        editForm.preferredDestination,
+      travelType: editForm.travelType,
+      seatPreference:
+        editForm.seatPreference,
+      mealPreference:
+        editForm.mealPreference,
+    };
+
+    try {
+      await dispatch(
+        updateProfile(profilePayload)
+      ).unwrap();
+    } catch (error) {
+      console.error(
+        "Update Profile Error:",
+        error
+      );
+    }
+  };
+
+  // ===================================================
+  // CLOSE EDIT MODAL
+  // ===================================================
+
+  const handleCloseEditModal = () => {
+    if (updateProfileLoading) return;
+
+    dispatch(clearUpdateProfileState());
 
     setIsEditModalOpen(false);
   };
 
-  /*
-   * Close menu when clicking navigation item
-   */
+  // ===================================================
+  // MENU NAVIGATION
+  // ===================================================
+
   const handleMenuNavigation = (path) => {
     setIsMenuOpen(false);
     navigate(path);
   };
 
-  /*
-   * Loading state
-   */
+  // ===================================================
+  // LOADING STATE
+  // ===================================================
+
   if (loading && !authUser) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -211,9 +302,16 @@ const Profile = () => {
     );
   }
 
+  // ===================================================
+  // UI
+  // ===================================================
+
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* ================= MOBILE TOP BAR ================= */}
+      {/* =================================================
+          MOBILE TOP BAR
+      ================================================= */}
+
       <div className="lg:hidden sticky top-0 z-40 bg-white border-b border-slate-200">
         <div className="h-16 px-4 flex items-center justify-between">
           <button
@@ -228,10 +326,16 @@ const Profile = () => {
           </h1>
 
           <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            onClick={() =>
+              setIsMenuOpen(!isMenuOpen)
+            }
             className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-slate-100"
           >
-            {isMenuOpen ? <X size={22} /> : <Menu size={22} />}
+            {isMenuOpen ? (
+              <X size={22} />
+            ) : (
+              <Menu size={22} />
+            )}
           </button>
         </div>
 
@@ -240,7 +344,9 @@ const Profile = () => {
           <div className="border-t border-slate-200 bg-white shadow-lg">
             <div className="p-3 space-y-1">
               <button
-                onClick={() => handleMenuNavigation("/")}
+                onClick={() =>
+                  handleMenuNavigation("/")
+                }
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-left"
               >
                 <Plane size={18} />
@@ -248,7 +354,9 @@ const Profile = () => {
               </button>
 
               <button
-                onClick={() => handleMenuNavigation("/flights")}
+                onClick={() =>
+                  handleMenuNavigation("/flights")
+                }
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-left"
               >
                 <Ticket size={18} />
@@ -256,7 +364,9 @@ const Profile = () => {
               </button>
 
               <button
-                onClick={() => handleMenuNavigation("/hotels")}
+                onClick={() =>
+                  handleMenuNavigation("/hotels")
+                }
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-left"
               >
                 <Hotel size={18} />
@@ -264,7 +374,9 @@ const Profile = () => {
               </button>
 
               <button
-                onClick={() => handleMenuNavigation("/bookings")}
+                onClick={() =>
+                  handleMenuNavigation("/bookings")
+                }
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-50 text-left"
               >
                 <Calendar size={18} />
@@ -275,9 +387,15 @@ const Profile = () => {
         )}
       </div>
 
-      {/* ================= MAIN CONTAINER ================= */}
+      {/* =================================================
+          MAIN CONTAINER
+      ================================================= */}
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-        {/* ================= BREADCRUMB ================= */}
+        {/* =================================================
+            BREADCRUMB
+        ================================================= */}
+
         <div className="hidden lg:flex items-center gap-2 text-sm text-slate-500 mb-6">
           <button
             onClick={() => navigate("/")}
@@ -293,7 +411,10 @@ const Profile = () => {
           </span>
         </div>
 
-        {/* ================= PROFILE HEADER ================= */}
+        {/* =================================================
+            PROFILE HEADER
+        ================================================= */}
+
         <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
           {/* Cover */}
           <div className="h-32 sm:h-40 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 relative">
@@ -319,7 +440,9 @@ const Profile = () => {
                     ) : (
                       <span className="text-3xl font-bold text-blue-600">
                         {profileData.name
-                          ? profileData.name.charAt(0).toUpperCase()
+                          ? profileData.name
+                            .charAt(0)
+                            .toUpperCase()
                           : "U"}
                       </span>
                     )}
@@ -333,14 +456,16 @@ const Profile = () => {
                   </h2>
 
                   <p className="text-sm text-slate-500 mt-1">
-                    {profileData.email || "Email not available"}
+                    {profileData.email ||
+                      "Email not available"}
                   </p>
 
                   <div className="flex items-center gap-1.5 text-sm text-slate-500 mt-1">
                     <MapPin size={15} />
 
                     <span>
-                      {profileData.location || "Location not added"}
+                      {profileData.location ||
+                        "Location not added"}
                     </span>
                   </div>
                 </div>
@@ -358,14 +483,31 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* ================= ERROR ================= */}
+        {/* =================================================
+            SUCCESS MESSAGE
+        ================================================= */}
+
+        {updateProfileSuccess && (
+          <div className="mt-4 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-sm">
+            {updateProfileMessage ||
+              "Profile updated successfully"}
+          </div>
+        )}
+
+        {/* =================================================
+            ERROR
+        ================================================= */}
+
         {error && (
           <div className="mt-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
             {error}
           </div>
         )}
 
-        {/* ================= STATS ================= */}
+        {/* =================================================
+            STATS
+        ================================================= */}
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
           <StatCard
             icon={<Ticket size={21} />}
@@ -396,11 +538,18 @@ const Profile = () => {
           />
         </div>
 
-        {/* ================= CONTENT GRID ================= */}
+        {/* =================================================
+            CONTENT GRID
+        ================================================= */}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-          {/* ================= LEFT CONTENT ================= */}
+          {/* =================================================
+              LEFT CONTENT
+          ================================================= */}
+
           <div className="lg:col-span-2 space-y-6">
             {/* Personal Information */}
+
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
               <div className="px-5 sm:px-6 py-5 border-b border-slate-200 flex items-center justify-between">
                 <div>
@@ -425,42 +574,58 @@ const Profile = () => {
                 <ProfileField
                   icon={<User size={18} />}
                   label="Full Name"
-                  value={profileData.name || "Not added"}
+                  value={
+                    profileData.name || "Not added"
+                  }
                 />
 
                 <ProfileField
                   icon={<Search size={18} />}
                   label="Email Address"
-                  value={profileData.email || "Not added"}
+                  value={
+                    profileData.email || "Not added"
+                  }
                 />
 
                 <ProfileField
                   icon={<PhoneIcon />}
                   label="Mobile Number"
-                  value={profileData.mobile || "Not added"}
+                  value={
+                    profileData.mobile || "Not added"
+                  }
                 />
 
                 <ProfileField
                   icon={<MapPin size={18} />}
                   label="Location"
-                  value={profileData.location || "Not added"}
+                  value={
+                    profileData.location ||
+                    "Not added"
+                  }
                 />
 
                 <ProfileField
                   icon={<Calendar size={18} />}
                   label="Date of Birth"
-                  value={profileData.dob || "Not added"}
+                  value={
+                    profileData.dob || "Not added"
+                  }
                 />
 
                 <ProfileField
                   icon={<User size={18} />}
                   label="Gender"
-                  value={profileData.gender || "Not added"}
+                  value={
+                    profileData.gender || "Not added"
+                  }
                 />
               </div>
             </div>
 
-            {/* Travel Preferences */}
+            {/* =================================================
+                TRAVEL PREFERENCES
+            ================================================= */}
+
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
               <div className="px-5 sm:px-6 py-5 border-b border-slate-200">
                 <h3 className="text-lg font-bold text-slate-900">
@@ -476,30 +641,45 @@ const Profile = () => {
                 <PreferenceCard
                   icon={<MapPin size={19} />}
                   title="Preferred Destination"
-                  value={profileData.preferredDestination}
+                  value={
+                    profileData.preferredDestination ||
+                    "Not added"
+                  }
                 />
 
                 <PreferenceCard
                   icon={<Plane size={19} />}
                   title="Travel Type"
-                  value={profileData.travelType}
+                  value={
+                    profileData.travelType ||
+                    "Not added"
+                  }
                 />
 
                 <PreferenceCard
                   icon={<Ticket size={19} />}
                   title="Seat Preference"
-                  value={profileData.seatPreference}
+                  value={
+                    profileData.seatPreference ||
+                    "Not added"
+                  }
                 />
 
                 <PreferenceCard
                   icon={<HotelIcon />}
                   title="Meal Preference"
-                  value={profileData.mealPreference}
+                  value={
+                    profileData.mealPreference ||
+                    "Not added"
+                  }
                 />
               </div>
             </div>
 
-            {/* Account Protection */}
+            {/* =================================================
+                ACCOUNT PROTECTION
+            ================================================= */}
+
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
               <div className="px-5 sm:px-6 py-5 border-b border-slate-200">
                 <h3 className="text-lg font-bold text-slate-900">
@@ -516,22 +696,30 @@ const Profile = () => {
                   icon={<Lock size={19} />}
                   title="Change Password"
                   subtitle="Update your account password"
-                  onClick={() => navigate("/change-password")}
+                  onClick={() =>
+                    navigate("/change-password")
+                  }
                 />
 
                 <ActionItem
                   icon={<ShieldCheck size={19} />}
                   title="Security"
                   subtitle="Manage account security settings"
-                  onClick={() => navigate("/security")}
+                  onClick={() =>
+                    navigate("/security")
+                  }
                 />
               </div>
             </div>
           </div>
 
-          {/* ================= RIGHT CONTENT ================= */}
+          {/* =================================================
+              RIGHT CONTENT
+          ================================================= */}
+
           <div className="space-y-6">
             {/* Quick Actions */}
+
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
               <div className="px-5 py-5 border-b border-slate-200">
                 <h3 className="text-lg font-bold text-slate-900">
@@ -544,33 +732,42 @@ const Profile = () => {
                   icon={<Ticket size={19} />}
                   title="My Bookings"
                   subtitle="View your bookings"
-                  onClick={() => navigate("/bookings")}
+                  onClick={() =>
+                    navigate("/bookings")
+                  }
                 />
 
                 <ActionItem
                   icon={<Heart size={19} />}
                   title="Saved Trips"
                   subtitle="Your saved destinations"
-                  onClick={() => navigate("/saved-trips")}
+                  onClick={() =>
+                    navigate("/saved-trips")
+                  }
                 />
 
                 <ActionItem
                   icon={<Wallet size={19} />}
                   title="Wallet"
                   subtitle="Manage your wallet"
-                  onClick={() => navigate("/wallet")}
+                  onClick={() =>
+                    navigate("/wallet")
+                  }
                 />
 
                 <ActionItem
                   icon={<Star size={19} />}
                   title="My Reviews"
                   subtitle="View your reviews"
-                  onClick={() => navigate("/reviews")}
+                  onClick={() =>
+                    navigate("/reviews")
+                  }
                 />
               </div>
             </div>
 
             {/* Settings */}
+
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm">
               <div className="px-5 py-5 border-b border-slate-200">
                 <h3 className="text-lg font-bold text-slate-900">
@@ -582,24 +779,31 @@ const Profile = () => {
                 <SettingItem
                   icon={<Bell size={19} />}
                   title="Notifications"
-                  onClick={() => navigate("/notifications")}
+                  onClick={() =>
+                    navigate("/notifications")
+                  }
                 />
 
                 <SettingItem
                   icon={<Settings size={19} />}
                   title="Preferences"
-                  onClick={() => navigate("/settings")}
+                  onClick={() =>
+                    navigate("/settings")
+                  }
                 />
 
                 <SettingItem
                   icon={<ShieldCheck size={19} />}
                   title="Privacy & Security"
-                  onClick={() => navigate("/privacy")}
+                  onClick={() =>
+                    navigate("/privacy")
+                  }
                 />
               </div>
             </div>
 
             {/* Logout */}
+
             <button
               onClick={handleLogout}
               className="w-full bg-white border border-red-200 rounded-2xl p-4 flex items-center gap-3 text-red-600 hover:bg-red-50 transition shadow-sm"
@@ -622,11 +826,15 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* ================= EDIT PROFILE MODAL ================= */}
+      {/* =================================================
+          EDIT PROFILE MODAL
+      ================================================= */}
+
       {isEditModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Modal Header */}
+
             <div className="sticky top-0 bg-white border-b border-slate-200 px-5 sm:px-6 py-4 flex items-center justify-between z-10">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">
@@ -639,19 +847,41 @@ const Profile = () => {
               </div>
 
               <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100"
+                type="button"
+                onClick={handleCloseEditModal}
+                disabled={updateProfileLoading}
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-slate-100 disabled:opacity-50"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Modal Form */}
+
             <form
               onSubmit={handleSaveProfile}
               className="p-5 sm:p-6"
             >
+              {/* Update Error */}
+
+              {updateProfileError && (
+                <div className="mb-5 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+                  {updateProfileError}
+                </div>
+              )}
+
+              {/* Update Success */}
+
+              {updateProfileSuccess && (
+                <div className="mb-5 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-sm">
+                  {updateProfileMessage ||
+                    "Profile updated successfully"}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {/* Name */}
+
                 <InputField
                   label="Full Name"
                   name="name"
@@ -660,6 +890,8 @@ const Profile = () => {
                   placeholder="Enter your full name"
                 />
 
+                {/* Email */}
+
                 <InputField
                   label="Email Address"
                   name="email"
@@ -667,7 +899,10 @@ const Profile = () => {
                   value={editForm.email}
                   onChange={handleEditChange}
                   placeholder="Enter your email"
+                  readOnly
                 />
+
+                {/* Mobile */}
 
                 <InputField
                   label="Mobile Number"
@@ -677,6 +912,8 @@ const Profile = () => {
                   placeholder="Enter mobile number"
                 />
 
+                {/* Location */}
+
                 <InputField
                   label="Location"
                   name="location"
@@ -684,6 +921,8 @@ const Profile = () => {
                   onChange={handleEditChange}
                   placeholder="Bihar, India"
                 />
+
+                {/* DOB */}
 
                 <InputField
                   label="Date of Birth"
@@ -693,23 +932,28 @@ const Profile = () => {
                   placeholder="15 August 2000"
                 />
 
+                {/* Gender */}
+
                 <SelectField
                   label="Gender"
                   name="gender"
                   value={editForm.gender}
                   onChange={handleEditChange}
                   options={[
-                    "Male",
-                    "Female",
-                    "Other",
-                    "Prefer not to say",
+                    "male",
+                    "female",
+                    "other",
                   ]}
                 />
+
+                {/* Preferred Destination */}
 
                 <SelectField
                   label="Preferred Destination"
                   name="preferredDestination"
-                  value={editForm.preferredDestination}
+                  value={
+                    editForm.preferredDestination
+                  }
                   onChange={handleEditChange}
                   options={[
                     "Dubai",
@@ -723,6 +967,8 @@ const Profile = () => {
                     "Goa",
                   ]}
                 />
+
+                {/* Travel Type */}
 
                 <SelectField
                   label="Travel Type"
@@ -739,10 +985,14 @@ const Profile = () => {
                   ]}
                 />
 
+                {/* Seat Preference */}
+
                 <SelectField
                   label="Seat Preference"
                   name="seatPreference"
-                  value={editForm.seatPreference}
+                  value={
+                    editForm.seatPreference
+                  }
                   onChange={handleEditChange}
                   options={[
                     "Window",
@@ -751,10 +1001,14 @@ const Profile = () => {
                   ]}
                 />
 
+                {/* Meal Preference */}
+
                 <SelectField
                   label="Meal Preference"
                   name="mealPreference"
-                  value={editForm.mealPreference}
+                  value={
+                    editForm.mealPreference
+                  }
                   onChange={handleEditChange}
                   options={[
                     "Vegetarian",
@@ -766,20 +1020,30 @@ const Profile = () => {
               </div>
 
               {/* Buttons */}
+
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-7">
                 <button
                   type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition"
+                  onClick={handleCloseEditModal}
+                  disabled={updateProfileLoading}
+                  className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
 
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                  disabled={updateProfileLoading}
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Save Changes
+                  {updateProfileLoading ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
             </form>
@@ -790,7 +1054,9 @@ const Profile = () => {
   );
 };
 
-/* ================= STAT CARD ================= */
+// =====================================================
+// STAT CARD
+// =====================================================
 
 const StatCard = ({
   icon,
@@ -823,7 +1089,9 @@ const StatCard = ({
   );
 };
 
-/* ================= PROFILE FIELD ================= */
+// =====================================================
+// PROFILE FIELD
+// =====================================================
 
 const ProfileField = ({
   icon,
@@ -849,7 +1117,9 @@ const ProfileField = ({
   );
 };
 
-/* ================= PREFERENCE CARD ================= */
+// =====================================================
+// PREFERENCE CARD
+// =====================================================
 
 const PreferenceCard = ({
   icon,
@@ -875,7 +1145,9 @@ const PreferenceCard = ({
   );
 };
 
-/* ================= ACTION ITEM ================= */
+// =====================================================
+// ACTION ITEM
+// =====================================================
 
 const ActionItem = ({
   icon,
@@ -910,7 +1182,9 @@ const ActionItem = ({
   );
 };
 
-/* ================= SETTING ITEM ================= */
+// =====================================================
+// SETTING ITEM
+// =====================================================
 
 const SettingItem = ({
   icon,
@@ -938,7 +1212,9 @@ const SettingItem = ({
   );
 };
 
-/* ================= INPUT FIELD ================= */
+// =====================================================
+// INPUT FIELD
+// =====================================================
 
 const InputField = ({
   label,
@@ -947,6 +1223,7 @@ const InputField = ({
   value,
   onChange,
   placeholder,
+  readOnly = false,
 }) => {
   return (
     <div>
@@ -960,13 +1237,19 @@ const InputField = ({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+        readOnly={readOnly}
+        className={`w-full px-4 py-3 rounded-xl border border-slate-300 outline-none transition ${readOnly
+            ? "bg-slate-100 text-slate-500 cursor-not-allowed"
+            : "bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          }`}
       />
     </div>
   );
 };
 
-/* ================= SELECT FIELD ================= */
+// =====================================================
+// SELECT FIELD
+// =====================================================
 
 const SelectField = ({
   label,
@@ -1004,7 +1287,9 @@ const SelectField = ({
   );
 };
 
-/* ================= PHONE ICON ================= */
+// =====================================================
+// PHONE ICON
+// =====================================================
 
 const PhoneIcon = () => {
   return (
@@ -1023,13 +1308,12 @@ const PhoneIcon = () => {
   );
 };
 
-/* ================= HOTEL ICON ================= */
+// =====================================================
+// HOTEL ICON
+// =====================================================
 
 const HotelIcon = () => {
-  return (
-    <Hotel size={19} />
-  );
+  return <Hotel size={19} />;
 };
 
 export default Profile;
-

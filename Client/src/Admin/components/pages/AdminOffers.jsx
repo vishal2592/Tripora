@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+
 import {
   Search,
   Plus,
@@ -27,138 +29,16 @@ import {
   Percent,
 } from "lucide-react";
 
-/* -------------------------------------------------------------------------- */
-/* Dummy Offers Data                                                          */
-/* -------------------------------------------------------------------------- */
-
-const initialOffers = [
-  {
-    id: 1,
-    title: "Fly to Dubai",
-    category: "Flight",
-    discount: 25,
-    discountType: "UP TO",
-    description:
-      "Save up to 25% on selected international flights to Dubai.",
-    couponCode: "DUBAI25",
-    image:
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1000&q=80",
-    validFrom: "2026-09-01",
-    validUntil: "2026-10-15",
-    status: "Active",
-    featured: true,
-    usage: 342,
-    limit: 500,
-  },
-  {
-    id: 2,
-    title: "Luxury Hotel Stay",
-    category: "Hotel",
-    discount: 40,
-    discountType: "UP TO",
-    description:
-      "Enjoy up to 40% off on premium hotels and resorts across India.",
-    couponCode: "STAY40",
-    image:
-      "https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=1000&q=80",
-    validFrom: "2026-09-05",
-    validUntil: "2026-10-30",
-    status: "Active",
-    featured: true,
-    usage: 278,
-    limit: 400,
-  },
-  {
-    id: 3,
-    title: "Holiday Package Special",
-    category: "Package",
-    discount: 35,
-    discountType: "UP TO",
-    description:
-      "Book selected holiday packages and get exciting seasonal discounts.",
-    couponCode: "HOLIDAY35",
-    image:
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1000&q=80",
-    validFrom: "2026-09-10",
-    validUntil: "2026-11-10",
-    status: "Active",
-    featured: false,
-    usage: 195,
-    limit: 300,
-  },
-  {
-    id: 4,
-    title: "Weekend Getaway",
-    category: "Package",
-    discount: 20,
-    discountType: "FLAT",
-    description:
-      "Plan your perfect weekend getaway with special Tripora savings.",
-    couponCode: "WEEKEND20",
-    image:
-      "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=1000&q=80",
-    validFrom: "2026-09-12",
-    validUntil: "2026-10-20",
-    status: "Active",
-    featured: false,
-    usage: 121,
-    limit: 250,
-  },
-  {
-    id: 5,
-    title: "Train Travel Offer",
-    category: "Train",
-    discount: 15,
-    discountType: "UP TO",
-    description:
-      "Get special savings when booking selected train journeys.",
-    couponCode: "TRAIN15",
-    image:
-      "https://images.unsplash.com/photo-1474487548417-781cb71495f3?auto=format&fit=crop&w=1000&q=80",
-    validFrom: "2026-08-20",
-    validUntil: "2026-09-25",
-    status: "Active",
-    featured: false,
-    usage: 87,
-    limit: 200,
-  },
-  {
-    id: 6,
-    title: "Bus Booking Deal",
-    category: "Bus",
-    discount: 10,
-    discountType: "FLAT",
-    description:
-      "Save more on your next bus journey with this exclusive deal.",
-    couponCode: "BUS10",
-    image:
-      "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=1000&q=80",
-    validFrom: "2026-09-01",
-    validUntil: "2026-09-30",
-    status: "Active",
-    featured: false,
-    usage: 64,
-    limit: 150,
-  },
-  {
-    id: 7,
-    title: "Cab Ride Discount",
-    category: "Cab",
-    discount: 18,
-    discountType: "UP TO",
-    description:
-      "Get instant savings on selected airport and city cab rides.",
-    couponCode: "CAB18",
-    image:
-      "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1000&q=80",
-    validFrom: "2026-08-15",
-    validUntil: "2026-09-20",
-    status: "Inactive",
-    featured: false,
-    usage: 110,
-    limit: 180,
-  },
-];
+import {
+  getAllOffers,
+  createOffer,
+  updateOffer,
+  deleteOffer,
+  toggleOfferStatus,
+  toggleOfferFeatured,
+  clearOfferError,
+  clearOfferSuccess,
+} from "../../../redux/slicer/offferSlice";
 
 /* -------------------------------------------------------------------------- */
 /* Empty Form                                                                 */
@@ -171,7 +51,8 @@ const emptyForm = {
   discountType: "UP TO",
   description: "",
   couponCode: "",
-  image: "",
+  image: null,
+  imagePreview: "",
   validFrom: "",
   validUntil: "",
   status: "Active",
@@ -200,26 +81,31 @@ const categoryConfig = {
     bg: "bg-blue-50",
     text: "text-blue-600",
   },
+
   Hotel: {
     icon: Hotel,
     bg: "bg-purple-50",
     text: "text-purple-600",
   },
+
   Package: {
     icon: Package,
     bg: "bg-emerald-50",
     text: "text-emerald-600",
   },
+
   Train: {
     icon: Train,
     bg: "bg-orange-50",
     text: "text-orange-600",
   },
+
   Bus: {
     icon: Bus,
     bg: "bg-cyan-50",
     text: "text-cyan-600",
   },
+
   Cab: {
     icon: Car,
     bg: "bg-yellow-50",
@@ -232,7 +118,23 @@ const categoryConfig = {
 /* ========================================================================== */
 
 function Offers() {
-  const [offers, setOffers] = useState(initialOffers);
+  const dispatch = useDispatch();
+
+  /* ------------------------------------------------------------------------ */
+  /* Redux                                                                    */
+  /* ------------------------------------------------------------------------ */
+
+  const {
+    offers,
+    loading,
+    error,
+    success,
+    message,
+  } = useSelector((state) => state.offer);
+
+  /* ------------------------------------------------------------------------ */
+  /* Local State                                                              */
+  /* ------------------------------------------------------------------------ */
 
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
@@ -252,6 +154,38 @@ function Offers() {
   const [copiedCode, setCopiedCode] = useState("");
 
   /* ------------------------------------------------------------------------ */
+  /* GET ALL OFFERS                                                           */
+  /* ------------------------------------------------------------------------ */
+
+  useEffect(() => {
+    dispatch(getAllOffers());
+  }, [dispatch]);
+
+  /* ------------------------------------------------------------------------ */
+  /* Success / Error                                                          */
+  /* ------------------------------------------------------------------------ */
+
+  useEffect(() => {
+    if (error) {
+      alert(error);
+      dispatch(clearOfferError());
+    }
+  }, [error, dispatch]);
+
+  useEffect(() => {
+    if (success && message) {
+      alert(message);
+      dispatch(clearOfferSuccess());
+
+      /*
+       * After create/update/delete/toggle,
+       * fetch latest backend data.
+       */
+      dispatch(getAllOffers());
+    }
+  }, [success, message, dispatch]);
+
+  /* ------------------------------------------------------------------------ */
   /* Filter Offers                                                            */
   /* ------------------------------------------------------------------------ */
 
@@ -259,17 +193,27 @@ function Offers() {
     return offers.filter((offer) => {
       const searchValue = search.toLowerCase().trim();
 
+      const title = String(offer.title || "").toLowerCase();
+      const couponCode = String(
+        offer.couponCode || ""
+      ).toLowerCase();
+      const description = String(
+        offer.description || ""
+      ).toLowerCase();
+
       const matchesSearch =
         !searchValue ||
-        offer.title.toLowerCase().includes(searchValue) ||
-        offer.couponCode.toLowerCase().includes(searchValue) ||
-        offer.description.toLowerCase().includes(searchValue);
+        title.includes(searchValue) ||
+        couponCode.includes(searchValue) ||
+        description.includes(searchValue);
 
       const matchesCategory =
-        category === "All" || offer.category === category;
+        category === "All" ||
+        offer.category === category;
 
       const matchesStatus =
-        status === "All" || offer.status === status;
+        status === "All" ||
+        offer.status === status;
 
       return (
         matchesSearch &&
@@ -293,7 +237,8 @@ function Offers() {
     ).length;
 
     const totalUsage = offers.reduce(
-      (sum, offer) => sum + Number(offer.usage || 0),
+      (sum, offer) =>
+        sum + Number(offer.usage || 0),
       0
     );
 
@@ -315,8 +260,6 @@ function Offers() {
 
     setForm({
       ...emptyForm,
-      validFrom: "",
-      validUntil: "",
     });
 
     setShowModal(true);
@@ -331,8 +274,26 @@ function Offers() {
     setEditingOffer(offer);
 
     setForm({
-      ...offer,
-      discount: String(offer.discount),
+      title: offer.title || "",
+      category: offer.category || "Flight",
+      discount:
+        offer.discount !== undefined
+          ? String(offer.discount)
+          : "",
+      discountType:
+        offer.discountType || "UP TO",
+      description: offer.description || "",
+      couponCode: offer.couponCode || "",
+      image: null,
+      imagePreview: offer.image || "",
+      validFrom: formatDateForInput(
+        offer.validFrom
+      ),
+      validUntil: formatDateForInput(
+        offer.validUntil
+      ),
+      status: offer.status || "Active",
+      featured: Boolean(offer.featured),
       usage: Number(offer.usage || 0),
       limit: Number(offer.limit || 500),
     });
@@ -347,7 +308,10 @@ function Offers() {
   const closeModal = () => {
     setShowModal(false);
     setEditingOffer(null);
-    setForm(emptyForm);
+
+    setForm({
+      ...emptyForm,
+    });
   };
 
   /* ------------------------------------------------------------------------ */
@@ -362,10 +326,33 @@ function Offers() {
   };
 
   /* ------------------------------------------------------------------------ */
+  /* Image Change                                                             */
+  /* ------------------------------------------------------------------------ */
+
+  const handleImageChange = (file) => {
+    if (!file) {
+      setForm((previous) => ({
+        ...previous,
+        image: null,
+      }));
+
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+
+    setForm((previous) => ({
+      ...previous,
+      image: file,
+      imagePreview: previewUrl,
+    }));
+  };
+
+  /* ------------------------------------------------------------------------ */
   /* Save Offer                                                               */
   /* ------------------------------------------------------------------------ */
 
-  const handleSaveOffer = (event) => {
+  const handleSaveOffer = async (event) => {
     event.preventDefault();
 
     if (!form.title.trim()) {
@@ -375,6 +362,14 @@ function Offers() {
 
     if (!form.discount) {
       alert("Please enter discount.");
+      return;
+    }
+
+    if (
+      Number(form.discount) < 0 ||
+      Number(form.discount) > 100
+    ) {
+      alert("Discount must be between 0 and 100.");
       return;
     }
 
@@ -408,85 +403,156 @@ function Offers() {
       return;
     }
 
-    if (modalMode === "add") {
-      const newOffer = {
-        ...form,
-        id: Date.now(),
-        discount: Number(form.discount),
-        usage: 0,
-        limit: Number(form.limit || 500),
-      };
+    const formData = new FormData();
 
-      setOffers((previous) => [
-        newOffer,
-        ...previous,
-      ]);
-    } else {
-      setOffers((previous) =>
-        previous.map((offer) =>
-          offer.id === editingOffer.id
-            ? {
-                ...form,
-                id: editingOffer.id,
-                discount: Number(form.discount),
-                usage: Number(form.usage || 0),
-                limit: Number(form.limit || 500),
-              }
-            : offer
-        )
-      );
+    formData.append(
+      "title",
+      form.title.trim()
+    );
+
+    formData.append(
+      "category",
+      form.category
+    );
+
+    formData.append(
+      "discount",
+      Number(form.discount)
+    );
+
+    formData.append(
+      "discountType",
+      form.discountType
+    );
+
+    formData.append(
+      "description",
+      form.description.trim()
+    );
+
+    formData.append(
+      "couponCode",
+      form.couponCode.trim().toUpperCase()
+    );
+
+    formData.append(
+      "validFrom",
+      form.validFrom
+    );
+
+    formData.append(
+      "validUntil",
+      form.validUntil
+    );
+
+    formData.append(
+      "status",
+      form.status
+    );
+
+    formData.append(
+      "featured",
+      String(form.featured)
+    );
+
+    formData.append(
+      "usage",
+      Number(form.usage || 0)
+    );
+
+    formData.append(
+      "limit",
+      Number(form.limit || 500)
+    );
+
+    /*
+     * Only send image when a new file is selected.
+     *
+     * Backend expects req.file.
+     */
+    if (form.image instanceof File) {
+      formData.append("image", form.image);
     }
 
-    closeModal();
+    try {
+      if (modalMode === "add") {
+        await dispatch(
+          createOffer(formData)
+        ).unwrap();
+      } else {
+        await dispatch(
+          updateOffer({
+            id: editingOffer._id,
+            offerData: formData,
+          })
+        ).unwrap();
+      }
+
+      closeModal();
+    } catch (error) {
+      /*
+       * Redux error alert is handled by useEffect.
+       */
+      console.error(
+        "Save Offer Error:",
+        error
+      );
+    }
   };
 
   /* ------------------------------------------------------------------------ */
   /* Toggle Status                                                            */
   /* ------------------------------------------------------------------------ */
 
-  const toggleStatus = (id) => {
-    setOffers((previous) =>
-      previous.map((offer) =>
-        offer.id === id
-          ? {
-              ...offer,
-              status:
-                offer.status === "Active"
-                  ? "Inactive"
-                  : "Active",
-            }
-          : offer
-      )
-    );
+  const handleToggleStatus = async (id) => {
+    try {
+      await dispatch(
+        toggleOfferStatus(id)
+      ).unwrap();
+    } catch (error) {
+      console.error(
+        "Toggle Status Error:",
+        error
+      );
+    }
   };
 
   /* ------------------------------------------------------------------------ */
   /* Toggle Featured                                                          */
   /* ------------------------------------------------------------------------ */
 
-  const toggleFeatured = (id) => {
-    setOffers((previous) =>
-      previous.map((offer) =>
-        offer.id === id
-          ? {
-              ...offer,
-              featured: !offer.featured,
-            }
-          : offer
-      )
-    );
+  const handleToggleFeatured = async (id) => {
+    try {
+      await dispatch(
+        toggleOfferFeatured(id)
+      ).unwrap();
+    } catch (error) {
+      console.error(
+        "Toggle Featured Error:",
+        error
+      );
+    }
   };
 
   /* ------------------------------------------------------------------------ */
   /* Delete                                                                   */
   /* ------------------------------------------------------------------------ */
 
-  const confirmDelete = () => {
-    setOffers((previous) =>
-      previous.filter((offer) => offer.id !== deleteId)
-    );
+  const confirmDelete = async () => {
+    if (!deleteId) return;
 
-    setDeleteId(null);
+    try {
+      await dispatch(
+        deleteOffer(deleteId)
+      ).unwrap();
+
+      setDeleteId(null);
+    } catch (error) {
+      console.error(
+        "Delete Offer Error:",
+        error
+      );
+    }
   };
 
   /* ------------------------------------------------------------------------ */
@@ -524,6 +590,7 @@ function Offers() {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="mx-auto w-full max-w-7xl px-3 py-2 sm:px-5 sm:py-2 lg:px-6">
+
         {/* ================================================================== */}
         {/* PAGE HEADER                                                         */}
         {/* ================================================================== */}
@@ -604,6 +671,7 @@ function Offers() {
 
         <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+
             {/* Search */}
 
             <div className="relative min-w-0 flex-1">
@@ -635,6 +703,7 @@ function Offers() {
               className="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 lg:hidden"
             >
               <Filter size={17} />
+
               Filters
 
               <ChevronDown
@@ -719,6 +788,12 @@ function Offers() {
               {offers.length} offers
             </p>
           </div>
+
+          {loading && (
+            <div className="text-xs font-semibold text-blue-600">
+              Loading...
+            </div>
+          )}
         </div>
 
         {/* ================================================================== */}
@@ -767,12 +842,16 @@ function Offers() {
               <tbody>
                 {filteredOffers.map((offer) => (
                   <DesktopOfferRow
-                    key={offer.id}
+                    key={offer._id}
                     offer={offer}
                     onEdit={handleEditOffer}
                     onDelete={setDeleteId}
-                    onToggleStatus={toggleStatus}
-                    onToggleFeatured={toggleFeatured}
+                    onToggleStatus={
+                      handleToggleStatus
+                    }
+                    onToggleFeatured={
+                      handleToggleFeatured
+                    }
                     onCopy={handleCopyCoupon}
                     copiedCode={copiedCode}
                   />
@@ -789,12 +868,16 @@ function Offers() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:hidden">
           {filteredOffers.map((offer) => (
             <MobileOfferCard
-              key={offer.id}
+              key={offer._id}
               offer={offer}
               onEdit={handleEditOffer}
               onDelete={setDeleteId}
-              onToggleStatus={toggleStatus}
-              onToggleFeatured={toggleFeatured}
+              onToggleStatus={
+                handleToggleStatus
+              }
+              onToggleFeatured={
+                handleToggleFeatured
+              }
               onCopy={handleCopyCoupon}
               copiedCode={copiedCode}
             />
@@ -805,30 +888,31 @@ function Offers() {
         {/* EMPTY STATE                                                         */}
         {/* ================================================================== */}
 
-        {filteredOffers.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-16 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-              <Tag size={25} />
+        {!loading &&
+          filteredOffers.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-16 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                <Tag size={25} />
+              </div>
+
+              <h3 className="mt-4 text-base font-bold text-slate-900">
+                No offers found
+              </h3>
+
+              <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-slate-500">
+                Try changing your search or filters, or create
+                a new promotional offer.
+              </p>
+
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="mt-5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700"
+              >
+                Reset Filters
+              </button>
             </div>
-
-            <h3 className="mt-4 text-base font-bold text-slate-900">
-              No offers found
-            </h3>
-
-            <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-slate-500">
-              Try changing your search or filters, or create
-              a new promotional offer.
-            </p>
-
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="mt-5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700"
-            >
-              Reset Filters
-            </button>
-          </div>
-        )}
+          )}
       </div>
 
       {/* ==================================================================== */}
@@ -840,8 +924,10 @@ function Offers() {
           mode={modalMode}
           form={form}
           onChange={handleFormChange}
+          onImageChange={handleImageChange}
           onClose={closeModal}
           onSubmit={handleSaveOffer}
+          loading={loading}
         />
       )}
 
@@ -853,6 +939,7 @@ function Offers() {
         <DeleteModal
           onCancel={() => setDeleteId(null)}
           onConfirm={confirmDelete}
+          loading={loading}
         />
       )}
     </div>
@@ -960,15 +1047,18 @@ function DesktopOfferRow({
   copiedCode,
 }) {
   const usagePercent =
-    offer.limit > 0
+    Number(offer.limit) > 0
       ? Math.min(
-          (offer.usage / offer.limit) * 100,
+          (Number(offer.usage || 0) /
+            Number(offer.limit)) *
+            100,
           100
         )
       : 0;
 
   return (
     <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+
       {/* Offer */}
 
       <td className="px-4 py-4">
@@ -1073,11 +1163,11 @@ function DesktopOfferRow({
         <div className="w-20">
           <div className="mb-1 flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700">
-              {offer.usage}
+              {offer.usage || 0}
             </span>
 
             <span className="text-[10px] text-slate-400">
-              /{offer.limit}
+              /{offer.limit || 0}
             </span>
           </div>
 
@@ -1098,7 +1188,7 @@ function DesktopOfferRow({
         <button
           type="button"
           onClick={() =>
-            onToggleStatus(offer.id)
+            onToggleStatus(offer._id)
           }
         >
           <StatusBadge status={offer.status} />
@@ -1109,12 +1199,13 @@ function DesktopOfferRow({
 
       <td className="whitespace-nowrap px-4 py-4">
         <div className="flex items-center justify-end gap-1.5">
+
           {/* Featured */}
 
           <button
             type="button"
             onClick={() =>
-              onToggleFeatured(offer.id)
+              onToggleFeatured(offer._id)
             }
             title="Toggle featured"
             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
@@ -1149,7 +1240,7 @@ function DesktopOfferRow({
           <button
             type="button"
             onClick={() =>
-              onDelete(offer.id)
+              onDelete(offer._id)
             }
             title="Delete offer"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-red-50 hover:text-red-600"
@@ -1176,15 +1267,18 @@ function MobileOfferCard({
   copiedCode,
 }) {
   const usagePercent =
-    offer.limit > 0
+    Number(offer.limit) > 0
       ? Math.min(
-          (offer.usage / offer.limit) * 100,
+          (Number(offer.usage || 0) /
+            Number(offer.limit)) *
+            100,
           100
         )
       : 0;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+
       {/* Image */}
 
       <div className="relative h-44 w-full bg-slate-100 sm:h-48">
@@ -1208,7 +1302,7 @@ function MobileOfferCard({
           <button
             type="button"
             onClick={() =>
-              onToggleFeatured(offer.id)
+              onToggleFeatured(offer._id)
             }
             className={`flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md ${
               offer.featured
@@ -1245,7 +1339,7 @@ function MobileOfferCard({
           <button
             type="button"
             onClick={() =>
-              onToggleStatus(offer.id)
+              onToggleStatus(offer._id)
             }
           >
             <StatusBadge status={offer.status} />
@@ -1256,6 +1350,7 @@ function MobileOfferCard({
       {/* Content */}
 
       <div className="p-4">
+
         {/* Title */}
 
         <div>
@@ -1329,7 +1424,8 @@ function MobileOfferCard({
             </span>
 
             <span className="text-xs font-bold text-slate-800">
-              {offer.usage} / {offer.limit}
+              {offer.usage || 0} /{" "}
+              {offer.limit || 0}
             </span>
           </div>
 
@@ -1346,10 +1442,11 @@ function MobileOfferCard({
         {/* Actions */}
 
         <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4">
+
           <button
             type="button"
             onClick={() =>
-              onToggleStatus(offer.id)
+              onToggleStatus(offer._id)
             }
             className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
           >
@@ -1378,7 +1475,7 @@ function MobileOfferCard({
           <button
             type="button"
             onClick={() =>
-              onDelete(offer.id)
+              onDelete(offer._id)
             }
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-100 text-red-500 transition hover:bg-red-50"
           >
@@ -1447,12 +1544,15 @@ function OfferModal({
   mode,
   form,
   onChange,
+  onImageChange,
   onClose,
   onSubmit,
+  loading,
 }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 sm:p-5">
       <div className="flex max-h-[95vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+
         {/* Header */}
 
         <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-4 sm:px-6">
@@ -1486,6 +1586,7 @@ function OfferModal({
           className="overflow-y-auto px-4 py-5 sm:px-6"
         >
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+
             {/* Title */}
 
             <div className="sm:col-span-2">
@@ -1686,31 +1787,31 @@ function OfferModal({
             {/* Image */}
 
             <div className="sm:col-span-2">
-              <FormLabel label="Offer Image URL" />
+              <FormLabel label="Offer Image" />
 
               <input
-                type="url"
-                value={form.image}
+                type="file"
+                accept="image/*"
                 onChange={(event) =>
-                  onChange(
-                    "image",
-                    event.target.value
+                  onImageChange(
+                    event.target.files?.[0]
                   )
                 }
-                placeholder="https://example.com/offer-image.jpg"
-                className="form-input"
+                className="form-input file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-xs file:font-bold file:text-blue-600"
               />
 
-              {form.image && (
+              <p className="mt-1 text-[11px] text-slate-400">
+                {mode === "edit"
+                  ? "Choose a new image only if you want to replace the existing image."
+                  : "Upload an image for this offer."}
+              </p>
+
+              {form.imagePreview && (
                 <div className="mt-3 h-32 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 sm:h-40">
                   <img
-                    src={form.image}
+                    src={form.imagePreview}
                     alt="Offer preview"
                     className="h-full w-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.style.display =
-                        "none";
-                    }}
                   />
                 </div>
               )}
@@ -1820,16 +1921,20 @@ function OfferModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+              disabled={loading}
+              className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              className="h-11 rounded-xl bg-blue-600 px-6 text-sm font-bold text-white transition hover:bg-blue-700"
+              disabled={loading}
+              className="h-11 rounded-xl bg-blue-600 px-6 text-sm font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {mode === "add"
+              {loading
+                ? "Saving..."
+                : mode === "add"
                 ? "Create Offer"
                 : "Save Changes"}
             </button>
@@ -1865,10 +1970,12 @@ function FormLabel({ label, required }) {
 function DeleteModal({
   onCancel,
   onConfirm,
+  loading,
 }) {
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/60 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
+
         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-500">
           <Trash2 size={21} />
         </div>
@@ -1886,7 +1993,8 @@ function DeleteModal({
           <button
             type="button"
             onClick={onCancel}
-            className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-bold text-slate-600 hover:bg-slate-50"
+            disabled={loading}
+            className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
           >
             Cancel
           </button>
@@ -1894,9 +2002,12 @@ function DeleteModal({
           <button
             type="button"
             onClick={onConfirm}
-            className="h-11 rounded-xl bg-red-600 px-5 text-sm font-bold text-white hover:bg-red-700"
+            disabled={loading}
+            className="h-11 rounded-xl bg-red-600 px-5 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Delete Offer
+            {loading
+              ? "Deleting..."
+              : "Delete Offer"}
           </button>
         </div>
       </div>
@@ -1922,6 +2033,31 @@ function formatDate(date) {
     month: "short",
     year: "numeric",
   });
+}
+
+/* ========================================================================== */
+/* DATE FORMAT FOR INPUT                                                      */
+/* ========================================================================== */
+
+function formatDateForInput(date) {
+  if (!date) return "";
+
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  const year = parsedDate.getFullYear();
+  const month = String(
+    parsedDate.getMonth() + 1
+  ).padStart(2, "0");
+
+  const day = String(
+    parsedDate.getDate()
+  ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 export default Offers;

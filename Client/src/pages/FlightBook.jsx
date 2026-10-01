@@ -1145,15 +1145,15 @@ const FlightBook = () => {
                 <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                   <div>
                     <p className="text-lg font-bold text-slate-900">
-                      {flight.from.time}
+                      {/* {flight.from.time} */}
                     </p>
 
                     <p className="mt-0.5 text-sm font-bold text-slate-800">
-                      {flight.from.code}
+                      {/* {flight.from.code} */}
                     </p>
 
                     <p className="text-xs text-slate-500">
-                      {flight.from.city}
+                      {/* {flight.from.city} */}
                     </p>
                   </div>
 
@@ -1182,15 +1182,15 @@ const FlightBook = () => {
 
                   <div className="text-right">
                     <p className="text-lg font-bold text-slate-900">
-                      {flight.to.time}
+                      {/* {flight.to.time} */}
                     </p>
 
                     <p className="mt-0.5 text-sm font-bold text-slate-800">
-                      {flight.to.code}
+                      {/* {flight.to.code} */}
                     </p>
 
                     <p className="text-xs text-slate-500">
-                      {flight.to.city}
+                      {/* {flight.to.city} */}
                     </p>
                   </div>
                 </div>

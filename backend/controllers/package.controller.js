@@ -6,9 +6,109 @@ const Hotel = require("../models/hotel.model");
 
 const { uploadToImgBB, deleteFromImgBB } = require("../utils/imgbb");
 
-// =========================
+// ======================================================
+// HELPER: CONVERT VALUE TO ARRAY
+// ======================================================
+
+const convertToArray = (value) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const trimmedValue = value.trim();
+
+    if (!trimmedValue) {
+      return [];
+    }
+
+    // Try JSON array first
+    try {
+      const parsed = JSON.parse(trimmedValue);
+
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+    } catch (error) {
+      // Not JSON, continue with comma-separated value
+    }
+
+    return trimmedValue
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item !== "");
+  }
+
+  return [];
+};
+
+// ======================================================
+// HELPER: PARSE JSON ARRAY
+// ======================================================
+
+const parseJsonArray = (value, defaultValue = []) => {
+  if (value === undefined || value === null || value === "") {
+    return defaultValue;
+  }
+
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+
+      return defaultValue;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  return defaultValue;
+};
+
+// ======================================================
+// HELPER: PARSE JSON OBJECT
+// ======================================================
+
+const parseJsonObject = (value, defaultValue = {}) => {
+  if (value === undefined || value === null || value === "") {
+    return defaultValue;
+  }
+
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed)
+      ) {
+        return parsed;
+      }
+
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  return defaultValue;
+};
+
+// ======================================================
 // CREATE PACKAGE
-// =========================
+// ======================================================
 
 const createPackage = async (req, res) => {
   try {
@@ -32,9 +132,9 @@ const createPackage = async (req, res) => {
       cancellation,
     } = req.body;
 
-    // =========================
-    // CHECK REQUIRED FIELDS
-    // =========================
+    // ==================================================
+    // REQUIRED FIELDS
+    // ==================================================
 
     if (
       !name ||
@@ -52,23 +152,9 @@ const createPackage = async (req, res) => {
       });
     }
 
-    let imageUrl = "";
-    let imageDeleteUrl = "";
-
-    if (req.files?.image?.[0]) {
-      const imageFile = req.files.image[0];
-
-      const uploadResult = await uploadToImgBB(
-        imageFile.buffer,
-        imageFile.originalname,
-      );
-
-      imageUrl = uploadResult.data.url;
-      imageDeleteUrl = uploadResult.data.deleteUrl;
-    }
-    // =========================
+    // ==================================================
     // CHECK DESTINATION ID
-    // =========================
+    // ==================================================
 
     if (!mongoose.Types.ObjectId.isValid(destination)) {
       return res.status(400).json({
@@ -77,9 +163,9 @@ const createPackage = async (req, res) => {
       });
     }
 
-    // =========================
+    // ==================================================
     // CHECK DESTINATION EXISTS
-    // =========================
+    // ==================================================
 
     const destinationExists = await Destination.findById(destination);
 
@@ -90,9 +176,9 @@ const createPackage = async (req, res) => {
       });
     }
 
-    // =========================
-    // CHECK HOTEL ID
-    // =========================
+    // ==================================================
+    // CHECK HOTEL
+    // ==================================================
 
     if (hotel) {
       if (!mongoose.Types.ObjectId.isValid(hotel)) {
@@ -101,10 +187,6 @@ const createPackage = async (req, res) => {
           message: "Invalid hotel ID",
         });
       }
-
-      // =========================
-      // CHECK HOTEL EXISTS
-      // =========================
 
       const hotelExists = await Hotel.findById(hotel);
 
@@ -116,9 +198,9 @@ const createPackage = async (req, res) => {
       }
     }
 
-    // =========================
+    // ==================================================
     // CONVERT NUMBERS
-    // =========================
+    // ==================================================
 
     const packageDays = Number(days);
     const packageNights = Number(nights);
@@ -129,9 +211,9 @@ const createPackage = async (req, res) => {
         ? Number(oldPrice)
         : packagePrice;
 
-    // =========================
+    // ==================================================
     // VALIDATE NUMBERS
-    // =========================
+    // ==================================================
 
     if (isNaN(packageDays) || packageDays < 1) {
       return res.status(400).json({
@@ -161,90 +243,90 @@ const createPackage = async (req, res) => {
       });
     }
 
-    // =========================
-    // CONVERT HIGHLIGHTS
-    // =========================
+    // ==================================================
+    // CONVERT ARRAYS
+    // ==================================================
 
-    let highlightsArray = [];
+    const highlightsArray = convertToArray(highlights);
+    const inclusionsArray = convertToArray(inclusions);
+    const exclusionsArray = convertToArray(exclusions);
+    const importantInfoArray = convertToArray(importantInfo);
+    const cancellationArray = convertToArray(cancellation);
 
-    if (Array.isArray(highlights)) {
-      highlightsArray = highlights;
-    } else if (typeof highlights === "string") {
-      highlightsArray = highlights
-        .split(",")
-        .map((item) => item.trim())
-        .filter((item) => item !== "");
+    // ==================================================
+    // PARSE ITINERARY
+    // ==================================================
+
+    const itineraryArray = parseJsonArray(itinerary);
+
+    if (itineraryArray === null) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid itinerary format",
+      });
     }
 
-    // =========================
-    // CONVERT INCLUSIONS
-    // =========================
+    // ==================================================
+    // PARSE FLIGHTS
+    // ==================================================
 
-    let inclusionsArray = [];
+    const flightsObject = parseJsonObject(flights);
 
-    if (Array.isArray(inclusions)) {
-      inclusionsArray = inclusions;
-    } else if (typeof inclusions === "string") {
-      inclusionsArray = inclusions
-        .split(",")
-        .map((item) => item.trim())
-        .filter((item) => item !== "");
+    if (flightsObject === null) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid flights format",
+      });
     }
 
-    // =========================
-    // CONVERT EXCLUSIONS
-    // =========================
-
-    let exclusionsArray = [];
-
-    if (Array.isArray(exclusions)) {
-      exclusionsArray = exclusions;
-    } else if (typeof exclusions === "string") {
-      exclusionsArray = exclusions
-        .split(",")
-        .map((item) => item.trim())
-        .filter((item) => item !== "");
-    }
-
-    // =========================
-    // CONVERT IMPORTANT INFO
-    // =========================
-
-    let importantInfoArray = [];
-
-    if (Array.isArray(importantInfo)) {
-      importantInfoArray = importantInfo;
-    } else if (typeof importantInfo === "string") {
-      importantInfoArray = importantInfo
-        .split(",")
-        .map((item) => item.trim())
-        .filter((item) => item !== "");
-    }
-
-    // =========================
-    // CONVERT CANCELLATION
-    // =========================
-
-    let cancellationArray = [];
-
-    if (Array.isArray(cancellation)) {
-      cancellationArray = cancellation;
-    } else if (typeof cancellation === "string") {
-      cancellationArray = cancellation
-        .split(",")
-        .map((item) => item.trim())
-        .filter((item) => item !== "");
-    }
-
-    // =========================
+    // ==================================================
     // DURATION
-    // =========================
+    // ==================================================
 
     const duration = `${packageDays} Days / ${packageNights} Nights`;
 
-    // =========================
+    // ==================================================
+    // MAIN IMAGE
+    // ==================================================
+
+    let imageUrl = "";
+    let imageDeleteUrl = "";
+
+    if (req.files?.image?.[0]) {
+      const imageFile = req.files.image[0];
+
+      const uploadResult = await uploadToImgBB(
+        imageFile.buffer,
+        imageFile.originalname,
+      );
+
+      imageUrl = uploadResult.data.url;
+      imageDeleteUrl = uploadResult.data.deleteUrl;
+    }
+
+    // ==================================================
+    // MULTIPLE GALLERY IMAGES
+    // ==================================================
+
+    const uploadedImages = [];
+
+    if (req.files?.images?.length) {
+      for (const imageFile of req.files.images) {
+        const uploadResult = await uploadToImgBB(
+          imageFile.buffer,
+          imageFile.originalname,
+        );
+
+        uploadedImages.push({
+          url: uploadResult.data.url,
+          deleteUrl: uploadResult.data.deleteUrl,
+        });
+      }
+    }
+
+    // ==================================================
     // CREATE PACKAGE
-    // =========================
+    // ==================================================
 
     const packageData = await Package.create({
       name: name.trim(),
@@ -283,20 +365,26 @@ const createPackage = async (req, res) => {
 
       hotel: hotel || null,
 
-      itinerary: Array.isArray(itinerary) ? itinerary : [],
+      itinerary: itineraryArray,
 
-      flights: flights || {},
+      flights: flightsObject,
 
       importantInfo: importantInfoArray,
 
       cancellation: cancellationArray,
+
+      // Main image
       image: imageUrl,
+
       imageDeleteUrl: imageDeleteUrl,
+
+      // Gallery images
+      images: uploadedImages,
     });
 
-    // =========================
-    // SUCCESS RESPONSE
-    // =========================
+    // ==================================================
+    // SUCCESS
+    // ==================================================
 
     return res.status(201).json({
       success: true,
@@ -314,15 +402,20 @@ const createPackage = async (req, res) => {
   }
 };
 
-// getAllPackages
+// ======================================================
+// GET ALL PACKAGES
+// ======================================================
 
 const getAllPackages = async (req, res) => {
   try {
     const packages = await Package.find()
-      .populate("destination", "name country region destinationType image")
+      .populate(
+        "destination",
+        "name country region destinationType image",
+      )
       .populate(
         "hotel",
-        "hotelName propertyType starRating reviews city state country address price image",
+        "hotelName propertyType starRating reviews city state country address price image images",
       )
       .sort({ createdAt: -1 });
 
@@ -332,17 +425,24 @@ const getAllPackages = async (req, res) => {
       packages,
     });
   } catch (error) {
-    console.error("Get All Packages Error");
+    console.error("Get All Packages Error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Server error",
+      error: error.message,
     });
   }
 };
 
+// ======================================================
+// GET SINGLE PACKAGE
+// ======================================================
+
 const getSinglePackage = async (req, res) => {
   try {
     const { id } = req.params;
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -382,12 +482,18 @@ const getSinglePackage = async (req, res) => {
   }
 };
 
-//updatePackage
+// ======================================================
+// UPDATE PACKAGE
+// ======================================================
+
 const updatePackage = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check package ID
+    // ==================================================
+    // CHECK PACKAGE ID
+    // ==================================================
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -395,7 +501,10 @@ const updatePackage = async (req, res) => {
       });
     }
 
-    // Find package
+    // ==================================================
+    // FIND PACKAGE
+    // ==================================================
+
     const packageData = await Package.findById(id);
 
     if (!packageData) {
@@ -424,11 +533,12 @@ const updatePackage = async (req, res) => {
       importantInfo,
       cancellation,
       status,
+      removeImages,
     } = req.body || {};
 
-    // -----------------------------
-    // Destination validation
-    // -----------------------------
+    // ==================================================
+    // DESTINATION
+    // ==================================================
 
     if (destination) {
       if (!mongoose.Types.ObjectId.isValid(destination)) {
@@ -438,7 +548,8 @@ const updatePackage = async (req, res) => {
         });
       }
 
-      const destinationExists = await Destination.findById(destination);
+      const destinationExists =
+        await Destination.findById(destination);
 
       if (!destinationExists) {
         return res.status(404).json({
@@ -450,9 +561,9 @@ const updatePackage = async (req, res) => {
       packageData.destination = destination;
     }
 
-    // -----------------------------
-    // Hotel validation
-    // -----------------------------
+    // ==================================================
+    // HOTEL
+    // ==================================================
 
     if (hotel !== undefined) {
       if (hotel === "" || hotel === null) {
@@ -478,9 +589,9 @@ const updatePackage = async (req, res) => {
       }
     }
 
-    // -----------------------------
-    // Basic fields
-    // -----------------------------
+    // ==================================================
+    // BASIC FIELDS
+    // ==================================================
 
     if (name !== undefined) {
       packageData.name = name.trim();
@@ -498,6 +609,10 @@ const updatePackage = async (req, res) => {
       packageData.description = description.trim();
     }
 
+    // ==================================================
+    // STATUS
+    // ==================================================
+
     if (status !== undefined) {
       if (!["Active", "Inactive"].includes(status)) {
         return res.status(400).json({
@@ -509,14 +624,12 @@ const updatePackage = async (req, res) => {
       packageData.status = status;
     }
 
-    // -----------------------------
-    // Days / Nights / Price
-    // -----------------------------
+    // ==================================================
+    // DAYS / NIGHTS / PRICE
+    // ==================================================
 
     let packageDays = packageData.days;
     let packageNights = packageData.nights;
-    let packagePrice = packageData.price;
-    let packageOldPrice = packageData.oldPrice;
 
     if (days !== undefined) {
       packageDays = Number(days);
@@ -545,7 +658,7 @@ const updatePackage = async (req, res) => {
     }
 
     if (price !== undefined) {
-      packagePrice = Number(price);
+      const packagePrice = Number(price);
 
       if (isNaN(packagePrice) || packagePrice <= 0) {
         return res.status(400).json({
@@ -558,7 +671,7 @@ const updatePackage = async (req, res) => {
     }
 
     if (oldPrice !== undefined && oldPrice !== "") {
-      packageOldPrice = Number(oldPrice);
+      const packageOldPrice = Number(oldPrice);
 
       if (isNaN(packageOldPrice) || packageOldPrice < 0) {
         return res.status(400).json({
@@ -570,28 +683,16 @@ const updatePackage = async (req, res) => {
       packageData.oldPrice = packageOldPrice;
     }
 
-    // Update duration whenever days/nights are updated
+    // ==================================================
+    // UPDATE DURATION
+    // ==================================================
 
-    packageData.duration = `${packageDays} Days / ${packageNights} Nights`;
+    packageData.duration =
+      `${packageDays} Days / ${packageNights} Nights`;
 
-    // -----------------------------
-    // Convert comma-separated fields
-    // -----------------------------
-
-    const convertToArray = (value) => {
-      if (Array.isArray(value)) {
-        return value;
-      }
-
-      if (typeof value === "string") {
-        return value
-          .split(",")
-          .map((item) => item.trim())
-          .filter((item) => item !== "");
-      }
-
-      return [];
-    };
+    // ==================================================
+    // ARRAYS
+    // ==================================================
 
     if (highlights !== undefined) {
       packageData.highlights = convertToArray(highlights);
@@ -606,79 +707,141 @@ const updatePackage = async (req, res) => {
     }
 
     if (importantInfo !== undefined) {
-      packageData.importantInfo = convertToArray(importantInfo);
+      packageData.importantInfo =
+        convertToArray(importantInfo);
     }
 
     if (cancellation !== undefined) {
-      packageData.cancellation = convertToArray(cancellation);
+      packageData.cancellation =
+        convertToArray(cancellation);
     }
 
-    // -----------------------------
-    // Itinerary
-    // -----------------------------
+    // ==================================================
+    // ITINERARY
+    // ==================================================
 
     if (itinerary !== undefined) {
-      if (Array.isArray(itinerary)) {
-        packageData.itinerary = itinerary;
-      } else {
+      const itineraryArray = parseJsonArray(itinerary);
+
+      if (itineraryArray === null) {
         return res.status(400).json({
           success: false,
-          message: "Itinerary must be an array",
+          message: "Invalid itinerary format",
         });
       }
+
+      packageData.itinerary = itineraryArray;
     }
 
-    // -----------------------------
-    // Flights
-    // -----------------------------
+    // ==================================================
+    // FLIGHTS
+    // ==================================================
 
     if (flights !== undefined) {
-      if (typeof flights === "object") {
-        packageData.flights = flights;
-      } else {
+      const flightsObject = parseJsonObject(flights);
+
+      if (flightsObject === null) {
         return res.status(400).json({
           success: false,
-          message: "Flights must be an object",
+          message: "Invalid flights format",
         });
+      }
+
+      packageData.flights = flightsObject;
+    }
+
+    // ==================================================
+    // REMOVE SELECTED GALLERY IMAGES
+    // ==================================================
+
+    if (removeImages !== undefined) {
+      const imagesToRemove = parseJsonArray(removeImages);
+
+      if (imagesToRemove === null) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid removeImages format",
+        });
+      }
+
+      if (imagesToRemove.length > 0) {
+        for (const imageId of imagesToRemove) {
+          const imageToDelete = packageData.images.id(imageId);
+
+          if (imageToDelete) {
+            if (imageToDelete.deleteUrl) {
+              await deleteFromImgBB(
+                imageToDelete.deleteUrl,
+              );
+            }
+
+            packageData.images.pull(imageId);
+          }
+        }
       }
     }
 
-    // -----------------------------
-    // Image Update - ImgBB
-    // -----------------------------
+    // ==================================================
+    // UPDATE MAIN IMAGE
+    // ==================================================
 
     if (req.files?.image?.[0]) {
       const imageFile = req.files.image[0];
 
-      // Upload new image first
       const uploadResult = await uploadToImgBB(
         imageFile.buffer,
         imageFile.originalname,
       );
 
       const newImageUrl = uploadResult.data.url;
-      const newImageDeleteUrl = uploadResult.data.deleteUrl;
+      const newImageDeleteUrl =
+        uploadResult.data.deleteUrl;
 
-      // Delete old image from ImgBB
+      // Delete old main image
       if (packageData.imageDeleteUrl) {
-        await deleteFromImgBB(packageData.imageDeleteUrl);
+        await deleteFromImgBB(
+          packageData.imageDeleteUrl,
+        );
       }
 
       packageData.image = newImageUrl;
-      packageData.imageDeleteUrl = newImageDeleteUrl;
+      packageData.imageDeleteUrl =
+        newImageDeleteUrl;
     }
 
-    // -----------------------------
-    // Save Package
-    // -----------------------------
+    // ==================================================
+    // ADD NEW GALLERY IMAGES
+    // ==================================================
+
+    if (req.files?.images?.length) {
+      for (const imageFile of req.files.images) {
+        const uploadResult = await uploadToImgBB(
+          imageFile.buffer,
+          imageFile.originalname,
+        );
+
+        packageData.images.push({
+          url: uploadResult.data.url,
+          deleteUrl: uploadResult.data.deleteUrl,
+        });
+      }
+    }
+
+    // ==================================================
+    // SAVE PACKAGE
+    // ==================================================
 
     await packageData.save();
 
-    // Populate references
+    // ==================================================
+    // POPULATE REFERENCES
+    // ==================================================
+
     await packageData.populate([
       {
         path: "destination",
-        select: "name country region destinationType image",
+        select:
+          "name country region destinationType image",
       },
       {
         path: "hotel",
@@ -686,6 +849,10 @@ const updatePackage = async (req, res) => {
           "hotelName propertyType starRating reviews email phone city state country address pincode description checkIn checkOut rooms price amenities status image images",
       },
     ]);
+
+    // ==================================================
+    // SUCCESS
+    // ==================================================
 
     return res.status(200).json({
       success: true,
@@ -703,11 +870,18 @@ const updatePackage = async (req, res) => {
   }
 };
 
+// ======================================================
+// DELETE PACKAGE
+// ======================================================
+
 const deletePackage = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Check package ID
+    // ==================================================
+    // CHECK PACKAGE ID
+    // ==================================================
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -715,7 +889,10 @@ const deletePackage = async (req, res) => {
       });
     }
 
-    // Find package
+    // ==================================================
+    // FIND PACKAGE
+    // ==================================================
+
     const packageData = await Package.findById(id);
 
     if (!packageData) {
@@ -725,13 +902,42 @@ const deletePackage = async (req, res) => {
       });
     }
 
-    // Delete package image from ImgBB
+    // ==================================================
+    // DELETE MAIN IMAGE
+    // ==================================================
+
     if (packageData.imageDeleteUrl) {
-      await deleteFromImgBB(packageData.imageDeleteUrl);
+      await deleteFromImgBB(
+        packageData.imageDeleteUrl,
+      );
     }
 
-    // Delete package from MongoDB
+    // ==================================================
+    // DELETE ALL GALLERY IMAGES
+    // ==================================================
+
+    if (
+      packageData.images &&
+      packageData.images.length > 0
+    ) {
+      for (const image of packageData.images) {
+        if (image.deleteUrl) {
+          await deleteFromImgBB(
+            image.deleteUrl,
+          );
+        }
+      }
+    }
+
+    // ==================================================
+    // DELETE PACKAGE FROM MONGODB
+    // ==================================================
+
     await Package.findByIdAndDelete(id);
+
+    // ==================================================
+    // SUCCESS
+    // ==================================================
 
     return res.status(200).json({
       success: true,
@@ -747,6 +953,10 @@ const deletePackage = async (req, res) => {
     });
   }
 };
+
+// ======================================================
+// EXPORT
+// ======================================================
 
 module.exports = {
   createPackage,

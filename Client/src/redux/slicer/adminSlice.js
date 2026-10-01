@@ -24,9 +24,14 @@ export const loginAdmin = createAsyncThunk(
 // ===============================
 export const getAdminProfile = createAsyncThunk(
   "admin/getAdminProfile",
-  async (_, { rejectWithValue, getState }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const token = getState().admin.token;
+      // Token localStorage se directly lo
+      const token = localStorage.getItem("triporaAdminToken");
+
+      if (!token) {
+        return rejectWithValue("Admin token not found");
+      }
 
       const response = await api.get("/admin/profile", {
         headers: {
@@ -38,7 +43,7 @@ export const getAdminProfile = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error.response?.data?.message ||
-        "Failed to get admin profile"
+          "Failed to get admin profile"
       );
     }
   }
@@ -49,8 +54,15 @@ export const getAdminProfile = createAsyncThunk(
 // ===============================
 const initialState = {
   admin: null,
-  token: null,
-  isAuthenticated: false,
+
+  // Refresh ke baad token preserve rahega
+  token: localStorage.getItem("triporaAdminToken") || null,
+
+  // Token available hai to initially authenticated
+  isAuthenticated: !!localStorage.getItem("triporaAdminToken"),
+
+  // Refresh ke time PrivateRoute ko wait karayega
+  authInitialized: false,
 
   loading: false,
   error: null,
@@ -71,17 +83,28 @@ const adminSlice = createSlice({
       state.admin = null;
       state.token = null;
       state.isAuthenticated = false;
+      state.authInitialized = true;
 
       state.loading = false;
       state.error = null;
       state.success = false;
       state.message = "";
+
+      // Admin token remove
+      localStorage.removeItem("triporaAdminToken");
     },
 
     clearAdminMessage: (state) => {
       state.error = null;
       state.success = false;
       state.message = "";
+    },
+
+    // ===============================
+    // AUTH INITIALIZED
+    // ===============================
+    setAdminAuthInitialized: (state) => {
+      state.authInitialized = true;
     },
   },
 
@@ -102,7 +125,9 @@ const adminSlice = createSlice({
 
         state.admin = action.payload.admin;
         state.token = action.payload.token;
+
         state.isAuthenticated = true;
+        state.authInitialized = true;
 
         localStorage.setItem(
           "triporaAdminToken",
@@ -118,7 +143,11 @@ const adminSlice = createSlice({
       .addCase(loginAdmin.rejected, (state, action) => {
         state.loading = false;
         state.success = false;
+
+        state.admin = null;
+        state.token = null;
         state.isAuthenticated = false;
+        state.authInitialized = true;
 
         state.error = action.payload;
       });
@@ -136,18 +165,26 @@ const adminSlice = createSlice({
         state.loading = false;
 
         state.admin = action.payload.admin;
+        state.token =
+          localStorage.getItem("triporaAdminToken");
+
         state.isAuthenticated = true;
+        state.authInitialized = true;
 
         state.error = null;
       })
 
       .addCase(getAdminProfile.rejected, (state, action) => {
         state.loading = false;
+
         state.error = action.payload;
 
         state.admin = null;
         state.token = null;
         state.isAuthenticated = false;
+        state.authInitialized = true;
+
+        localStorage.removeItem("triporaAdminToken");
       });
   },
 });
@@ -158,6 +195,7 @@ const adminSlice = createSlice({
 export const {
   logoutAdmin,
   clearAdminMessage,
+  setAdminAuthInitialized,
 } = adminSlice.actions;
 
 export default adminSlice.reducer;

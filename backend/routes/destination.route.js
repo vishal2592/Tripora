@@ -10,19 +10,37 @@ const {
   deleteDestination,
 } = require("../controllers/destination.controller");
 
-const { uploadImage } = require("../middleware/upload.middleware");
+const { uploadHotelImages } = require("../middleware/upload.middleware");
 
 const adminAuth = require("../middleware/adminAuth.middleware");
 
-//get all destinations
+// Get all destinations
 router.get("/", getAllDestination);
-//get signle destination
+
+// Get single destination
 router.get("/:id", getSingleDestinationById);
-//create destination
-router.post("/", adminAuth, uploadImage, createDestination);
-//update destination
-router.put("/:id", adminAuth, uploadImage, updateDestination);
-// Delete Destination
-router.delete("/:id", adminAuth, deleteDestination);
+
+// Create destination
+router.post(
+  "/",
+  adminAuth,
+  uploadHotelImages,
+  createDestination
+);
+
+// Update destination
+router.put(
+  "/:id",
+  adminAuth,
+  uploadHotelImages,
+  updateDestination
+);
+
+// Delete destination
+router.delete(
+  "/:id",
+  adminAuth,
+  deleteDestination
+);
 
 module.exports = router;

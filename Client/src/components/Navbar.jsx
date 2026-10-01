@@ -20,6 +20,7 @@ import {
   Heart,
   LogOut,
 } from "lucide-react";
+import { FaBuilding } from "react-icons/fa";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -83,16 +84,16 @@ const Navbar = () => {
       path: "/hotels",
       icon: Hotel,
     },
-    {
-      name: "Trains",
-      path: "/trains",
-      icon: TrainFront,
-    },
-    {
-      name: "Buses",
-      path: "/buses",
-      icon: BusFront,
-    },
+    // {
+    //   name: "Trains",
+    //   path: "/trains",
+    //   icon: TrainFront,
+    // },
+    // {
+    //   name: "Buses",
+    //   path: "/buses",
+    //   icon: BusFront,
+    // },
     {
       name: "Packages",
       path: "/packages",
@@ -371,6 +372,32 @@ const Navbar = () => {
                         />
                       </button>
 
+                      {/* SavedHotel */}
+                      <button
+                        type="button"
+                        onClick={() => handleUserNavigation("/savedHotel")}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-blue-50"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                          <FaBuilding size={18} />
+                        </span>
+
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-slate-800">
+                            Saved Hotel
+                          </p>
+
+                          <p className="text-xs text-slate-400">
+                            See your book flight here..
+                          </p>
+                        </div>
+
+                        <ChevronDown
+                          size={15}
+                          className="-rotate-90 text-slate-400"
+                        />
+                      </button>
+
                       {/* Book Flight */}
                       <button
                         type="button"
@@ -450,7 +477,7 @@ const Navbar = () => {
                       </button>
 
                       {/* Saved Trips */}
-                      <button
+                      {/* <button
                         type="button"
                         onClick={() => handleUserNavigation("/saved-trips")}
                         className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-blue-50"
@@ -473,7 +500,7 @@ const Navbar = () => {
                           size={15}
                           className="-rotate-90 text-slate-400"
                         />
-                      </button>
+                      </button> */}
                     </div>
 
                     {/* Logout */}

@@ -10,6 +10,22 @@ const PrivateRoute = () => {
   // ================= ADMIN =================
 
   if (currentPath.startsWith("/admin")) {
+    // Wait until admin authentication check is completed
+    if (!adminAuth.authInitialized) {
+      return (
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          Checking admin authentication...
+        </div>
+      );
+    }
+
     if (
       adminAuth.isAuthenticated &&
       adminAuth.admin
@@ -17,10 +33,30 @@ const PrivateRoute = () => {
       return <Outlet />;
     }
 
-    return <Navigate to="/admin/adminlogin" replace />;
+    return (
+      <Navigate
+        to="/admin/adminlogin"
+        replace
+      />
+    );
   }
 
   // ================= USER =================
+
+  if (!auth.authInitialized) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        Checking authentication...
+      </div>
+    );
+  }
 
   if (
     auth.isAuthenticated &&

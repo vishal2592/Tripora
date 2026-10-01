@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Search,
   Plus,
@@ -9,7 +9,6 @@ import {
   UserCheck,
   UserX,
   ShieldCheck,
-  Shield,
   Users as UsersIcon,
   UserRoundCheck,
   UserPlus,
@@ -22,135 +21,98 @@ import {
   AlertCircle,
   ChevronDown,
   Filter,
+  Loader2,
+  RefreshCw,
+  Lock,
 } from "lucide-react";
 
-const initialUsers = [
-  {
-    id: 1,
-    name: "Rahul Sharma",
-    email: "rahul.sharma@gmail.com",
-    phone: "+91 98765 43210",
-    role: "User",
-    status: "Active",
-    verified: true,
-    joined: "18 Sep 2026",
-    location: "Delhi, India",
-    bookings: 8,
-    avatar: "",
-  },
-  {
-    id: 2,
-    name: "Priya Singh",
-    email: "priya.singh@gmail.com",
-    phone: "+91 91234 56789",
-    role: "User",
-    status: "Active",
-    verified: true,
-    joined: "15 Sep 2026",
-    location: "Mumbai, India",
-    bookings: 12,
-    avatar: "",
-  },
-  {
-    id: 3,
-    name: "Amit Kumar",
-    email: "amit.kumar@gmail.com",
-    phone: "+91 99887 66554",
-    role: "User",
-    status: "Blocked",
-    verified: true,
-    joined: "10 Sep 2026",
-    location: "Patna, India",
-    bookings: 3,
-    avatar: "",
-  },
-  {
-    id: 4,
-    name: "Sneha Verma",
-    email: "sneha.verma@gmail.com",
-    phone: "+91 98712 34567",
-    role: "User",
-    status: "Active",
-    verified: false,
-    joined: "08 Sep 2026",
-    location: "Bangalore, India",
-    bookings: 5,
-    avatar: "",
-  },
-  {
-    id: 5,
-    name: "Vikas Gupta",
-    email: "vikas.gupta@gmail.com",
-    phone: "+91 90909 87654",
-    role: "Admin",
-    status: "Active",
-    verified: true,
-    joined: "01 Sep 2026",
-    location: "Delhi, India",
-    bookings: 0,
-    avatar: "",
-  },
-  {
-    id: 6,
-    name: "Anjali Patel",
-    email: "anjali.patel@gmail.com",
-    phone: "+91 98123 45678",
-    role: "User",
-    status: "Active",
-    verified: true,
-    joined: "28 Aug 2026",
-    location: "Ahmedabad, India",
-    bookings: 7,
-    avatar: "",
-  },
-  {
-    id: 7,
-    name: "Rohit Mehta",
-    email: "rohit.mehta@gmail.com",
-    phone: "+91 97654 32109",
-    role: "User",
-    status: "Blocked",
-    verified: false,
-    joined: "22 Aug 2026",
-    location: "Jaipur, India",
-    bookings: 2,
-    avatar: "",
-  },
-  {
-    id: 8,
-    name: "Neha Kapoor",
-    email: "neha.kapoor@gmail.com",
-    phone: "+91 93456 78901",
-    role: "User",
-    status: "Active",
-    verified: true,
-    joined: "18 Aug 2026",
-    location: "Kolkata, India",
-    bookings: 10,
-    avatar: "",
-  },
-];
+import { useDispatch, useSelector } from "react-redux";
+
+import {
+  getAllUsers,
+  getSingleUser,
+  createUser,
+  updateUser,
+  toggleUserStatus,
+  toggleUserVerification,
+  deleteUser,
+  clearUserMessage,
+} from "../../../redux/slicer/adminUserSlice";
+
+// =====================================================
+// EMPTY FORM
+// =====================================================
 
 const emptyForm = {
   name: "",
   email: "",
   phone: "",
+  password: "",
   role: "User",
   status: "Active",
-  verified: true,
+  verified: false,
   location: "",
 };
+
+// =====================================================
+// NORMALIZE BACKEND USER
+// =====================================================
+
+const normalizeUser = (user) => {
+  if (!user) return null;
+
+  return {
+    ...user,
+
+    id: user._id,
+
+    name: user.fullName || "Unknown User",
+
+    email: user.email || "No email",
+
+    phone: user.mobileNumber || "Not provided",
+
+    role: user.role === "admin" ? "Admin" : "User",
+
+    status: user.isActive ? "Active" : "Blocked",
+
+    verified: Boolean(user.isVerified),
+
+    joined: user.createdAt
+      ? new Date(user.createdAt).toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : "N/A",
+
+    location: user.location || "Not provided",
+
+    bookings: user.bookings || 0,
+
+    avatar: user.avatar || "",
+  };
+};
+
+// =====================================================
+// GET INITIALS
+// =====================================================
 
 const getInitials = (name) => {
   if (!name) return "U";
 
   return name
     .split(" ")
+    .filter(Boolean)
     .map((word) => word.charAt(0))
     .join("")
     .slice(0, 2)
     .toUpperCase();
 };
+
+// =====================================================
+// AVATAR STYLE
+// =====================================================
 
 const getAvatarStyle = (name) => {
   const styles = [
@@ -163,18 +125,31 @@ const getAvatarStyle = (name) => {
   ];
 
   const index =
-    name?.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0) %
-    styles.length;
+    name?.split("").reduce((sum, char) => {
+      return sum + char.charCodeAt(0);
+    }, 0) % styles.length;
 
   return styles[index];
 };
 
-function StatCard({ icon: Icon, title, value, description, iconClass }) {
+// =====================================================
+// STAT CARD
+// =====================================================
+
+function StatCard({
+  icon: Icon,
+  title,
+  value,
+  description,
+  iconClass,
+}) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-medium text-slate-500">{title}</p>
+          <p className="text-sm font-medium text-slate-500">
+            {title}
+          </p>
 
           <h3 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
             {value}
@@ -195,6 +170,10 @@ function StatCard({ icon: Icon, title, value, description, iconClass }) {
   );
 }
 
+// =====================================================
+// STATUS BADGE
+// =====================================================
+
 function StatusBadge({ status }) {
   const active = status === "Active";
 
@@ -211,10 +190,15 @@ function StatusBadge({ status }) {
           active ? "bg-emerald-500" : "bg-red-500"
         }`}
       />
+
       {status}
     </span>
   );
 }
+
+// =====================================================
+// ROLE BADGE
+// =====================================================
 
 function RoleBadge({ role }) {
   const admin = role === "Admin";
@@ -227,11 +211,20 @@ function RoleBadge({ role }) {
           : "bg-blue-50 text-blue-700"
       }`}
     >
-      {admin ? <ShieldCheck size={13} /> : <UsersIcon size={13} />}
+      {admin ? (
+        <ShieldCheck size={13} />
+      ) : (
+        <UsersIcon size={13} />
+      )}
+
       {role}
     </span>
   );
 }
+
+// =====================================================
+// VERIFICATION BADGE
+// =====================================================
 
 function VerificationBadge({ verified }) {
   return verified ? (
@@ -247,6 +240,10 @@ function VerificationBadge({ verified }) {
   );
 }
 
+// =====================================================
+// USER AVATAR
+// =====================================================
+
 function UserAvatar({ user, size = "normal" }) {
   const sizeClass =
     size === "large"
@@ -255,18 +252,37 @@ function UserAvatar({ user, size = "normal" }) {
       ? "h-9 w-9 text-xs"
       : "h-11 w-11 text-sm";
 
+  if (user?.avatar) {
+    return (
+      <img
+        src={user.avatar}
+        alt={user.name}
+        className={`shrink-0 rounded-full object-cover ${sizeClass}`}
+      />
+    );
+  }
+
   return (
     <div
       className={`flex shrink-0 items-center justify-center rounded-full font-bold ${sizeClass} ${getAvatarStyle(
-        user.name
+        user?.name
       )}`}
     >
-      {getInitials(user.name)}
+      {getInitials(user?.name)}
     </div>
   );
 }
 
-function Modal({ children, onClose, title, subtitle }) {
+// =====================================================
+// MODAL
+// =====================================================
+
+function Modal({
+  children,
+  onClose,
+  title,
+  subtitle,
+}) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-2 backdrop-blur-[2px] sm:p-5">
       <div className="max-h-[95vh] w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -300,12 +316,17 @@ function Modal({ children, onClose, title, subtitle }) {
   );
 }
 
+// =====================================================
+// USER FORM MODAL
+// =====================================================
+
 function UserFormModal({
   mode,
   form,
   setForm,
   onClose,
   onSave,
+  loading,
 }) {
   const isEdit = mode === "edit";
 
@@ -319,7 +340,15 @@ function UserFormModal({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) {
+    if (
+      !form.name.trim() ||
+      !form.email.trim() ||
+      !form.phone.trim()
+    ) {
+      return;
+    }
+
+    if (!isEdit && !form.password.trim()) {
       return;
     }
 
@@ -336,8 +365,12 @@ function UserFormModal({
           : "Create a new user account."
       }
     >
-      <form onSubmit={handleSubmit} className="p-4 sm:p-6">
+      <form
+        onSubmit={handleSubmit}
+        className="p-4 sm:p-6"
+      >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {/* FULL NAME */}
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Full Name
@@ -346,13 +379,17 @@ function UserFormModal({
             <input
               type="text"
               value={form.name}
-              onChange={(e) => handleChange("name", e.target.value)}
+              onChange={(e) =>
+                handleChange("name", e.target.value)
+              }
               placeholder="Enter full name"
               className="form-input"
               required
+              disabled={loading}
             />
           </div>
 
+          {/* EMAIL */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Email Address
@@ -361,13 +398,17 @@ function UserFormModal({
             <input
               type="email"
               value={form.email}
-              onChange={(e) => handleChange("email", e.target.value)}
+              onChange={(e) =>
+                handleChange("email", e.target.value)
+              }
               placeholder="Enter email address"
               className="form-input"
               required
+              disabled={loading}
             />
           </div>
 
+          {/* PHONE */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Phone Number
@@ -376,13 +417,47 @@ function UserFormModal({
             <input
               type="tel"
               value={form.phone}
-              onChange={(e) => handleChange("phone", e.target.value)}
+              onChange={(e) =>
+                handleChange("phone", e.target.value)
+              }
               placeholder="+91 98765 43210"
               className="form-input"
               required
+              disabled={loading}
             />
           </div>
 
+          {/* PASSWORD - ONLY ADD */}
+          {!isEdit && (
+            <div className="sm:col-span-2">
+              <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-slate-700">
+                <Lock size={15} />
+                Password
+              </label>
+
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) =>
+                  handleChange(
+                    "password",
+                    e.target.value
+                  )
+                }
+                placeholder="Enter password"
+                className="form-input"
+                required
+                minLength={6}
+                disabled={loading}
+              />
+
+              <p className="mt-1 text-xs text-slate-400">
+                Password must be at least 6 characters.
+              </p>
+            </div>
+          )}
+
+          {/* ROLE */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Role
@@ -391,8 +466,14 @@ function UserFormModal({
             <div className="relative">
               <select
                 value={form.role}
-                onChange={(e) => handleChange("role", e.target.value)}
+                onChange={(e) =>
+                  handleChange(
+                    "role",
+                    e.target.value
+                  )
+                }
                 className="form-input appearance-none pr-10"
+                disabled={loading}
               >
                 <option value="User">User</option>
                 <option value="Admin">Admin</option>
@@ -405,6 +486,7 @@ function UserFormModal({
             </div>
           </div>
 
+          {/* STATUS */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Status
@@ -413,8 +495,14 @@ function UserFormModal({
             <div className="relative">
               <select
                 value={form.status}
-                onChange={(e) => handleChange("status", e.target.value)}
+                onChange={(e) =>
+                  handleChange(
+                    "status",
+                    e.target.value
+                  )
+                }
                 className="form-input appearance-none pr-10"
+                disabled={loading}
               >
                 <option value="Active">Active</option>
                 <option value="Blocked">Blocked</option>
@@ -427,6 +515,7 @@ function UserFormModal({
             </div>
           </div>
 
+          {/* LOCATION */}
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-sm font-medium text-slate-700">
               Location
@@ -435,27 +524,39 @@ function UserFormModal({
             <input
               type="text"
               value={form.location}
-              onChange={(e) => handleChange("location", e.target.value)}
+              onChange={(e) =>
+                handleChange(
+                  "location",
+                  e.target.value
+                )
+              }
               placeholder="Delhi, India"
               className="form-input"
+              disabled={loading}
             />
           </div>
 
+          {/* VERIFIED */}
           <div className="sm:col-span-2">
             <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
               <input
                 type="checkbox"
                 checked={form.verified}
                 onChange={(e) =>
-                  handleChange("verified", e.target.checked)
+                  handleChange(
+                    "verified",
+                    e.target.checked
+                  )
                 }
                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                disabled={loading}
               />
 
               <div>
                 <p className="text-sm font-semibold text-slate-800">
                   Email Verified
                 </p>
+
                 <p className="text-xs text-slate-500">
                   Mark this user's email as verified.
                 </p>
@@ -464,19 +565,29 @@ function UserFormModal({
           </div>
         </div>
 
+        {/* BUTTONS */}
         <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+            disabled={loading}
+            className="w-full rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             Cancel
           </button>
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
+            {loading && (
+              <Loader2
+                size={16}
+                className="animate-spin"
+              />
+            )}
+
             {isEdit ? "Update User" : "Create User"}
           </button>
         </div>
@@ -485,7 +596,16 @@ function UserFormModal({
   );
 }
 
-function ViewUserModal({ user, onClose, onEdit }) {
+// =====================================================
+// VIEW USER MODAL
+// =====================================================
+
+function ViewUserModal({
+  user,
+  onClose,
+  onEdit,
+  loading,
+}) {
   if (!user) return null;
 
   return (
@@ -495,129 +615,171 @@ function ViewUserModal({ user, onClose, onEdit }) {
       subtitle="View complete information about this user."
     >
       <div className="p-4 sm:p-6">
-        <div className="flex flex-col items-center rounded-2xl bg-slate-50 p-5 text-center sm:flex-row sm:text-left">
-          <UserAvatar user={user} size="large" />
-
-          <div className="mt-4 min-w-0 sm:ml-4 sm:mt-0">
-            <h3 className="text-lg font-bold text-slate-900">
-              {user.name}
-            </h3>
-
-            <p className="mt-1 break-all text-sm text-slate-500">
-              {user.email}
-            </p>
-
-            <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
-              <RoleBadge role={user.role} />
-              <StatusBadge status={user.status} />
+        {loading ? (
+          <div className="flex min-h-[300px] items-center justify-center">
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+              <Loader2
+                size={20}
+                className="animate-spin"
+              />
+              Loading user details...
             </div>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* PROFILE */}
+            <div className="flex flex-col items-center rounded-2xl bg-slate-50 p-5 text-center sm:flex-row sm:text-left">
+              <UserAvatar
+                user={user}
+                size="large"
+              />
 
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 p-4">
-            <div className="flex items-center gap-2 text-slate-400">
-              <Mail size={16} />
-              <span className="text-xs font-medium">Email</span>
+              <div className="mt-4 min-w-0 sm:ml-4 sm:mt-0">
+                <h3 className="text-lg font-bold text-slate-900">
+                  {user.name}
+                </h3>
+
+                <p className="mt-1 break-all text-sm text-slate-500">
+                  {user.email}
+                </p>
+
+                <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+                  <RoleBadge role={user.role} />
+                  <StatusBadge status={user.status} />
+                </div>
+              </div>
             </div>
 
-            <p className="mt-2 break-all text-sm font-semibold text-slate-800">
-              {user.email}
-            </p>
-          </div>
+            {/* DETAILS */}
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Mail size={16} />
+                  <span className="text-xs font-medium">
+                    Email
+                  </span>
+                </div>
 
-          <div className="rounded-xl border border-slate-200 p-4">
-            <div className="flex items-center gap-2 text-slate-400">
-              <Phone size={16} />
-              <span className="text-xs font-medium">Phone</span>
+                <p className="mt-2 break-all text-sm font-semibold text-slate-800">
+                  {user.email}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Phone size={16} />
+                  <span className="text-xs font-medium">
+                    Phone
+                  </span>
+                </div>
+
+                <p className="mt-2 text-sm font-semibold text-slate-800">
+                  {user.phone}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <CalendarDays size={16} />
+                  <span className="text-xs font-medium">
+                    Joined
+                  </span>
+                </div>
+
+                <p className="mt-2 text-sm font-semibold text-slate-800">
+                  {user.joined}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-4">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <MapPin size={16} />
+                  <span className="text-xs font-medium">
+                    Location
+                  </span>
+                </div>
+
+                <p className="mt-2 text-sm font-semibold text-slate-800">
+                  {user.location ||
+                    "Not provided"}
+                </p>
+              </div>
             </div>
 
-            <p className="mt-2 text-sm font-semibold text-slate-800">
-              {user.phone}
-            </p>
-          </div>
+            {/* VERIFICATION */}
+            <div className="mt-4 rounded-xl border border-slate-200 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Email Verification
+                  </p>
 
-          <div className="rounded-xl border border-slate-200 p-4">
-            <div className="flex items-center gap-2 text-slate-400">
-              <CalendarDays size={16} />
-              <span className="text-xs font-medium">Joined</span>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Current verification status
+                  </p>
+                </div>
+
+                <VerificationBadge
+                  verified={user.verified}
+                />
+              </div>
             </div>
 
-            <p className="mt-2 text-sm font-semibold text-slate-800">
-              {user.joined}
-            </p>
-          </div>
+            {/* BOOKINGS */}
+            <div className="mt-4 rounded-xl border border-slate-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Total Bookings
+                  </p>
 
-          <div className="rounded-xl border border-slate-200 p-4">
-            <div className="flex items-center gap-2 text-slate-400">
-              <MapPin size={16} />
-              <span className="text-xs font-medium">Location</span>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Bookings made by this user
+                  </p>
+                </div>
+
+                <span className="text-xl font-bold text-blue-600">
+                  {user.bookings || 0}
+                </span>
+              </div>
             </div>
 
-            <p className="mt-2 text-sm font-semibold text-slate-800">
-              {user.location || "Not provided"}
-            </p>
-          </div>
-        </div>
+            {/* BUTTONS */}
+            <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+              >
+                Close
+              </button>
 
-        <div className="mt-4 rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-slate-800">
-                Email Verification
-              </p>
-
-              <p className="mt-1 text-xs text-slate-500">
-                Current verification status
-              </p>
+              <button
+                type="button"
+                onClick={onEdit}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 sm:w-auto"
+              >
+                <Edit3 size={16} />
+                Edit User
+              </button>
             </div>
-
-            <VerificationBadge verified={user.verified} />
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-slate-800">
-                Total Bookings
-              </p>
-
-              <p className="mt-1 text-xs text-slate-500">
-                Bookings made by this user
-              </p>
-            </div>
-
-            <span className="text-xl font-bold text-blue-600">
-              {user.bookings}
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
-          >
-            Close
-          </button>
-
-          <button
-            type="button"
-            onClick={onEdit}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 sm:w-auto"
-          >
-            <Edit3 size={16} />
-            Edit User
-          </button>
-        </div>
+          </>
+        )}
       </div>
     </Modal>
   );
 }
 
-function DeleteModal({ user, onClose, onDelete }) {
+// =====================================================
+// DELETE MODAL
+// =====================================================
+
+function DeleteModal({
+  user,
+  onClose,
+  onDelete,
+  loading,
+}) {
   if (!user) return null;
 
   return (
@@ -637,8 +799,8 @@ function DeleteModal({ user, onClose, onDelete }) {
           </h3>
 
           <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
-            Are you sure you want to permanently delete this user? All
-            associated user data will be removed.
+            Are you sure you want to permanently delete this
+            user? All associated user data will be removed.
           </p>
         </div>
 
@@ -646,7 +808,8 @@ function DeleteModal({ user, onClose, onDelete }) {
           <button
             type="button"
             onClick={onClose}
-            className="w-full rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:w-auto"
+            disabled={loading}
+            className="w-full rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
           >
             Cancel
           </button>
@@ -654,8 +817,16 @@ function DeleteModal({ user, onClose, onDelete }) {
           <button
             type="button"
             onClick={onDelete}
-            className="w-full rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 sm:w-auto"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
+            {loading && (
+              <Loader2
+                size={16}
+                className="animate-spin"
+              />
+            )}
+
             Delete User
           </button>
         </div>
@@ -663,6 +834,10 @@ function DeleteModal({ user, onClose, onDelete }) {
     </Modal>
   );
 }
+
+// =====================================================
+// USER ACTIONS
+// =====================================================
 
 function UserActions({
   user,
@@ -756,22 +931,83 @@ function UserActions({
   );
 }
 
+// =====================================================
+// MAIN ADMIN USERS PAGE
+// =====================================================
+
 export default function AdminUsers() {
-  const [users, setUsers] = useState(initialUsers);
+  const dispatch = useDispatch();
+
+  const {
+    users: backendUsers,
+    loading,
+    createLoading,
+    updateLoading,
+    deleteLoading,
+    statusLoading,
+    verificationLoading,
+    error,
+    message,
+  } = useSelector((state) => state.users);
+
+  // ===================================================
+  // LOCAL UI STATE
+  // ===================================================
 
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("All");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [verificationFilter, setVerificationFilter] = useState("All");
 
-  const [showFilters, setShowFilters] = useState(false);
+  const [roleFilter, setRoleFilter] =
+    useState("All");
 
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [viewUser, setViewUser] = useState(null);
-  const [deleteUser, setDeleteUser] = useState(null);
+  const [statusFilter, setStatusFilter] =
+    useState("All");
 
-  const [modalMode, setModalMode] = useState(null);
-  const [form, setForm] = useState(emptyForm);
+  const [verificationFilter, setVerificationFilter] =
+    useState("All");
+
+  const [showFilters, setShowFilters] =
+    useState(false);
+
+  const [selectedUser, setSelectedUser] =
+    useState(null);
+
+  const [viewUser, setViewUser] =
+    useState(null);
+
+  const [userToDelete, setUserToDelete] =
+    useState(null);
+
+  const [modalMode, setModalMode] =
+    useState(null);
+
+  const [form, setForm] =
+    useState(emptyForm);
+
+  // ===================================================
+  // FETCH USERS
+  // ===================================================
+
+  useEffect(() => {
+    dispatch(getAllUsers());
+
+    return () => {
+      dispatch(clearUserMessage());
+    };
+  }, [dispatch]);
+
+  // ===================================================
+  // NORMALIZED USERS
+  // ===================================================
+
+  const users = useMemo(() => {
+    return (backendUsers || [])
+      .map(normalizeUser)
+      .filter(Boolean);
+  }, [backendUsers]);
+
+  // ===================================================
+  // FILTER USERS
+  // ===================================================
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -779,21 +1015,33 @@ export default function AdminUsers() {
     return users.filter((user) => {
       const matchesSearch =
         !query ||
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.phone.toLowerCase().includes(query) ||
-        user.location?.toLowerCase().includes(query);
+        user.name
+          ?.toLowerCase()
+          .includes(query) ||
+        user.email
+          ?.toLowerCase()
+          .includes(query) ||
+        user.phone
+          ?.toLowerCase()
+          .includes(query) ||
+        user.location
+          ?.toLowerCase()
+          .includes(query);
 
       const matchesRole =
-        roleFilter === "All" || user.role === roleFilter;
+        roleFilter === "All" ||
+        user.role === roleFilter;
 
       const matchesStatus =
-        statusFilter === "All" || user.status === statusFilter;
+        statusFilter === "All" ||
+        user.status === statusFilter;
 
       const matchesVerification =
         verificationFilter === "All" ||
-        (verificationFilter === "Verified" && user.verified) ||
-        (verificationFilter === "Pending" && !user.verified);
+        (verificationFilter === "Verified" &&
+          user.verified) ||
+        (verificationFilter === "Pending" &&
+          !user.verified);
 
       return (
         matchesSearch &&
@@ -810,6 +1058,10 @@ export default function AdminUsers() {
     verificationFilter,
   ]);
 
+  // ===================================================
+  // STATS
+  // ===================================================
+
   const totalUsers = users.length;
 
   const activeUsers = users.filter(
@@ -820,101 +1072,258 @@ export default function AdminUsers() {
     (user) => user.verified
   ).length;
 
-  const newUsers = users.filter((user) =>
-    [
-      "18 Sep 2026",
-      "15 Sep 2026",
-      "10 Sep 2026",
-    ].includes(user.joined)
-  ).length;
+  const newUsers = users.filter((user) => {
+    if (!user.createdAt) return false;
+
+    const createdAt = new Date(
+      user.createdAt
+    );
+
+    const now = new Date();
+
+    const difference =
+      now.getTime() -
+      createdAt.getTime();
+
+    const thirtyDays =
+      30 * 24 * 60 * 60 * 1000;
+
+    return (
+      difference >= 0 &&
+      difference <= thirtyDays
+    );
+  }).length;
+
+  // ===================================================
+  // ADD MODAL
+  // ===================================================
 
   const openAddModal = () => {
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      verified: false,
+    });
+
+    setSelectedUser(null);
     setModalMode("add");
   };
 
+  // ===================================================
+  // EDIT MODAL
+  // ===================================================
+
   const openEditModal = (user) => {
     setForm({
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      status: user.status,
-      verified: user.verified,
+      name: user.name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      password: "",
+      role: user.role || "User",
+      status: user.status || "Active",
+      verified: Boolean(user.verified),
       location: user.location || "",
     });
 
     setSelectedUser(user);
+
     setViewUser(null);
+
     setModalMode("edit");
   };
 
-  const handleSaveUser = () => {
-    if (modalMode === "add") {
-      const newUser = {
-        id: Date.now(),
-        name: form.name.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        role: form.role,
-        status: form.status,
-        verified: form.verified,
-        location: form.location.trim() || "Not provided",
-        bookings: 0,
-        joined: "18 Sep 2026",
-        avatar: "",
-      };
+  // ===================================================
+  // SAVE USER
+  // ===================================================
 
-      setUsers((prev) => [newUser, ...prev]);
-    } else if (modalMode === "edit" && selectedUser) {
-      setUsers((prev) =>
-        prev.map((user) =>
-          user.id === selectedUser.id
-            ? {
-                ...user,
-                name: form.name.trim(),
-                email: form.email.trim(),
-                phone: form.phone.trim(),
-                role: form.role,
-                status: form.status,
-                verified: form.verified,
-                location: form.location.trim() || "Not provided",
-              }
-            : user
-        )
+  const handleSaveUser = async () => {
+    try {
+      // ================================================
+      // CREATE
+      // ================================================
+
+      if (modalMode === "add") {
+        const createdUser =
+          await dispatch(
+            createUser({
+              fullName: form.name.trim(),
+
+              email: form.email.trim(),
+
+              mobileNumber:
+                form.phone.trim(),
+
+              location:
+                form.location.trim(),
+
+              role:
+                form.role === "Admin"
+                  ? "admin"
+                  : "user",
+
+              isActive:
+                form.status === "Active",
+
+              isVerified:
+                form.verified,
+
+              password:
+                form.password.trim(),
+            })
+          ).unwrap();
+
+        // Close modal
+        setModalMode(null);
+        setSelectedUser(null);
+        setForm(emptyForm);
+
+        return createdUser;
+      }
+
+      // ================================================
+      // UPDATE
+      // ================================================
+
+      if (
+        modalMode === "edit" &&
+        selectedUser
+      ) {
+        await dispatch(
+          updateUser({
+            id: selectedUser.id,
+
+            userData: {
+              fullName:
+                form.name.trim(),
+
+              email:
+                form.email.trim(),
+
+              mobileNumber:
+                form.phone.trim(),
+
+              location:
+                form.location.trim(),
+
+              role:
+                form.role === "Admin"
+                  ? "admin"
+                  : "user",
+            },
+          })
+        ).unwrap();
+
+        // ==============================================
+        // STATUS CHANGE
+        // ==============================================
+
+        if (
+          form.status !==
+          selectedUser.status
+        ) {
+          await dispatch(
+            toggleUserStatus(
+              selectedUser.id
+            )
+          ).unwrap();
+        }
+
+        // ==============================================
+        // VERIFICATION CHANGE
+        // ==============================================
+
+        if (
+          form.verified !==
+          selectedUser.verified
+        ) {
+          await dispatch(
+            toggleUserVerification(
+              selectedUser.id
+            )
+          ).unwrap();
+        }
+
+        setModalMode(null);
+        setSelectedUser(null);
+        setForm(emptyForm);
+      }
+    } catch (error) {
+      console.error(
+        "Save User Error:",
+        error
       );
     }
-
-    setModalMode(null);
-    setSelectedUser(null);
-    setForm(emptyForm);
   };
 
-  const handleToggleStatus = (user) => {
-    setUsers((prev) =>
-      prev.map((item) =>
-        item.id === user.id
-          ? {
-              ...item,
-              status:
-                item.status === "Active"
-                  ? "Blocked"
-                  : "Active",
-            }
-          : item
-      )
-    );
+  // ===================================================
+  // VIEW USER
+  // ===================================================
+
+  const handleViewUser = async (user) => {
+    try {
+      const response =
+        await dispatch(
+          getSingleUser(user.id)
+        ).unwrap();
+
+      const detailedUser =
+        normalizeUser(response?.user);
+
+      setViewUser(
+        detailedUser || user
+      );
+    } catch (error) {
+      console.error(
+        "Get User Details Error:",
+        error
+      );
+
+      setViewUser(user);
+    }
   };
 
-  const handleDeleteUser = () => {
-    if (!deleteUser) return;
+  // ===================================================
+  // TOGGLE STATUS
+  // ===================================================
 
-    setUsers((prev) =>
-      prev.filter((user) => user.id !== deleteUser.id)
-    );
-
-    setDeleteUser(null);
+  const handleToggleStatus = async (
+    user
+  ) => {
+    try {
+      await dispatch(
+        toggleUserStatus(user.id)
+      ).unwrap();
+    } catch (error) {
+      console.error(
+        "Toggle User Status Error:",
+        error
+      );
+    }
   };
+
+  // ===================================================
+  // DELETE USER
+  // ===================================================
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      await dispatch(
+        deleteUser(userToDelete.id)
+      ).unwrap();
+
+      setUserToDelete(null);
+    } catch (error) {
+      console.error(
+        "Delete User Error:",
+        error
+      );
+    }
+  };
+
+  // ===================================================
+  // CLEAR FILTERS
+  // ===================================================
 
   const handleClearFilters = () => {
     setSearch("");
@@ -923,16 +1332,32 @@ export default function AdminUsers() {
     setVerificationFilter("All");
   };
 
+  // ===================================================
+  // REFRESH
+  // ===================================================
+
+  const handleRefresh = () => {
+    dispatch(getAllUsers());
+  };
+
   const hasFilters =
-    search ||
+    Boolean(search) ||
     roleFilter !== "All" ||
     statusFilter !== "All" ||
     verificationFilter !== "All";
 
+  // ===================================================
+  // RETURN
+  // ===================================================
+
   return (
     <div className="min-h-screen bg-slate-50 p-3 sm:p-2 lg:p-4">
       <div className="mx-auto max-w-7xl">
-        {/* HEADER */}
+
+        {/* ==========================================
+            HEADER
+        ========================================== */}
+
         <div className="mb-2 flex flex-col gap-4 sm:mb-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
@@ -940,21 +1365,107 @@ export default function AdminUsers() {
             </h1>
 
             <p className="mt-1 text-sm text-slate-500">
-              Manage registered users and their account activity.
+              Manage registered users and their
+              account activity.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={openAddModal}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
-          >
-            <Plus size={18} />
-            Add User
-          </button>
+          <div className="flex w-full gap-2 sm:w-auto">
+
+            {/* REFRESH */}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Refresh users"
+            >
+              <RefreshCw
+                size={18}
+                className={
+                  loading
+                    ? "animate-spin"
+                    : ""
+                }
+              />
+            </button>
+
+            {/* ADD USER */}
+            <button
+              type="button"
+              onClick={openAddModal}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 sm:flex-none"
+            >
+              <Plus size={18} />
+              Add User
+            </button>
+          </div>
         </div>
 
-        {/* STATS */}
+        {/* ==========================================
+            API ERROR
+        ========================================== */}
+
+        {error && (
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertCircle
+              size={18}
+              className="mt-0.5 shrink-0"
+            />
+
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">
+                Something went wrong
+              </p>
+
+              <p className="mt-0.5 text-xs">
+                {error}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                dispatch(clearUserMessage())
+              }
+              className="text-red-500 hover:text-red-700"
+            >
+              <X size={17} />
+            </button>
+          </div>
+        )}
+
+        {/* ==========================================
+            SUCCESS MESSAGE
+        ========================================== */}
+
+        {message && !error && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <CheckCircle2
+              size={18}
+              className="shrink-0"
+            />
+
+            <p className="flex-1 font-medium">
+              {message}
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                dispatch(clearUserMessage())
+              }
+              className="text-emerald-500 hover:text-emerald-700"
+            >
+              <X size={17} />
+            </button>
+          </div>
+        )}
+
+        {/* ==========================================
+            STATS
+        ========================================== */}
+
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4 lg:gap-4">
           <StatCard
             icon={UsersIcon}
@@ -984,16 +1495,24 @@ export default function AdminUsers() {
             icon={UserPlus}
             title="New Users"
             value={newUsers}
-            description="Recently registered"
+            description="Last 30 days"
             iconClass="bg-amber-50 text-amber-600"
           />
         </div>
 
-        {/* MAIN CARD */}
+        {/* ==========================================
+            MAIN CARD
+        ========================================== */}
+
         <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm sm:mt-6">
+
           {/* SEARCH + FILTER HEADER */}
+
           <div className="border-b border-slate-200 p-3 sm:p-4 lg:p-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+
+              {/* SEARCH */}
+
               <div className="relative w-full lg:max-w-md">
                 <Search
                   size={18}
@@ -1003,15 +1522,23 @@ export default function AdminUsers() {
                 <input
                   type="text"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) =>
+                    setSearch(e.target.value)
+                  }
                   placeholder="Search name, email, phone..."
                   className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
                 />
               </div>
 
+              {/* MOBILE FILTER BUTTON */}
+
               <button
                 type="button"
-                onClick={() => setShowFilters((prev) => !prev)}
+                onClick={() =>
+                  setShowFilters(
+                    (prev) => !prev
+                  )
+                }
                 className="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 lg:hidden"
               >
                 <Filter size={17} />
@@ -1019,16 +1546,32 @@ export default function AdminUsers() {
               </button>
 
               {/* DESKTOP FILTERS */}
+
               <div className="hidden items-center gap-2 lg:flex">
+
+                {/* ROLE */}
+
                 <div className="relative">
                   <select
                     value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
+                    onChange={(e) =>
+                      setRoleFilter(
+                        e.target.value
+                      )
+                    }
                     className="h-11 appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-9 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
-                    <option value="All">All Roles</option>
-                    <option value="User">Users</option>
-                    <option value="Admin">Admins</option>
+                    <option value="All">
+                      All Roles
+                    </option>
+
+                    <option value="User">
+                      Users
+                    </option>
+
+                    <option value="Admin">
+                      Admins
+                    </option>
                   </select>
 
                   <ChevronDown
@@ -1036,16 +1579,30 @@ export default function AdminUsers() {
                     className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
                   />
                 </div>
+
+                {/* STATUS */}
 
                 <div className="relative">
                   <select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    onChange={(e) =>
+                      setStatusFilter(
+                        e.target.value
+                      )
+                    }
                     className="h-11 appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-9 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
-                    <option value="All">All Status</option>
-                    <option value="Active">Active</option>
-                    <option value="Blocked">Blocked</option>
+                    <option value="All">
+                      All Status
+                    </option>
+
+                    <option value="Active">
+                      Active
+                    </option>
+
+                    <option value="Blocked">
+                      Blocked
+                    </option>
                   </select>
 
                   <ChevronDown
@@ -1054,17 +1611,31 @@ export default function AdminUsers() {
                   />
                 </div>
 
+                {/* VERIFICATION */}
+
                 <div className="relative">
                   <select
-                    value={verificationFilter}
+                    value={
+                      verificationFilter
+                    }
                     onChange={(e) =>
-                      setVerificationFilter(e.target.value)
+                      setVerificationFilter(
+                        e.target.value
+                      )
                     }
                     className="h-11 appearance-none rounded-xl border border-slate-200 bg-white pl-3 pr-9 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
-                    <option value="All">All Verification</option>
-                    <option value="Verified">Verified</option>
-                    <option value="Pending">Pending</option>
+                    <option value="All">
+                      All Verification
+                    </option>
+
+                    <option value="Verified">
+                      Verified
+                    </option>
+
+                    <option value="Pending">
+                      Pending
+                    </option>
                   </select>
 
                   <ChevronDown
@@ -1076,17 +1647,33 @@ export default function AdminUsers() {
             </div>
 
             {/* MOBILE FILTERS */}
+
             {showFilters && (
               <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-3 lg:hidden">
+
+                {/* ROLE */}
+
                 <div className="relative">
                   <select
                     value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
+                    onChange={(e) =>
+                      setRoleFilter(
+                        e.target.value
+                      )
+                    }
                     className="form-input appearance-none pr-9"
                   >
-                    <option value="All">All Roles</option>
-                    <option value="User">Users</option>
-                    <option value="Admin">Admins</option>
+                    <option value="All">
+                      All Roles
+                    </option>
+
+                    <option value="User">
+                      Users
+                    </option>
+
+                    <option value="Admin">
+                      Admins
+                    </option>
                   </select>
 
                   <ChevronDown
@@ -1094,16 +1681,30 @@ export default function AdminUsers() {
                     className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
                   />
                 </div>
+
+                {/* STATUS */}
 
                 <div className="relative">
                   <select
                     value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
+                    onChange={(e) =>
+                      setStatusFilter(
+                        e.target.value
+                      )
+                    }
                     className="form-input appearance-none pr-9"
                   >
-                    <option value="All">All Status</option>
-                    <option value="Active">Active</option>
-                    <option value="Blocked">Blocked</option>
+                    <option value="All">
+                      All Status
+                    </option>
+
+                    <option value="Active">
+                      Active
+                    </option>
+
+                    <option value="Blocked">
+                      Blocked
+                    </option>
                   </select>
 
                   <ChevronDown
@@ -1112,17 +1713,31 @@ export default function AdminUsers() {
                   />
                 </div>
 
+                {/* VERIFICATION */}
+
                 <div className="relative">
                   <select
-                    value={verificationFilter}
+                    value={
+                      verificationFilter
+                    }
                     onChange={(e) =>
-                      setVerificationFilter(e.target.value)
+                      setVerificationFilter(
+                        e.target.value
+                      )
                     }
                     className="form-input appearance-none pr-9"
                   >
-                    <option value="All">All Verification</option>
-                    <option value="Verified">Verified</option>
-                    <option value="Pending">Pending</option>
+                    <option value="All">
+                      All Verification
+                    </option>
+
+                    <option value="Verified">
+                      Verified
+                    </option>
+
+                    <option value="Pending">
+                      Pending
+                    </option>
                   </select>
 
                   <ChevronDown
@@ -1134,6 +1749,7 @@ export default function AdminUsers() {
             )}
 
             {/* FILTER RESULT */}
+
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-slate-500 sm:text-sm">
                 Showing{" "}
@@ -1150,7 +1766,9 @@ export default function AdminUsers() {
               {hasFilters && (
                 <button
                   type="button"
-                  onClick={handleClearFilters}
+                  onClick={
+                    handleClearFilters
+                  }
                   className="text-xs font-semibold text-blue-600 hover:text-blue-700 sm:text-sm"
                 >
                   Clear Filters
@@ -1159,283 +1777,416 @@ export default function AdminUsers() {
             </div>
           </div>
 
-          {/* DESKTOP TABLE */}
-          <div className="hidden lg:block">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[950px]">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50/80">
-                    <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                      User
-                    </th>
+          {/* ========================================
+              LOADING
+          ======================================== */}
 
-                    <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Contact
-                    </th>
+          {loading && users.length === 0 ? (
+            <div className="flex min-h-[350px] items-center justify-center">
+              <div className="flex flex-col items-center">
+                <Loader2
+                  size={30}
+                  className="animate-spin text-blue-600"
+                />
 
-                    <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Role
-                    </th>
+                <p className="mt-3 text-sm font-medium text-slate-500">
+                  Loading users...
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* ====================================
+                  DESKTOP TABLE
+              ==================================== */}
 
-                    <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Joined
-                    </th>
+              <div className="hidden lg:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[950px]">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50/80">
 
-                    <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Verification
-                    </th>
+                        <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                          User
+                        </th>
 
-                    <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Status
-                    </th>
+                        <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Contact
+                        </th>
 
-                    <th className="px-5 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Action
-                    </th>
-                  </tr>
-                </thead>
+                        <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Role
+                        </th>
 
-                <tbody>
-                  {filteredUsers.map((user) => (
-                    <tr
-                      key={user.id}
-                      className="border-b border-slate-100 transition hover:bg-slate-50/70"
-                    >
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <UserAvatar user={user} />
+                        <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Joined
+                        </th>
 
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900">
-                              {user.name}
-                            </p>
+                        <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Verification
+                        </th>
 
-                            <p className="mt-0.5 text-xs text-slate-500">
-                              {user.location}
-                            </p>
+                        <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Status
+                        </th>
+
+                        <th className="px-5 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {filteredUsers.map(
+                        (user) => (
+                          <tr
+                            key={user.id}
+                            className="border-b border-slate-100 transition hover:bg-slate-50/70"
+                          >
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <UserAvatar
+                                  user={user}
+                                />
+
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-semibold text-slate-900">
+                                    {user.name}
+                                  </p>
+
+                                  <p className="mt-0.5 text-xs text-slate-500">
+                                    {user.location}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <div>
+                                <p className="text-sm text-slate-700">
+                                  {user.email}
+                                </p>
+
+                                <p className="mt-1 text-xs text-slate-500">
+                                  {user.phone}
+                                </p>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <RoleBadge
+                                role={user.role}
+                              />
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <p className="text-sm font-medium text-slate-700">
+                                {user.joined}
+                              </p>
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <VerificationBadge
+                                verified={
+                                  user.verified
+                                }
+                              />
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <StatusBadge
+                                status={
+                                  user.status
+                                }
+                              />
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <div className="flex justify-end">
+                                <UserActions
+                                  user={user}
+                                  onView={
+                                    handleViewUser
+                                  }
+                                  onEdit={
+                                    openEditModal
+                                  }
+                                  onToggleStatus={
+                                    handleToggleStatus
+                                  }
+                                  onDelete={
+                                    setUserToDelete
+                                  }
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* ====================================
+                  MOBILE + TABLET
+              ==================================== */}
+
+              <div className="p-3 sm:p-4 lg:hidden">
+                {filteredUsers.length >
+                0 ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {filteredUsers.map(
+                      (user) => (
+                        <div
+                          key={user.id}
+                          className="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <UserAvatar
+                                user={user}
+                              />
+
+                              <div className="min-w-0">
+                                <h3 className="truncate text-sm font-bold text-slate-900">
+                                  {user.name}
+                                </h3>
+
+                                <p className="mt-0.5 truncate text-xs text-slate-500">
+                                  {user.email}
+                                </p>
+                              </div>
+                            </div>
+
+                            <UserActions
+                              user={user}
+                              onView={
+                                handleViewUser
+                              }
+                              onEdit={
+                                openEditModal
+                              }
+                              onToggleStatus={
+                                handleToggleStatus
+                              }
+                              onDelete={
+                                setUserToDelete
+                              }
+                            />
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <RoleBadge
+                              role={user.role}
+                            />
+
+                            <StatusBadge
+                              status={user.status}
+                            />
+
+                            <VerificationBadge
+                              verified={
+                                user.verified
+                              }
+                            />
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-1 gap-2 border-t border-slate-100 pt-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs text-slate-400">
+                                Phone
+                              </span>
+
+                              <span className="text-right text-xs font-medium text-slate-700">
+                                {user.phone}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs text-slate-400">
+                                Joined
+                              </span>
+
+                              <span className="text-right text-xs font-medium text-slate-700">
+                                {user.joined}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-xs text-slate-400">
+                                Bookings
+                              </span>
+
+                              <span className="text-right text-xs font-bold text-blue-600">
+                                {user.bookings ||
+                                  0}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleViewUser(
+                                  user
+                                )
+                              }
+                              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              <Eye size={14} />
+                              View
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openEditModal(
+                                  user
+                                )
+                              }
+                              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                            >
+                              <Edit3 size={14} />
+                              Edit
+                            </button>
                           </div>
                         </div>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <div>
-                          <p className="text-sm text-slate-700">
-                            {user.email}
-                          </p>
-
-                          <p className="mt-1 text-xs text-slate-500">
-                            {user.phone}
-                          </p>
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <RoleBadge role={user.role} />
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <p className="text-sm font-medium text-slate-700">
-                          {user.joined}
-                        </p>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <VerificationBadge verified={user.verified} />
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <StatusBadge status={user.status} />
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end">
-                          <UserActions
-                            user={user}
-                            onView={setViewUser}
-                            onEdit={openEditModal}
-                            onToggleStatus={handleToggleStatus}
-                            onDelete={setDeleteUser}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* MOBILE + TABLET CARDS */}
-          <div className="p-3 sm:p-4 lg:hidden">
-            {filteredUsers.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {filteredUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <UserAvatar user={user} />
-
-                        <div className="min-w-0">
-                          <h3 className="truncate text-sm font-bold text-slate-900">
-                            {user.name}
-                          </h3>
-
-                          <p className="mt-0.5 truncate text-xs text-slate-500">
-                            {user.email}
-                          </p>
-                        </div>
-                      </div>
-
-                      <UserActions
-                        user={user}
-                        onView={setViewUser}
-                        onEdit={openEditModal}
-                        onToggleStatus={handleToggleStatus}
-                        onDelete={setDeleteUser}
-                      />
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <RoleBadge role={user.role} />
-                      <StatusBadge status={user.status} />
-                      <VerificationBadge verified={user.verified} />
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-1 gap-2 border-t border-slate-100 pt-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs text-slate-400">
-                          Phone
-                        </span>
-
-                        <span className="text-right text-xs font-medium text-slate-700">
-                          {user.phone}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs text-slate-400">
-                          Joined
-                        </span>
-
-                        <span className="text-right text-xs font-medium text-slate-700">
-                          {user.joined}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs text-slate-400">
-                          Bookings
-                        </span>
-
-                        <span className="text-right text-xs font-bold text-blue-600">
-                          {user.bookings}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setViewUser(user)}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        <Eye size={14} />
-                        View
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(user)}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
-                      >
-                        <Edit3 size={14} />
-                        Edit
-                      </button>
-                    </div>
+                      )
+                    )}
                   </div>
-                ))}
+                ) : (
+                  <EmptyState
+                    onClear={
+                      handleClearFilters
+                    }
+                    hasFilters={
+                      hasFilters
+                    }
+                  />
+                )}
               </div>
-            ) : (
-              <EmptyState
-                onClear={handleClearFilters}
-                hasFilters={hasFilters}
-              />
-            )}
-          </div>
 
-          {/* DESKTOP EMPTY */}
-          {filteredUsers.length === 0 && (
-            <div className="hidden lg:block">
-              <EmptyState
-                onClear={handleClearFilters}
-                hasFilters={hasFilters}
-              />
-            </div>
-          )}
+              {/* ====================================
+                  DESKTOP EMPTY
+              ==================================== */}
 
-          {/* FOOTER */}
-          {filteredUsers.length > 0 && (
-            <div className="border-t border-slate-200 px-4 py-3 sm:px-5">
-              <div className="flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-                <p>
-                  Total{" "}
-                  <span className="font-semibold text-slate-700">
-                    {filteredUsers.length}
-                  </span>{" "}
-                  users displayed
-                </p>
+              {filteredUsers.length ===
+                0 && (
+                <div className="hidden lg:block">
+                  <EmptyState
+                    onClear={
+                      handleClearFilters
+                    }
+                    hasFilters={
+                      hasFilters
+                    }
+                  />
+                </div>
+              )}
 
-                <p>
-                  Active:{" "}
-                  <span className="font-semibold text-emerald-600">
-                    {activeUsers}
-                  </span>
-                </p>
-              </div>
-            </div>
+              {/* ====================================
+                  FOOTER
+              ==================================== */}
+
+              {filteredUsers.length >
+                0 && (
+                <div className="border-t border-slate-200 px-4 py-3 sm:px-5">
+                  <div className="flex flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                    <p>
+                      Total{" "}
+                      <span className="font-semibold text-slate-700">
+                        {
+                          filteredUsers.length
+                        }
+                      </span>{" "}
+                      users displayed
+                    </p>
+
+                    <p>
+                      Active:{" "}
+                      <span className="font-semibold text-emerald-600">
+                        {activeUsers}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* VIEW MODAL */}
+      {/* ==========================================
+          VIEW MODAL
+      ========================================== */}
+
       {viewUser && (
         <ViewUserModal
           user={viewUser}
-          onClose={() => setViewUser(null)}
-          onEdit={() => openEditModal(viewUser)}
+          loading={loading}
+          onClose={() =>
+            setViewUser(null)
+          }
+          onEdit={() =>
+            openEditModal(viewUser)
+          }
         />
       )}
 
-      {/* ADD / EDIT MODAL */}
+      {/* ==========================================
+          ADD / EDIT MODAL
+      ========================================== */}
+
       {modalMode && (
         <UserFormModal
           mode={modalMode}
           form={form}
           setForm={setForm}
+          loading={
+            createLoading ||
+            updateLoading ||
+            statusLoading ||
+            verificationLoading
+          }
           onClose={() => {
             setModalMode(null);
             setSelectedUser(null);
+            setForm(emptyForm);
           }}
           onSave={handleSaveUser}
         />
       )}
 
-      {/* DELETE MODAL */}
-      {deleteUser && (
+      {/* ==========================================
+          DELETE MODAL
+      ========================================== */}
+
+      {userToDelete && (
         <DeleteModal
-          user={deleteUser}
-          onClose={() => setDeleteUser(null)}
-          onDelete={handleDeleteUser}
+          user={userToDelete}
+          loading={deleteLoading}
+          onClose={() =>
+            setUserToDelete(null)
+          }
+          onDelete={
+            handleDeleteUser
+          }
         />
       )}
     </div>
   );
 }
 
-function EmptyState({ onClear, hasFilters }) {
+// =====================================================
+// EMPTY STATE
+// =====================================================
+
+function EmptyState({
+  onClear,
+  hasFilters,
+}) {
   return (
     <div className="flex min-h-[300px] flex-col items-center justify-center px-4 py-10 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
@@ -1447,7 +2198,8 @@ function EmptyState({ onClear, hasFilters }) {
       </h3>
 
       <p className="mt-1 max-w-sm text-sm text-slate-500">
-        No users match your current search or filter selection.
+        No users match your current search
+        or filter selection.
       </p>
 
       {hasFilters && (

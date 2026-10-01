@@ -6,9 +6,27 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("triporaAdminToken");
+    // ===============================
+    // CHECK CURRENT ROUTE
+    // ===============================
+
+    const isAdminRoute =
+      window.location.pathname.startsWith("/admin");
+
+    // ===============================
+    // GET CORRECT TOKEN
+    // ===============================
+
+    const token = isAdminRoute
+      ? localStorage.getItem("triporaAdminToken")
+      : localStorage.getItem("triporaToken");
+
+    // ===============================
+    // ADD AUTHORIZATION HEADER
+    // ===============================
 
     if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
 

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -21,7 +22,15 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-hot-toast";
+
 import { getAllHotel } from "../redux/slicer/hotelSlice";
+
+import {
+  savedHotel,
+  getAllSavedHotel,
+  removeSavedHotel,
+} from "../redux/slicer/savedHotelSlice";
 
 /* =========================================================
    POPULAR DESTINATIONS
@@ -141,12 +150,30 @@ const Hotels = () => {
   } = useSelector((state) => state.hotel);
 
   /* =======================================================
-     GET ALL HOTELS
+     REDUX SAVED HOTEL STATE
+  ======================================================== */
+
+  const {
+    savedData = [],
+    loading: savedLoading,
+  } = useSelector((state) => state.saved);
+
+  /* =======================================================
+     GET ALL HOTELS + SAVED HOTELS
   ======================================================== */
 
   useEffect(() => {
     dispatch(getAllHotel());
+    dispatch(getAllSavedHotel());
   }, [dispatch]);
+
+  /* =======================================================
+     SAVED HOTEL IDS
+  ======================================================== */
+
+  const savedHotels = useMemo(() => {
+    return savedData.map((item) => String(item.hotel));
+  }, [savedData]);
 
   /* =======================================================
      CONVERT BACKEND DATA TO UI FORMAT
@@ -172,7 +199,8 @@ const Hotels = () => {
 
       const image =
         hotel.image ||
-        (Array.isArray(hotel.images) && hotel.images.length > 0
+        (Array.isArray(hotel.images) &&
+        hotel.images.length > 0
           ? hotel.images[0]
           : "");
 
@@ -204,7 +232,7 @@ const Hotels = () => {
 
         rating:
           hotel.rating !== undefined &&
-            hotel.rating !== null
+          hotel.rating !== null
             ? Number(hotel.rating)
             : null,
 
@@ -244,16 +272,6 @@ const Hotels = () => {
      SEARCH STATE
   ======================================================== */
 
-  /*
-   * IMPORTANT:
-   * Previously destination was "Dubai".
-   * Because of that, page load par sirf Dubai hotels
-   * filter ho rahe the.
-   *
-   * Now initially destination empty hai.
-   * Therefore all hotels will be visible.
-   */
-
   const [searchData, setSearchData] = useState({
     destination: "",
     checkIn: "2026-09-18",
@@ -264,12 +282,6 @@ const Hotels = () => {
 
   const [isSearching, setIsSearching] = useState(false);
 
-  /*
-   * This stores the destination actually used for search.
-   *
-   * Input change karne se immediately results filter nahi honge.
-   * Search button press karne ke baad destination apply hoga.
-   */
   const [searchedDestination, setSearchedDestination] =
     useState("");
 
@@ -296,9 +308,6 @@ const Hotels = () => {
   const [expandedHotel, setExpandedHotel] =
     useState(null);
 
-  const [savedHotels, setSavedHotels] =
-    useState([]);
-
   /* =======================================================
      SEARCH CHANGE
   ======================================================== */
@@ -317,9 +326,6 @@ const Hotels = () => {
   const handleSearch = () => {
     setIsSearching(true);
 
-    /*
-     * Apply destination only when Search is clicked.
-     */
     setSearchedDestination(
       searchData.destination.trim()
     );
@@ -366,15 +372,46 @@ const Hotels = () => {
   };
 
   /* =======================================================
-     SAVE HOTEL
+     SAVE / UNSAVE HOTEL
   ======================================================== */
 
-  const toggleSaveHotel = (id) => {
-    setSavedHotels((prev) =>
-      prev.includes(id)
-        ? prev.filter((hotelId) => hotelId !== id)
-        : [...prev, id]
-    );
+  const toggleSaveHotel = async (id) => {
+    const hotelId = String(id);
+
+    const isAlreadySaved =
+      savedHotels.includes(hotelId);
+
+    if (isAlreadySaved) {
+      const result = await dispatch(
+        removeSavedHotel(hotelId)
+      );
+
+      if (removeSavedHotel.fulfilled.match(result)) {
+        toast.success(
+          "Hotel removed from saved hotels"
+        );
+      } else {
+        toast.error(
+          result.payload ||
+            "Failed to remove hotel"
+        );
+      }
+    } else {
+      const result = await dispatch(
+        savedHotel(hotelId)
+      );
+
+      if (savedHotel.fulfilled.match(result)) {
+        toast.success(
+          "Hotel saved successfully"
+        );
+      } else {
+        toast.error(
+          result.payload ||
+            "Failed to save hotel"
+        );
+      }
+    }
   };
 
   /* =======================================================
@@ -384,17 +421,8 @@ const Hotels = () => {
   const filteredHotels = useMemo(() => {
     let hotelsList = [...hotelData];
 
-    /* =====================================================
-       DESTINATION SEARCH
-    ====================================================== */
-
     const destination =
       searchedDestination.trim().toLowerCase();
-
-    /*
-     * Only apply destination filter when user has actually
-     * searched for a destination.
-     */
 
     if (destination) {
       hotelsList = hotelsList.filter((hotel) => {
@@ -413,17 +441,9 @@ const Hotels = () => {
       });
     }
 
-    /* =====================================================
-       PRICE
-    ====================================================== */
-
     hotelsList = hotelsList.filter(
       (hotel) => hotel.price <= priceRange
     );
-
-    /* =====================================================
-       PROPERTY TYPE
-    ====================================================== */
 
     if (selectedPropertyTypes.length > 0) {
       hotelsList = hotelsList.filter((hotel) =>
@@ -433,10 +453,6 @@ const Hotels = () => {
       );
     }
 
-    /* =====================================================
-       STAR RATING
-    ====================================================== */
-
     if (selectedRatings.length > 0) {
       hotelsList = hotelsList.filter((hotel) =>
         selectedRatings.some(
@@ -445,10 +461,6 @@ const Hotels = () => {
         )
       );
     }
-
-    /* =====================================================
-       AMENITIES
-    ====================================================== */
 
     if (selectedAmenities.length > 0) {
       hotelsList = hotelsList.filter((hotel) =>
@@ -473,10 +485,6 @@ const Hotels = () => {
         })
       );
     }
-
-    /* =====================================================
-       SORT
-    ====================================================== */
 
     if (activeSort === "cheapest") {
       hotelsList.sort(
@@ -559,7 +567,6 @@ const Hotels = () => {
 
   const FilterContent = () => (
     <div className="space-y-5">
-
       {/* PRICE */}
 
       <div>
@@ -712,10 +719,7 @@ const Hotels = () => {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-50">
-
-      {/* =====================================================
-          BREADCRUMB
-      ====================================================== */}
+      {/* BREADCRUMB */}
 
       <div className="border-b border-slate-200 bg-white">
         <div className="mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
@@ -735,15 +739,11 @@ const Hotels = () => {
         </div>
       </div>
 
-      {/* =====================================================
-          HERO / SEARCH
-      ====================================================== */}
+      {/* HERO / SEARCH */}
 
       <section className="bg-slate-950">
         <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-8">
-
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-blue-400">
                 Find your stay
@@ -771,9 +771,7 @@ const Hotels = () => {
           {/* SEARCH CARD */}
 
           <div className="rounded-2xl bg-white p-3 shadow-2xl sm:p-4 lg:p-5">
-
             <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr_150px]">
-
               {/* DESTINATION */}
 
               <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -930,13 +928,10 @@ const Hotels = () => {
         </div>
       </section>
 
-      {/* =====================================================
-          POPULAR DESTINATIONS
-      ====================================================== */}
+      {/* POPULAR DESTINATIONS */}
 
       <section className="bg-white py-3 sm:py-4">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-
           <div className="mb-4 flex items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">
@@ -979,7 +974,6 @@ const Hotels = () => {
                 className="group relative min-w-0 overflow-hidden rounded-2xl text-left"
               >
                 <div className="relative h-40 overflow-hidden sm:h-48 lg:h-52">
-
                   <img
                     src={destination.image}
                     alt={destination.name}
@@ -1006,13 +1000,10 @@ const Hotels = () => {
         </div>
       </section>
 
-      {/* =====================================================
-          RECOMMENDED HOTELS
-      ====================================================== */}
+      {/* RECOMMENDED HOTELS */}
 
       <section className="bg-slate-50 py-3 sm:py-4">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-
           <div className="mb-4 flex items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">
@@ -1064,21 +1055,20 @@ const Hotels = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-
               {recommendedHotels.map((hotel) => {
                 const isSaved =
-                  savedHotels.includes(hotel.id);
+                  savedHotels.includes(
+                    String(hotel.id)
+                  );
 
                 return (
                   <div
                     key={hotel.id}
                     className="group min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                   >
-
                     {/* IMAGE */}
 
                     <div className="relative h-48 overflow-hidden sm:h-52">
-
                       {hotel.image ? (
                         <img
                           src={hotel.image}
@@ -1100,14 +1090,26 @@ const Hotels = () => {
 
                       <button
                         type="button"
+                        disabled={savedLoading}
                         onClick={() =>
-                          toggleSaveHotel(hotel.id)
+                          toggleSaveHotel(
+                            hotel.id
+                          )
                         }
-                        className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur transition ${isSaved
+                        className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur transition ${
+                          isSaved
                             ? "bg-blue-600 text-white"
                             : "bg-white/90 text-slate-500"
-                          }`}
-                        aria-label="Save hotel"
+                        } ${
+                          savedLoading
+                            ? "cursor-not-allowed opacity-70"
+                            : ""
+                        }`}
+                        aria-label={
+                          isSaved
+                            ? "Remove saved hotel"
+                            : "Save hotel"
+                        }
                       >
                         <Heart
                           size={14}
@@ -1123,7 +1125,6 @@ const Hotels = () => {
                     {/* CONTENT */}
 
                     <div className="p-3.5">
-
                       <div className="flex items-center gap-1">
                         <Star
                           size={12}
@@ -1149,7 +1150,7 @@ const Hotels = () => {
                         {hotel.location}
                       </p>
 
-                      <p className="mt-1 flex line-clamp-1 leading-tight items-center gap-1 truncate text-[12px] text-slate-400">
+                      <p className="mt-1 flex line-clamp-1 items-center gap-1 truncate text-[12px] leading-tight text-slate-400">
                         {hotel.description}
                       </p>
 
@@ -1167,7 +1168,6 @@ const Hotels = () => {
                       </div>
 
                       <div className="mt-3 flex items-end justify-between gap-2 border-t border-slate-100 pt-3">
-
                         <div className="min-w-0">
                           <p className="text-[9px] text-slate-400">
                             Starting from
@@ -1205,19 +1205,14 @@ const Hotels = () => {
         </div>
       </section>
 
-      {/* =====================================================
-          SEARCH RESULTS
-      ====================================================== */}
+      {/* SEARCH RESULTS */}
 
       <section className="bg-white py-3 sm:py-4">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-
           {/* HEADER */}
 
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
             <div className="min-w-0">
-
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">
                 Hotel search
               </p>
@@ -1253,11 +1248,9 @@ const Hotels = () => {
           </div>
 
           <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[230px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)]">
-
             {/* FILTER SIDEBAR */}
 
             <aside className="hidden h-fit rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:block">
-
               <div className="mb-5 flex items-center gap-2">
                 <Filter
                   size={16}
@@ -1275,11 +1268,9 @@ const Hotels = () => {
             {/* RESULTS */}
 
             <div className="min-w-0">
-
               {/* SORT */}
 
               <div className="mb-3 grid grid-cols-3 rounded-xl border border-slate-200 bg-slate-50 p-1">
-
                 {[
                   ["recommended", "Recommended"],
                   ["cheapest", "Cheapest"],
@@ -1291,10 +1282,11 @@ const Hotels = () => {
                     onClick={() =>
                       setActiveSort(value)
                     }
-                    className={`min-w-0 rounded-lg px-2 py-2 text-[10px] font-bold transition sm:text-xs ${activeSort === value
+                    className={`min-w-0 rounded-lg px-2 py-2 text-[10px] font-bold transition sm:text-xs ${
+                      activeSort === value
                         ? "bg-white text-blue-600 shadow-sm"
                         : "text-slate-500 hover:text-slate-900"
-                      }`}
+                    }`}
                   >
                     {label}
                   </button>
@@ -1304,12 +1296,10 @@ const Hotels = () => {
               {/* RESULTS */}
 
               <div className="space-y-3">
-
                 {/* LOADING */}
 
                 {loading ? (
                   <div className="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center">
-
                     <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" />
 
                     <h3 className="mt-3 text-sm font-bold text-slate-900">
@@ -1322,11 +1312,7 @@ const Hotels = () => {
                     </p>
                   </div>
                 ) : error ? (
-
-                  /* ERROR */
-
                   <div className="rounded-2xl border border-red-200 bg-white px-5 py-12 text-center">
-
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
                       <X size={21} />
                     </div>
@@ -1350,11 +1336,7 @@ const Hotels = () => {
                     </button>
                   </div>
                 ) : filteredHotels.length === 0 ? (
-
-                  /* NO HOTELS */
-
                   <div className="rounded-2xl border border-slate-200 bg-white px-5 py-12 text-center">
-
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                       <BedDouble size={21} />
                     </div>
@@ -1377,13 +1359,11 @@ const Hotels = () => {
                     </button>
                   </div>
                 ) : (
-
-                  /* HOTEL LIST */
-
                   filteredHotels.map((hotel) => {
-
                     const isSaved =
-                      savedHotels.includes(hotel.id);
+                      savedHotels.includes(
+                        String(hotel.id)
+                      );
 
                     const isExpanded =
                       expandedHotel === hotel.id;
@@ -1393,13 +1373,10 @@ const Hotels = () => {
                         key={hotel.id}
                         className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                       >
-
                         <div className="grid min-w-0 grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)_150px]">
-
                           {/* IMAGE */}
 
                           <div className="relative h-52 overflow-hidden md:h-full md:min-h-[210px]">
-
                             {hotel.image ? (
                               <img
                                 src={hotel.image}
@@ -1421,16 +1398,26 @@ const Hotels = () => {
 
                             <button
                               type="button"
+                              disabled={savedLoading}
                               onClick={() =>
                                 toggleSaveHotel(
                                   hotel.id
                                 )
                               }
-                              className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur ${isSaved
+                              className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full backdrop-blur ${
+                                isSaved
                                   ? "bg-blue-600 text-white"
                                   : "bg-white/90 text-slate-500"
-                                }`}
-                              aria-label="Save hotel"
+                              } ${
+                                savedLoading
+                                  ? "cursor-not-allowed opacity-70"
+                                  : ""
+                              }`}
+                              aria-label={
+                                isSaved
+                                  ? "Remove saved hotel"
+                                  : "Save hotel"
+                              }
                             >
                               <Heart
                                 size={14}
@@ -1446,11 +1433,8 @@ const Hotels = () => {
                           {/* INFORMATION */}
 
                           <div className="min-w-0 p-4 sm:p-5">
-
                             <div className="flex flex-wrap items-center gap-2">
-
                               <div className="flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1">
-
                                 <Star
                                   size={11}
                                   fill="currentColor"
@@ -1476,7 +1460,6 @@ const Hotels = () => {
                             </h3>
 
                             <p className="mt-1 flex min-w-0 items-center gap-1 text-sm text-slate-400">
-
                               <MapPin
                                 size={12}
                                 className="shrink-0"
@@ -1487,7 +1470,7 @@ const Hotels = () => {
                               </span>
                             </p>
 
-                            <p className="mt-2 line-clamp-2 flex  items-center gap-1 text-md text-slate-400">
+                            <p className="mt-2 line-clamp-2 flex items-center gap-1 text-md text-slate-400">
                               <span className="truncate">
                                 {hotel.description}
                               </span>
@@ -1496,9 +1479,8 @@ const Hotels = () => {
                             {/* AMENITIES */}
 
                             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-
                               {hotel.wifi && (
-                                <div className="flex min-w-0 items-center gap-1.5 rounded-lg shadow-sm bg-slate-50 px-2 py-2">
+                                <div className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-2 shadow-sm">
                                   <Wifi
                                     size={13}
                                     className="shrink-0 text-blue-500"
@@ -1511,7 +1493,7 @@ const Hotels = () => {
                               )}
 
                               {hotel.breakfast && (
-                                <div className="flex min-w-0 items-center gap-1.5 shadow-sm rounded-lg bg-slate-50 px-2 py-2">
+                                <div className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-2 shadow-sm">
                                   <Coffee
                                     size={13}
                                     className="shrink-0 text-blue-500"
@@ -1524,7 +1506,7 @@ const Hotels = () => {
                               )}
 
                               {hotel.pool && (
-                                <div className="flex min-w-0 items-center gap-1.5 rounded-lg shadow-sm bg-slate-50 px-2 py-2">
+                                <div className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-2 shadow-sm">
                                   <Waves
                                     size={13}
                                     className="shrink-0 text-blue-500"
@@ -1537,7 +1519,7 @@ const Hotels = () => {
                               )}
 
                               {hotel.parking && (
-                                <div className="flex min-w-0 items-center gap-1.5 shadow-sm rounded-lg bg-slate-50 px-2 py-2">
+                                <div className="flex min-w-0 items-center gap-1.5 rounded-lg bg-slate-50 px-2 py-2 shadow-sm">
                                   <ParkingCircle
                                     size={13}
                                     className="shrink-0 text-blue-500"
@@ -1548,59 +1530,6 @@ const Hotels = () => {
                                   </span>
                                 </div>
                               )}
-
-                              {hotel.parking && (
-                                <div className="flex min-w-0 items-center gap-1.5 shadow-sm rounded-lg bg-slate-50 px-2 py-2">
-                                  <ParkingCircle
-                                    size={13}
-                                    className="shrink-0 text-blue-500"
-                                  />
-
-                                  <span className="truncate text-[9px] font-semibold text-slate-600">
-                                    Parking
-                                  </span>
-                                </div>
-                              )}
-
-                              {hotel.parking && (
-                                <div className="flex min-w-0 items-center gap-1.5 shadow-sm rounded-lg bg-slate-50 px-2 py-2">
-                                  <ParkingCircle
-                                    size={13}
-                                    className="shrink-0 text-blue-500"
-                                  />
-
-                                  <span className="truncate text-[9px] font-semibold text-slate-600">
-                                    Parking
-                                  </span>
-                                </div>
-                              )}
-
-                              {hotel.parking && (
-                                <div className="flex min-w-0 items-center gap-1.5 shadow-sm rounded-lg bg-slate-50 px-2 py-2">
-                                  <ParkingCircle
-                                    size={13}
-                                    className="shrink-0 text-blue-500"
-                                  />
-
-                                  <span className="truncate text-[9px] font-semibold text-slate-600">
-                                    Parking
-                                  </span>
-                                </div>
-                              )}
-
-                              {hotel.parking && (
-                                <div className="flex min-w-0 items-center gap-1.5 shadow-sm rounded-lg bg-slate-50 px-2 py-2">
-                                  <ParkingCircle
-                                    size={13}
-                                    className="shrink-0 text-blue-500"
-                                  />
-
-                                  <span className="truncate text-[9px] font-semibold text-slate-600">
-                                    Parking
-                                  </span>
-                                </div>
-                              )}
-
 
                               {hotel.amenities.length === 0 && (
                                 <span className="text-[10px] text-slate-400">
@@ -1612,7 +1541,6 @@ const Hotels = () => {
                             {/* STATUS */}
 
                             <div className="mt-4 flex flex-wrap items-center gap-2">
-
                               {hotel.status === "Active" ? (
                                 <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600">
                                   <Check size={12} />
@@ -1628,9 +1556,7 @@ const Hotels = () => {
                             {/* MOBILE / TABLET ACTIONS */}
 
                             <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 xl:hidden">
-
                               <div className="flex items-end justify-between gap-3">
-
                                 <div>
                                   <p className="text-[9px] text-slate-400">
                                     Price per night
@@ -1685,15 +1611,12 @@ const Hotels = () => {
                           {/* PRICE - DESKTOP */}
 
                           <div className="hidden min-w-0 flex-col justify-between border-l border-slate-100 p-5 xl:flex">
-
                             <div>
-
                               <p className="text-[9px] text-slate-400">
                                 Price per night
                               </p>
 
                               <div className="mt-0.5 flex flex-wrap items-baseline gap-1">
-
                                 <span className="text-xl font-extrabold text-slate-900">
                                   ₹
                                   {hotel.price.toLocaleString(
@@ -1708,9 +1631,8 @@ const Hotels = () => {
                             </div>
 
                             <div className="space-y-2">
-
                               <Link
-                                to={`/hoteldetails/${hotel._id}`}
+                                to={`/hoteldetails/${hotel.id}`}
                               >
                                 <button
                                   type="button"
@@ -1750,9 +1672,7 @@ const Hotels = () => {
 
                         {isExpanded && (
                           <div className="border-t border-slate-100 bg-slate-50 p-4 sm:p-5">
-
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-
                               <div className="rounded-xl bg-white p-3">
                                 <p className="text-[9px] text-slate-400">
                                   Property type
@@ -1807,7 +1727,6 @@ const Hotels = () => {
                             )}
 
                             <div className="mt-3 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3">
-
                               <ShieldCheck
                                 size={14}
                                 className="mt-0.5 shrink-0 text-blue-600"
@@ -1833,15 +1752,11 @@ const Hotels = () => {
         </div>
       </section>
 
-      {/* =====================================================
-          EXPLORE BY HOTEL TYPE
-      ====================================================== */}
+      {/* EXPLORE BY HOTEL TYPE */}
 
       <section className="bg-slate-50 py-3 sm:py-4">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-
           <div className="mb-5">
-
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">
               Find your style
             </p>
@@ -1852,9 +1767,7 @@ const Hotels = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-3">
-
             {hotelTypes.map((type) => {
-
               const Icon = type.icon;
 
               return (
@@ -1872,13 +1785,13 @@ const Hotels = () => {
                     ]);
 
                     window.scrollTo({
-                      top: document.body.scrollHeight / 2,
+                      top:
+                        document.body.scrollHeight / 2,
                       behavior: "smooth",
                     });
                   }}
                   className="group min-w-0 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-blue-200 hover:shadow-md sm:p-5"
                 >
-
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                     <Icon size={19} />
                   </div>
@@ -1888,7 +1801,6 @@ const Hotels = () => {
                   </h3>
 
                   <div className="mt-1 flex items-center justify-between gap-2">
-
                     <span className="text-[10px] text-slate-400">
                       {type.count} stays
                     </span>
@@ -1905,15 +1817,11 @@ const Hotels = () => {
         </div>
       </section>
 
-      {/* =====================================================
-          HOTEL DEALS
-      ====================================================== */}
+      {/* HOTEL DEALS */}
 
       <section className="bg-white py-3 sm:py-4">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-
           <div className="mb-5">
-
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">
               Save more
             </p>
@@ -1928,13 +1836,11 @@ const Hotels = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-
             {hotelDeals.map((deal) => (
               <div
                 key={deal.id}
                 className="group relative min-h-[190px] overflow-hidden rounded-2xl"
               >
-
                 <img
                   src={deal.image}
                   alt={deal.title}
@@ -1944,7 +1850,6 @@ const Hotels = () => {
                 <div className="absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/50 to-transparent" />
 
                 <div className="relative flex min-h-[190px] flex-col justify-center p-5 sm:p-6">
-
                   <span className="w-fit rounded-full bg-blue-600 px-2.5 py-1 text-[9px] font-extrabold text-white">
                     {deal.discount}
                   </span>
@@ -1958,7 +1863,6 @@ const Hotels = () => {
                   </p>
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-
                     <span className="rounded-md bg-white/10 px-2 py-1 text-[9px] font-bold text-white">
                       Code: {deal.code}
                     </span>
@@ -1977,15 +1881,11 @@ const Hotels = () => {
         </div>
       </section>
 
-      {/* =====================================================
-          WHY TRIPORA
-      ====================================================== */}
+      {/* WHY TRIPORA */}
 
       <section className="bg-slate-50 py-3 sm:py-4">
         <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-
           <div className="mb-5">
-
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-blue-600">
               Why Tripora
             </p>
@@ -1996,7 +1896,6 @@ const Hotels = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-3">
-
             {[
               {
                 icon: ShieldCheck,
@@ -2019,7 +1918,6 @@ const Hotels = () => {
                 text: "We're here whenever you need help.",
               },
             ].map((item) => {
-
               const Icon = item.icon;
 
               return (
@@ -2027,7 +1925,6 @@ const Hotels = () => {
                   key={item.title}
                   className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4"
                 >
-
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                     <Icon size={16} />
                   </div>
@@ -2046,13 +1943,10 @@ const Hotels = () => {
         </div>
       </section>
 
-      {/* =====================================================
-          FINAL CTA
-      ====================================================== */}
+      {/* FINAL CTA */}
 
       <section className="bg-slate-950 py-8 sm:py-10">
         <div className="mx-auto w-full max-w-4xl px-4 text-center sm:px-6">
-
           <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white">
             <BedDouble size={20} />
           </div>
@@ -2083,13 +1977,10 @@ const Hotels = () => {
         </div>
       </section>
 
-      {/* =====================================================
-          MOBILE FILTER DRAWER
-      ====================================================== */}
+      {/* MOBILE FILTER DRAWER */}
 
       {isFilterOpen && (
         <div className="fixed inset-0 z-[999] lg:hidden">
-
           {/* BACKDROP */}
 
           <button
@@ -2102,13 +1993,10 @@ const Hotels = () => {
           {/* DRAWER */}
 
           <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:inset-y-0 sm:left-auto sm:right-0 sm:w-[380px] sm:rounded-none sm:rounded-l-3xl">
-
             {/* HEADER */}
 
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-
               <div>
-
                 <h3 className="text-base font-bold text-slate-900">
                   Filters
                 </h3>
@@ -2133,7 +2021,6 @@ const Hotels = () => {
             {/* FILTER BODY */}
 
             <div className="max-h-[calc(88vh-75px)] overflow-y-auto px-5 py-5">
-
               <FilterContent />
 
               <button
@@ -2150,14 +2037,10 @@ const Hotels = () => {
         </div>
       )}
 
-      {/* =====================================================
-          MOBILE BOTTOM BAR
-      ====================================================== */}
+      {/* MOBILE BOTTOM BAR */}
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-3 py-2 backdrop-blur lg:hidden">
-
         <div className="mx-auto grid max-w-xl grid-cols-2 gap-2">
-
           <button
             type="button"
             onClick={() =>
@@ -2190,3 +2073,4 @@ const Hotels = () => {
 };
 
 export default Hotels;
+

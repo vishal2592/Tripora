@@ -7,6 +7,7 @@ const destinationSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+
     country: {
       type: String,
       required: true,
@@ -18,11 +19,19 @@ const destinationSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+
     destinationType: {
       type: String,
-      enum: ["Domestic", "International", "Honeymoon", "Adventure", "Luxury"],
+      enum: [
+        "Domestic",
+        "International",
+        "Honeymoon",
+        "Adventure",
+        "Luxury",
+      ],
       required: true,
     },
+
     status: {
       type: String,
       enum: ["Active", "Inactive"],
@@ -59,6 +68,10 @@ const destinationSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // ================================
+    // MAIN IMAGE
+    // ================================
+
     image: {
       type: String,
       trim: true,
@@ -68,6 +81,25 @@ const destinationSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    // ================================
+    // MULTIPLE GALLERY IMAGES
+    // ================================
+
+    images: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+
+    imageDeleteUrls: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+
     description: {
       type: String,
       trim: true,
@@ -83,9 +115,14 @@ const destinationSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+  },
 );
 
-const Destination = mongoose.model("Destination", destinationSchema);
+const Destination = mongoose.model(
+  "Destination",
+  destinationSchema,
+);
 
 module.exports = Destination;

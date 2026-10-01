@@ -1,980 +1,1050 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { useDispatch } from "react-redux";
 import {
   ArrowLeft,
   ArrowRight,
-  BedDouble,
+  BriefcaseBusiness,
   CalendarDays,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
+  Check,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   Coffee,
   CreditCard,
   Info,
+  Luggage,
   MapPin,
-  ParkingCircle,
+  Plane,
+  PlaneLanding,
+  PlaneTakeoff,
+  RotateCcw,
   ShieldCheck,
-  Star,
+  Sparkles,
   Users,
-  Utensils,
   Wifi,
-  Waves,
-  Car,
-  Dumbbell,
   X,
 } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { getHotelById } from "../redux/slicer/hotelSlice";
+// If you already have a flight slice, connect your getFlightById thunk here.
+// import { useDispatch, useSelector } from "react-redux";
+// import { getFlightById } from "../redux/slicer/flightSlice";
 
-const HotelDetail = () => {
-  const navigate = useNavigate();
+const FlightDetails = () => {
   const { id } = useParams();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const [hotel, setHotel] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  // --------------------------------------------------
+  // TEMPORARY DATA
+  // Replace this with your Redux/API data
+  // --------------------------------------------------
 
-  /* =========================================================
-     FETCH ACTUAL HOTEL BY ID
-  ========================================================= */
+  const [flight, setFlight] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const [openSection, setOpenSection] = useState("cancellation");
+
+  const [passengers, setPassengers] = useState(1);
+
+  // --------------------------------------------------
+  // DEMO FLIGHT DATA
+  // --------------------------------------------------
+
+  const demoFlight = {
+    _id: id || "TRP-FLT-001",
+
+    airline: "IndiGo",
+    airlineCode: "6E",
+    flightNumber: "6E 2345",
+
+    aircraft: "Airbus A320",
+    cabinClass: "Economy",
+
+    departure: {
+      airportCode: "DEL",
+      airportName: "Indira Gandhi International Airport",
+      city: "Delhi",
+      terminal: "Terminal 3",
+      date: "18 Sep 2026",
+      time: "08:15 AM",
+    },
+
+    arrival: {
+      airportCode: "BOM",
+      airportName: "Chhatrapati Shivaji Maharaj International Airport",
+      city: "Mumbai",
+      terminal: "Terminal 2",
+      date: "18 Sep 2026",
+      time: "10:25 AM",
+    },
+
+    duration: "2h 10m",
+    stops: 0,
+
+    price: 4599,
+    baseFare: 3800,
+    taxes: 650,
+    convenienceFee: 149,
+
+    baggage: {
+      cabin: "7 KG",
+      checkIn: "15 KG",
+    },
+
+    amenities: [
+      "Free Wi-Fi",
+      "Complimentary meal",
+      "USB charging",
+      "Entertainment",
+    ],
+
+    cancellation: "Free cancellation up to 24 hours before departure",
+
+    refund:
+      "Eligible refundable amount will be credited according to the fare rules.",
+
+    status: "On Time",
+  };
+
+  // --------------------------------------------------
+  // FETCH FLIGHT
+  // --------------------------------------------------
 
   useEffect(() => {
-    const fetchHotel = async () => {
-      if (!id) {
-        setError("Hotel ID is missing.");
-        setLoading(false);
-        return;
-      }
-
+    const fetchFlight = async () => {
       try {
         setLoading(true);
-        setError("");
-        setHotel(null);
-        setSelectedImage(0);
-
-        console.log("Fetching hotel with ID:", id);
-
-        const response = await dispatch(getHotelById(id)).unwrap();
-
-        console.log("Actual hotel API response:", response);
 
         /*
-          Expected backend response:
+          Replace this section with your actual API.
 
-          {
-            success: true,
-            hotel: {
-              _id: "...",
-              hotelName: "...",
-              image: "...",
-              images: [...]
-            }
-          }
+          Example:
+
+          const response = await api.get(`/flights/${id}`);
+          setFlight(response.data.flight);
+
         */
 
-        const hotelData = response?.hotel;
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
-        if (!hotelData) {
-          throw new Error(
-            response?.message || "Hotel details not found."
-          );
-        }
-
-        if (!hotelData._id) {
-          throw new Error("Invalid hotel data received from server.");
-        }
-
-        console.log("Actual hotel data:", hotelData);
-
-        setHotel(hotelData);
-      } catch (err) {
-        console.error("Get hotel detail error:", err);
-
-        const message =
-          err?.message ||
-          err?.payload?.message ||
-          err?.response?.data?.message ||
-          "Failed to load hotel details.";
-
-        setError(message);
+        setFlight(demoFlight);
+      } catch (error) {
+        console.error("Failed to fetch flight:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchHotel();
-  }, [dispatch, id]);
-
-  /* =========================================================
-     ACTUAL HOTEL IMAGES
-  ========================================================= */
-
-  const hotelImages = useMemo(() => {
-    if (!hotel) return [];
-
-    const images = [];
-
-    if (hotel.image) {
-      images.push(hotel.image);
+    if (id) {
+      fetchFlight();
     }
+  }, [id]);
 
-    if (Array.isArray(hotel.images)) {
-      images.push(...hotel.images);
-    }
+  // --------------------------------------------------
+  // PRICE
+  // --------------------------------------------------
 
-    return [...new Set(images)].filter(Boolean);
-  }, [hotel]);
+  const totalPrice = useMemo(() => {
+    if (!flight) return 0;
 
-  /* =========================================================
-     AMENITIES
-  ========================================================= */
+    return flight.price * passengers;
+  }, [flight, passengers]);
 
-  const amenities = useMemo(() => {
-    if (!hotel) return [];
+  const totalBaseFare = useMemo(() => {
+    if (!flight) return 0;
 
-    if (!Array.isArray(hotel.amenities)) {
-      return [];
-    }
+    return flight.baseFare * passengers;
+  }, [flight, passengers]);
 
-    return hotel.amenities.filter(Boolean);
-  }, [hotel]);
+  const totalTaxes = useMemo(() => {
+    if (!flight) return 0;
 
-  /* =========================================================
-     ACTUAL HOTEL DATA
-  ========================================================= */
+    return flight.taxes * passengers;
+  }, [flight, passengers]);
 
-  const hotelName = hotel?.hotelName || "";
-  const propertyType = hotel?.propertyType || "";
+  const totalConvenienceFee = useMemo(() => {
+    if (!flight) return 0;
 
-  const location = [
-    hotel?.address,
-    hotel?.city,
-    hotel?.state,
-    hotel?.country,
-  ]
-    .filter(Boolean)
-    .join(", ");
+    return flight.convenienceFee * passengers;
+  }, [flight, passengers]);
 
-  const rating =
-    hotel?.rating !== undefined && hotel?.rating !== null
-      ? Number(hotel.rating)
-      : 0;
+  // --------------------------------------------------
+  // ACCORDION
+  // --------------------------------------------------
 
-  const reviews =
-    hotel?.reviews !== undefined && hotel?.reviews !== null
-      ? Number(hotel.reviews)
-      : 0;
-
-  const stars =
-    hotel?.starRating !== undefined && hotel?.starRating !== null
-      ? Number(hotel.starRating)
-      : 0;
-
-  const price =
-    hotel?.price !== undefined && hotel?.price !== null
-      ? Number(hotel.price)
-      : 0;
-
-  const description = hotel?.description || "";
-
-  const checkIn = hotel?.checkIn || "";
-  const checkOut = hotel?.checkOut || "";
-
-  const rooms =
-    hotel?.rooms !== undefined && hotel?.rooms !== null
-      ? Number(hotel.rooms)
-      : 0;
-
-  const city = hotel?.city || "";
-  const state = hotel?.state || "";
-  const country = hotel?.country || "";
-
-  /* =========================================================
-     IMAGE HANDLERS
-  ========================================================= */
-
-  const nextImage = () => {
-    if (!hotelImages.length) return;
-
-    setSelectedImage((current) =>
-      current === hotelImages.length - 1 ? 0 : current + 1
-    );
+  const toggleSection = (section) => {
+    setOpenSection((prev) => (prev === section ? "" : section));
   };
 
-  const previousImage = () => {
-    if (!hotelImages.length) return;
-
-    setSelectedImage((current) =>
-      current === 0 ? hotelImages.length - 1 : current - 1
-    );
-  };
-
-  /* =========================================================
-     BOOK HOTEL
-  ========================================================= */
-
-  const handleBookNow = () => {
-    if (!hotel?._id) return;
-
-    navigate("/hotelbook", {
-      state: {
-        hotel,
-      },
-    });
-  };
-
-  /* =========================================================
-     AMENITY ICON
-  ========================================================= */
-
-  const getAmenityIcon = (amenity) => {
-    const value = String(amenity).toLowerCase();
-
-    if (value.includes("wifi") || value.includes("internet")) {
-      return Wifi;
-    }
-
-    if (value.includes("breakfast") || value.includes("food")) {
-      return Coffee;
-    }
-
-    if (value.includes("pool") || value.includes("swimming")) {
-      return Waves;
-    }
-
-    if (value.includes("parking")) {
-      return ParkingCircle;
-    }
-
-    if (value.includes("gym") || value.includes("fitness")) {
-      return Dumbbell;
-    }
-
-    if (value.includes("restaurant")) {
-      return Utensils;
-    }
-
-    if (value.includes("car")) {
-      return Car;
-    }
-
-    return CheckCircle2;
-  };
-
-  /* =========================================================
-     LOADING
-  ========================================================= */
+  // --------------------------------------------------
+  // LOADING
+  // --------------------------------------------------
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="animate-pulse space-y-5">
-            <div className="h-5 w-48 rounded bg-slate-200"></div>
+      <div className="min-h-screen bg-[#f6f8fc]">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <div className="animate-pulse space-y-6">
+            <div className="h-6 w-40 rounded bg-gray-200" />
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_350px]">
-              <div className="space-y-4">
-                <div className="h-[420px] rounded-2xl bg-slate-200"></div>
-                <div className="h-52 rounded-2xl bg-slate-200"></div>
-                <div className="h-64 rounded-2xl bg-slate-200"></div>
-              </div>
+            <div className="h-64 rounded-3xl bg-white" />
 
-              <div className="h-[430px] rounded-2xl bg-slate-200"></div>
+            <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+              <div className="h-96 rounded-3xl bg-white" />
+              <div className="h-96 rounded-3xl bg-white" />
             </div>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
-  /* =========================================================
-     ERROR
-  ========================================================= */
+  // --------------------------------------------------
+  // ERROR
+  // --------------------------------------------------
 
-  if (error || !hotel) {
+  if (!flight) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <main className="mx-auto flex min-h-[70vh] max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-red-600">
-              <Info size={26} />
-            </div>
-
-            <h1 className="mt-5 text-xl font-bold text-slate-900">
-              Hotel not found
-            </h1>
-
-            <p className="mt-2 text-sm leading-6 text-slate-500">
-              {error || "We couldn't find the requested hotel."}
-            </p>
-
-            <button
-              type="button"
-              onClick={() => navigate("/hotels")}
-              className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
-            >
-              <ArrowLeft size={17} />
-              Back to Hotels
-            </button>
+      <div className="flex min-h-screen items-center justify-center bg-[#f6f8fc] px-4">
+        <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-50">
+            <X className="h-7 w-7 text-red-500" />
           </div>
-        </main>
+
+          <h2 className="text-xl font-bold text-gray-900">
+            Flight not found
+          </h2>
+
+          <p className="mt-2 text-sm text-gray-500">
+            The flight you're looking for may no longer be available.
+          </p>
+
+          <button
+            onClick={() => navigate("/flights")}
+            className="mt-6 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+          >
+            Back to Flights
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        {/* ==================================================
+    <div className="min-h-screen bg-[#f6f8fc] text-gray-900">
+      {/* =====================================================
+          PAGE
+      ====================================================== */}
+
+      <main className="mx-auto max-w-7xl px-4 pb-6 pt-4 sm:px-6 lg:px-8 lg:pb-6">
+        {/* =====================================================
             BREADCRUMB
-        ================================================== */}
+        ====================================================== */}
 
         <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-          <button
-            type="button"
-            onClick={() => navigate("/hotels")}
-            className="text-slate-500 transition hover:text-blue-600"
+          <Link
+            to="/"
+            className="text-gray-500 transition hover:text-blue-600"
           >
-            Hotels
-          </button>
+            Home
+          </Link>
 
-          <span className="text-slate-300">/</span>
+          <span className="text-gray-300">/</span>
 
-          <span className="max-w-[250px] truncate font-medium text-slate-700">
-            {hotelName}
-          </span>
+          <Link
+            to="/flights"
+            className="text-gray-500 transition hover:text-blue-600"
+          >
+            Flights
+          </Link>
+
+          <span className="text-gray-300">/</span>
+
+          <span className="font-medium text-gray-800">Flight Details</span>
         </div>
 
-        {/* ==================================================
+        {/* =====================================================
             BACK BUTTON
-        ================================================== */}
+        ====================================================== */}
 
         <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-blue-600"
+          onClick={() => navigate("/flights")}
+          className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-600 transition hover:text-blue-600"
         >
-          <ArrowLeft size={17} />
-          Back to Hotels
+          <ArrowLeft className="h-4 w-4" />
+
+          Back to flights
         </button>
 
-        {/* ==================================================
-            HOTEL TITLE
-        ================================================== */}
+        {/* =====================================================
+            MAIN FLIGHT CARD
+        ====================================================== */}
 
-        <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                {propertyType && (
-                  <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-                    {propertyType}
-                  </span>
-                )}
+        <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+          {/* TOP BAR */}
 
-                {hotel?.status && (
-                  <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                    {hotel.status}
-                  </span>
-                )}
+          <div className="flex flex-col gap-4 border-b border-gray-100 px-5 py-5 sm:px-7 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              {/* Airline Logo */}
+
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50">
+                <Plane className="h-7 w-7 text-blue-600" />
               </div>
 
-              <h1 className="mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">
-                {hotelName}
-              </h1>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-lg font-bold text-gray-900">
+                    {flight.airline}
+                  </h1>
 
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-                {location && (
-                  <div className="flex items-center gap-1.5 text-sm text-slate-500">
-                    <MapPin size={16} className="text-blue-600" />
-                    <span>{location}</span>
-                  </div>
-                )}
+                  <span className="rounded-md bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
+                    {flight.airlineCode}
+                  </span>
+                </div>
 
-                {rating > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex items-center gap-1 rounded-lg bg-emerald-600 px-2 py-1 text-white">
-                      <Star size={13} fill="currentColor" />
-
-                      <span className="text-xs font-bold">
-                        {rating.toFixed(1)}
-                      </span>
-                    </div>
-
-                    {reviews > 0 && (
-                      <span className="text-sm text-slate-500">
-                        {reviews.toLocaleString("en-IN")} reviews
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {stars > 0 && (
-                  <div className="flex items-center gap-0.5">
-                    {Array.from({
-                      length: Math.min(stars, 5),
-                    }).map((_, index) => (
-                      <Star
-                        key={index}
-                        size={15}
-                        className="text-amber-400"
-                        fill="currentColor"
-                      />
-                    ))}
-                  </div>
-                )}
+                <p className="mt-1 text-sm text-gray-500">
+                  {flight.flightNumber} • {flight.aircraft}
+                </p>
               </div>
             </div>
 
-            {price > 0 && (
-              <div className="shrink-0">
-                <p className="text-xs font-medium text-slate-500">
-                  Starting from
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-2 text-xs font-semibold text-green-700">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+
+                {flight.status}
+              </span>
+
+              <span className="rounded-full bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">
+                {flight.cabinClass}
+              </span>
+            </div>
+          </div>
+
+          {/* JOURNEY */}
+
+          <div className="px-5 py-3 sm:px-7 lg:py-3">
+            <div className="grid items-center gap-8 lg:grid-cols-[1fr_180px_1fr]">
+              {/* DEPARTURE */}
+
+              <div className="text-center lg:text-left">
+                <p className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
+                  {flight.departure.time}
                 </p>
 
-                <div className="mt-1 flex items-end gap-1">
-                  <span className="text-2xl font-bold text-slate-900">
-                    ₹{price.toLocaleString("en-IN")}
+                <div className="mt-2 flex items-center justify-center gap-2 lg:justify-start">
+                  <span className="text-lg font-bold text-blue-600">
+                    {flight.departure.airportCode}
                   </span>
 
-                  <span className="mb-1 text-sm text-slate-500">
-                    / night
+                  <span className="text-sm text-gray-500">
+                    {flight.departure.city}
                   </span>
                 </div>
+
+                <p className="mt-2 text-sm text-gray-500">
+                  {flight.departure.airportName}
+                </p>
+
+                <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500 lg:justify-start">
+                  <CalendarDays className="h-4 w-4" />
+
+                  {flight.departure.date}
+                </div>
+
+                <div className="mt-1 flex items-center justify-center gap-2 text-xs text-gray-500 lg:justify-start">
+                  <MapPin className="h-4 w-4" />
+
+                  {flight.departure.terminal}
+                </div>
               </div>
-            )}
+
+              {/* CENTER */}
+
+              <div className="relative flex flex-col items-center">
+                <span className="mb-3 text-xs font-semibold text-gray-500">
+                  {flight.duration}
+                </span>
+
+                <div className="flex w-full items-center">
+                  <div className="h-3 w-3 rounded-full border-2 border-blue-600 bg-white" />
+
+                  <div className="relative h-px flex-1 bg-gray-300">
+                    <Plane className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rotate-90 bg-white text-blue-600" />
+                  </div>
+
+                  <div className="h-3 w-3 rounded-full border-2 border-blue-600 bg-white" />
+                </div>
+
+                <span className="mt-3 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+                  {flight.stops === 0
+                    ? "Non-stop"
+                    : `${flight.stops} Stop${flight.stops > 1 ? "s" : ""}`}
+                </span>
+              </div>
+
+              {/* ARRIVAL */}
+
+              <div className="text-center lg:text-right">
+                <p className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">
+                  {flight.arrival.time}
+                </p>
+
+                <div className="mt-2 flex items-center justify-center gap-2 lg:justify-end">
+                  <span className="text-lg font-bold text-blue-600">
+                    {flight.arrival.airportCode}
+                  </span>
+
+                  <span className="text-sm text-gray-500">
+                    {flight.arrival.city}
+                  </span>
+                </div>
+
+                <p className="mt-2 text-sm text-gray-500">
+                  {flight.arrival.airportName}
+                </p>
+
+                <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-500 lg:justify-end">
+                  <CalendarDays className="h-4 w-4" />
+
+                  {flight.arrival.date}
+                </div>
+
+                <div className="mt-1 flex items-center justify-center gap-2 text-xs text-gray-500 lg:justify-end">
+                  <MapPin className="h-4 w-4" />
+
+                  {flight.arrival.terminal}
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* ==================================================
-            PAGE GRID
-        ================================================== */}
+        {/* =====================================================
+            CONTENT + FARE
+        ====================================================== */}
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_350px]">
-          {/* ==================================================
-              LEFT CONTENT
-          ================================================== */}
+        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          {/* ===================================================
+              LEFT
+          ==================================================== */}
 
           <div className="space-y-4">
-            {/* ==================================================
-                IMAGE GALLERY
+            {/* =================================================
+                FLIGHT INFORMATION
             ================================================== */}
 
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              {hotelImages.length > 0 ? (
-                <>
-                  <div className="relative h-[300px] overflow-hidden bg-slate-100 sm:h-[430px]">
-                    <img
-                      src={hotelImages[selectedImage]}
-                      alt={hotelName}
-                      className="h-full w-full object-cover"
-                      onError={(event) => {
-                        console.error(
-                          "Hotel image failed to load:",
-                          hotelImages[selectedImage]
-                        );
-
-                        event.currentTarget.style.display = "none";
-                      }}
-                    />
-
-                    {hotelImages.length > 1 && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={previousImage}
-                          className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md transition hover:bg-white"
-                        >
-                          <ChevronLeft size={21} />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={nextImage}
-                          className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md transition hover:bg-white"
-                        >
-                          <ChevronRight size={21} />
-                        </button>
-
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white">
-                          {selectedImage + 1} / {hotelImages.length}
-                        </div>
-                      </>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => setLightboxOpen(true)}
-                      className="absolute bottom-4 right-4 rounded-lg bg-black/60 px-3 py-2 text-xs font-semibold text-white transition hover:bg-black/75"
-                    >
-                      View all photos
-                    </button>
-                  </div>
-
-                  {hotelImages.length > 1 && (
-                    <div className="flex gap-3 overflow-x-auto p-4">
-                      {hotelImages.map((image, index) => (
-                        <button
-                          type="button"
-                          key={`${image}-${index}`}
-                          onClick={() => setSelectedImage(index)}
-                          className={`h-20 w-24 shrink-0 overflow-hidden rounded-xl border-2 transition ${
-                            selectedImage === index
-                              ? "border-blue-600"
-                              : "border-transparent"
-                          }`}
-                        >
-                          <img
-                            src={image}
-                            alt={`${hotelName} ${index + 1}`}
-                            className="h-full w-full object-cover"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex h-[300px] items-center justify-center bg-slate-100 sm:h-[430px]">
-                  <div className="text-center">
-                    <BedDouble
-                      size={48}
-                      className="mx-auto text-slate-300"
-                    />
-
-                    <p className="mt-3 text-sm font-medium text-slate-500">
-                      Hotel image not available
-                    </p>
-                  </div>
-                </div>
-              )}
-            </section>
-
-            {/* ==================================================
-                ABOUT HOTEL
-            ================================================== */}
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="mb-5">
-                <h2 className="text-xl font-bold text-slate-900">
-                  About this hotel
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Everything you need to know about your stay
-                </p>
-              </div>
-
-              {description ? (
-                <p className="text-sm leading-7 text-slate-600">
-                  {description}
-                </p>
-              ) : (
-                <p className="text-sm text-slate-500">
-                  No description available for this hotel.
-                </p>
-              )}
-            </section>
-
-            {/* ==================================================
-                HOTEL INFORMATION
-            ================================================== */}
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+            <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
               <div className="mb-6">
-                <h2 className="text-xl font-bold text-slate-900">
-                  Hotel Information
+                <h2 className="text-xl font-bold text-gray-900">
+                  Flight information
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  Important information for your stay
+                <p className="mt-1 text-sm text-gray-500">
+                  Everything you need to know about this flight
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Property Type */}
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {/* Duration */}
 
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                      <BedDouble size={20} />
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-slate-500">
-                        Property Type
-                      </p>
-
-                      <p className="mt-1 text-sm font-bold text-slate-900">
-                        {propertyType || "Not available"}
-                      </p>
-                    </div>
+                <div className="rounded-2xl bg-gray-50 p-4">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
+                    <Clock3 className="h-5 w-5 text-blue-600" />
                   </div>
-                </div>
 
-                {/* Rooms */}
+                  <p className="text-xs text-gray-500">Duration</p>
 
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                      <Users size={20} />
-                    </div>
+                  <p className="mt-1 font-bold text-gray-900">
+                    {flight.duration}
+                  </p>
 
-                    <div>
-                      <p className="text-xs text-slate-500">
-                        Available Rooms
-                      </p>
-
-                      <p className="mt-1 text-sm font-bold text-slate-900">
-                        {rooms > 0 ? rooms : "Not available"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Check In */}
-
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                      <Clock3 size={20} />
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-slate-500">
-                        Check-in
-                      </p>
-
-                      <p className="mt-1 text-sm font-bold text-slate-900">
-                        {checkIn || "Not available"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Check Out */}
-
-                <div className="rounded-xl border border-slate-200 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                      <CalendarDays size={20} />
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-slate-500">
-                        Check-out
-                      </p>
-
-                      <p className="mt-1 text-sm font-bold text-slate-900">
-                        {checkOut || "Not available"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Location */}
-
-                <div className="rounded-xl border border-slate-200 p-4 sm:col-span-2">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                      <MapPin size={20} />
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-slate-500">
-                        Location
-                      </p>
-
-                      <p className="mt-1 text-sm font-bold text-slate-900">
-                        {location || "Location not available"}
-                      </p>
-
-                      {(city || state || country) && (
-                        <p className="mt-1 text-xs text-slate-500">
-                          {[city, state, country]
-                            .filter(Boolean)
-                            .join(", ")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* ==================================================
-                AMENITIES
-            ================================================== */}
-
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-slate-900">
-                  Amenities
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Facilities available at this property
-                </p>
-              </div>
-
-              {amenities.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {amenities.map((amenity, index) => {
-                    const Icon = getAmenityIcon(amenity);
-
-                    return (
-                      <div
-                        key={`${amenity}-${index}`}
-                        className="flex items-center gap-3 rounded-xl bg-slate-50 p-4"
-                      >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                          <Icon size={18} />
-                        </div>
-
-                        <span className="text-sm font-semibold text-slate-800">
-                          {amenity}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rounded-xl bg-slate-50 p-5 text-center">
-                  <p className="text-sm text-slate-500">
-                    No amenities information available.
+                  <p className="mt-1 text-xs text-gray-500">
+                    {flight.stops === 0 ? "Non-stop flight" : "Connecting"}
                   </p>
                 </div>
-              )}
+
+                {/* Class */}
+
+                <div className="rounded-2xl bg-gray-50 p-4">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50">
+                    <Users className="h-5 w-5 text-purple-600" />
+                  </div>
+
+                  <p className="text-xs text-gray-500">Travel class</p>
+
+                  <p className="mt-1 font-bold text-gray-900">
+                    {flight.cabinClass}
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    Standard fare
+                  </p>
+                </div>
+
+                {/* Aircraft */}
+
+                <div className="rounded-2xl bg-gray-50 p-4">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
+                    <Plane className="h-5 w-5 text-orange-600" />
+                  </div>
+
+                  <p className="text-xs text-gray-500">Aircraft</p>
+
+                  <p className="mt-1 font-bold text-gray-900">
+                    {flight.aircraft}
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    Modern aircraft
+                  </p>
+                </div>
+
+                {/* Flight Number */}
+
+                <div className="rounded-2xl bg-gray-50 p-4">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-green-50">
+                    <BriefcaseBusiness className="h-5 w-5 text-green-600" />
+                  </div>
+
+                  <p className="text-xs text-gray-500">Flight number</p>
+
+                  <p className="mt-1 font-bold text-gray-900">
+                    {flight.flightNumber}
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    {flight.airline}
+                  </p>
+                </div>
+              </div>
             </section>
 
-            {/* ==================================================
-                LOCATION
+            {/* =================================================
+                BAGGAGE
             ================================================== */}
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="mb-5">
-                <h2 className="text-xl font-bold text-slate-900">
-                  Location
+            <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Baggage allowance
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  Where you'll be staying
+                <p className="mt-1 text-sm text-gray-500">
+                  Baggage included with your selected fare
                 </p>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                    <MapPin size={20} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex items-center gap-4 rounded-2xl border border-gray-100 p-5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50">
+                    <Luggage className="h-6 w-6 text-blue-600" />
                   </div>
 
                   <div>
-                    <p className="text-sm font-bold text-slate-900">
-                      {hotelName}
+                    <p className="text-sm text-gray-500">
+                      Cabin baggage
                     </p>
 
-                    <p className="mt-1 text-sm leading-6 text-slate-500">
-                      {location || "Location not available"}
+                    <p className="mt-1 text-lg font-bold text-gray-900">
+                      {flight.baggage.cabin}
+                    </p>
+
+                    <p className="mt-1 text-xs text-gray-500">
+                      Per passenger
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 rounded-2xl border border-gray-100 p-5">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-50">
+                    <BriefcaseBusiness className="h-6 w-6 text-purple-600" />
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-500">
+                      Check-in baggage
+                    </p>
+
+                    <p className="mt-1 text-lg font-bold text-gray-900">
+                      {flight.baggage.checkIn}
+                    </p>
+
+                    <p className="mt-1 text-xs text-gray-500">
+                      Per passenger
                     </p>
                   </div>
                 </div>
               </div>
             </section>
 
-            {/* ==================================================
-                BOOKING INFO
+            {/* =================================================
+                AMENITIES
             ================================================== */}
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                  <Info size={20} />
+            <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm sm:p-7">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900">
+                  On-board amenities
+                </h2>
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Services available on your journey
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {flight.amenities.map((amenity, index) => {
+                  let Icon = Sparkles;
+
+                  if (amenity.toLowerCase().includes("wi-fi")) {
+                    Icon = Wifi;
+                  }
+
+                  if (amenity.toLowerCase().includes("meal")) {
+                    Icon = Coffee;
+                  }
+
+                  if (amenity.toLowerCase().includes("charging")) {
+                    Icon = CreditCard;
+                  }
+
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-3"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-sm">
+                        <Icon className="h-4 w-4 text-blue-600" />
+                      </div>
+
+                      <span className="text-sm font-medium text-gray-700">
+                        {amenity}
+                      </span>
+
+                      <Check className="ml-auto h-4 w-4 text-green-500" />
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* =================================================
+                POLICIES
+            ================================================== */}
+
+            <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+              {/* Cancellation */}
+
+              <div className="border-b border-gray-100">
+                <button
+                  onClick={() => toggleSection("cancellation")}
+                  className="flex w-full items-center justify-between px-5 py-5 text-left sm:px-7"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-50">
+                      <RotateCcw className="h-5 w-5 text-green-600" />
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-gray-900">
+                        Cancellation policy
+                      </h3>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        Cancellation and charges
+                      </p>
+                    </div>
+                  </div>
+
+                  {openSection === "cancellation" ? (
+                    <ChevronUp className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+
+                {openSection === "cancellation" && (
+                  <div className="px-5 pb-5 sm:px-7">
+                    <div className="rounded-2xl bg-green-50 p-4">
+                      <div className="flex gap-3">
+                        <Check className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+
+                        <p className="text-sm leading-6 text-green-800">
+                          {flight.cancellation}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Refund */}
+
+              <div className="border-b border-gray-100">
+                <button
+                  onClick={() => toggleSection("refund")}
+                  className="flex w-full items-center justify-between px-5 py-5 text-left sm:px-7"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50">
+                      <CreditCard className="h-5 w-5 text-blue-600" />
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-gray-900">
+                        Refund policy
+                      </h3>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        Refund processing information
+                      </p>
+                    </div>
+                  </div>
+
+                  {openSection === "refund" ? (
+                    <ChevronUp className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+
+                {openSection === "refund" && (
+                  <div className="px-5 pb-5 sm:px-7">
+                    <div className="rounded-2xl bg-blue-50 p-4">
+                      <p className="text-sm leading-6 text-blue-800">
+                        {flight.refund}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Baggage Rules */}
+
+              <div className="border-b border-gray-100">
+                <button
+                  onClick={() => toggleSection("baggage")}
+                  className="flex w-full items-center justify-between px-5 py-5 text-left sm:px-7"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-50">
+                      <Luggage className="h-5 w-5 text-orange-600" />
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-gray-900">
+                        Baggage rules
+                      </h3>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        Carry-on and check-in baggage
+                      </p>
+                    </div>
+                  </div>
+
+                  {openSection === "baggage" ? (
+                    <ChevronUp className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+
+                {openSection === "baggage" && (
+                  <div className="px-5 pb-5 sm:px-7">
+                    <div className="space-y-3 rounded-2xl bg-gray-50 p-4 text-sm text-gray-600">
+                      <div className="flex justify-between">
+                        <span>Cabin baggage</span>
+                        <span className="font-semibold text-gray-900">
+                          {flight.baggage.cabin}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span>Check-in baggage</span>
+                        <span className="font-semibold text-gray-900">
+                          {flight.baggage.checkIn}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Terms */}
+
+              <div>
+                <button
+                  onClick={() => toggleSection("terms")}
+                  className="flex w-full items-center justify-between px-5 py-5 text-left sm:px-7"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50">
+                      <Info className="h-5 w-5 text-purple-600" />
+                    </div>
+
+                    <div>
+                      <h3 className="font-bold text-gray-900">
+                        Terms & conditions
+                      </h3>
+
+                      <p className="mt-1 text-xs text-gray-500">
+                        Important travel information
+                      </p>
+                    </div>
+                  </div>
+
+                  {openSection === "terms" ? (
+                    <ChevronUp className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+
+                {openSection === "terms" && (
+                  <div className="px-5 pb-5 sm:px-7">
+                    <ul className="space-y-3 rounded-2xl bg-gray-50 p-4 text-sm leading-6 text-gray-600">
+                      <li className="flex gap-2">
+                        <span>•</span>
+                        <span>
+                          Passenger name must match the valid government ID.
+                        </span>
+                      </li>
+
+                      <li className="flex gap-2">
+                        <span>•</span>
+                        <span>
+                          Please arrive at the airport at least 2 hours before
+                          domestic departure.
+                        </span>
+                      </li>
+
+                      <li className="flex gap-2">
+                        <span>•</span>
+                        <span>
+                          Boarding gate may change without prior notice.
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* =================================================
+                IMPORTANT INFORMATION
+            ================================================== */}
+
+            <section className="rounded-3xl border border-blue-100 bg-blue-50 p-5 sm:p-7">
+              <div className="flex gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white">
+                  <ShieldCheck className="h-5 w-5 text-blue-600" />
                 </div>
 
-                <div className="flex-1">
-                  <h2 className="text-lg font-bold text-slate-900">
-                    Booking Information
+                <div>
+                  <h2 className="font-bold text-gray-900">
+                    Important information
                   </h2>
 
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Please check the property's cancellation policy,
-                    room availability and booking conditions before
-                    completing your reservation.
-                  </p>
+                  <ul className="mt-3 space-y-2 text-sm leading-6 text-gray-600">
+                    <li>
+                      • Please carry a valid government-issued photo ID.
+                    </li>
+
+                    <li>
+                      • Check-in counters generally close before departure.
+                    </li>
+
+                    <li>
+                      • Boarding gate information may change.
+                    </li>
+
+                    <li>
+                      • Additional airline charges may apply for optional
+                      services.
+                    </li>
+                  </ul>
                 </div>
               </div>
             </section>
           </div>
 
-          {/* ==================================================
-              RIGHT BOOKING SUMMARY
-          ================================================== */}
+          {/* ===================================================
+              RIGHT FARE CARD
+          ==================================================== */}
 
-          <aside className="lg:sticky lg:top-24 lg:h-fit">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              {/* Header */}
+          <aside className="lg:sticky lg:top-24">
+            <div className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
+              {/* Price Header */}
 
-              <div className="border-b border-slate-100 px-5 py-5">
-                <h2 className="text-lg font-bold text-slate-900">
-                  Your Stay
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {hotelName}
-                </p>
-              </div>
-
-              {/* Location */}
-
-              <div className="border-b border-slate-100 px-5 py-5">
-                <div className="flex items-start gap-2">
-                  <MapPin
-                    size={17}
-                    className="mt-0.5 shrink-0 text-blue-600"
-                  />
-
-                  <p className="text-sm leading-5 text-slate-600">
-                    {location || "Location not available"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Price */}
-
-              <div className="px-5 py-5">
-                <p className="text-xs font-medium text-slate-500">
-                  Starting from
-                </p>
-
-                <div className="mt-1 flex items-end gap-1">
-                  <span className="text-3xl font-bold text-slate-900">
-                    ₹{price.toLocaleString("en-IN")}
-                  </span>
-
-                  <span className="mb-1 text-sm text-slate-500">
-                    / night
-                  </span>
-                </div>
-
-                <p className="mt-1 text-xs text-slate-500">
-                  Taxes and charges may apply
-                </p>
-              </div>
-
-              {/* Stay Details */}
-
-              <div className="border-t border-slate-100 px-5 py-5">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock3
-                        size={16}
-                        className="text-blue-600"
-                      />
-
-                      <span className="text-sm text-slate-500">
-                        Check-in
-                      </span>
-                    </div>
-
-                    <span className="text-sm font-semibold text-slate-800">
-                      {checkIn || "Not available"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Clock3
-                        size={16}
-                        className="text-blue-600"
-                      />
-
-                      <span className="text-sm text-slate-500">
-                        Check-out
-                      </span>
-                    </div>
-
-                    <span className="text-sm font-semibold text-slate-800">
-                      {checkOut || "Not available"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <BedDouble
-                        size={16}
-                        className="text-blue-600"
-                      />
-
-                      <span className="text-sm text-slate-500">
-                        Property
-                      </span>
-                    </div>
-
-                    <span className="text-sm font-semibold text-slate-800">
-                      {propertyType || "Not available"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="my-5 border-t border-dashed border-slate-200"></div>
-
+              <div className="border-b border-gray-100 p-6">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900">
-                    Price / Night
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Fare summary
+                  </h2>
+
+                  <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+                    Best value
+                  </span>
+                </div>
+
+                <p className="mt-2 text-sm text-gray-500">
+                  Price for {passengers} passenger
+                  {passengers > 1 ? "s" : ""}
+                </p>
+              </div>
+
+              {/* Passenger Selector */}
+
+              <div className="border-b border-gray-100 p-6">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">
+                    Passengers
                   </span>
 
-                  <span className="text-xl font-bold text-blue-600">
-                    ₹{price.toLocaleString("en-IN")}
+                  <Users className="h-4 w-4 text-gray-400" />
+                </div>
+
+                <div className="flex items-center justify-between rounded-xl border border-gray-200 p-2">
+                  <button
+                    disabled={passengers <= 1}
+                    onClick={() =>
+                      setPassengers((prev) => Math.max(1, prev - 1))
+                    }
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-lg font-bold text-gray-700 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    −
+                  </button>
+
+                  <span className="font-bold text-gray-900">
+                    {passengers}
                   </span>
+
+                  <button
+                    disabled={passengers >= 9}
+                    onClick={() =>
+                      setPassengers((prev) => Math.min(9, prev + 1))
+                    }
+                    className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-lg font-bold text-gray-700 transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
-              {/* Booking */}
+              {/* Price Breakdown */}
 
-              <div className="border-t border-slate-100 bg-slate-50 p-5">
+              <div className="space-y-4 p-6">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">
+                    Base fare × {passengers}
+                  </span>
+
+                  <span className="font-medium text-gray-900">
+                    ₹{totalBaseFare.toLocaleString("en-IN")}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">
+                    Taxes × {passengers}
+                  </span>
+
+                  <span className="font-medium text-gray-900">
+                    ₹{totalTaxes.toLocaleString("en-IN")}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Convenience fee</span>
+
+                  <span className="font-medium text-gray-900">
+                    ₹{totalConvenienceFee.toLocaleString("en-IN")}
+                  </span>
+                </div>
+
+                <div className="border-t border-dashed border-gray-200 pt-4">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700">
+                        Total amount
+                      </p>
+
+                      <p className="mt-1 text-xs text-gray-400">
+                        Inclusive of taxes & fees
+                      </p>
+                    </div>
+
+                    <p className="text-2xl font-extrabold text-gray-900">
+                      ₹{totalPrice.toLocaleString("en-IN")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* BOOK BUTTON */}
+
                 <button
-                  type="button"
-                  onClick={handleBookNow}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.99]"
+                  onClick={() =>
+                    navigate(`/flight-booking/${flight._id}`, {
+                      state: {
+                        flight,
+                        passengers,
+                        totalPrice,
+                      },
+                    })
+                  }
+                  className="group flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 hover:shadow-blue-600/30"
                 >
                   Book Now
-                  <ArrowRight size={18} />
+
+                  <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" />
                 </button>
 
-                <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-500">
-                  <ShieldCheck
-                    size={14}
-                    className="text-emerald-600"
-                  />
-                  Secure & encrypted booking
+                <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                  <ShieldCheck className="h-4 w-4 text-green-500" />
+
+                  Secure booking with Tripora
                 </div>
               </div>
-            </div>
 
-            {/* Quick info */}
+              {/* BENEFITS */}
 
-            <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-              <div className="flex gap-3">
-                <CreditCard
-                  size={18}
-                  className="mt-0.5 shrink-0 text-blue-600"
-                />
+              <div className="border-t border-gray-100 bg-gray-50 p-6">
+                <p className="mb-4 text-sm font-bold text-gray-900">
+                  Why book with Tripora?
+                </p>
 
-                <div>
-                  <p className="text-sm font-semibold text-blue-900">
-                    Secure booking
-                  </p>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
 
-                  <p className="mt-1 text-xs leading-5 text-blue-700">
-                    Your booking information and payment details are
-                    protected through a secure booking process.
-                  </p>
+                    <span className="text-xs text-gray-600">
+                      Instant booking confirmation
+                    </span>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+
+                    <span className="text-xs text-gray-600">
+                      Transparent pricing
+                    </span>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+
+                    <span className="text-xs text-gray-600">
+                      Secure payment
+                    </span>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+
+                    <span className="text-xs text-gray-600">
+                      24/7 customer support
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -982,51 +1052,43 @@ const HotelDetail = () => {
         </div>
       </main>
 
-      {/* ======================================================
-          LIGHTBOX
+      {/* =====================================================
+          MOBILE STICKY BOOKING BAR
       ====================================================== */}
 
-      {lightboxOpen && hotelImages.length > 0 && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4">
-          <button
-            type="button"
-            onClick={() => setLightboxOpen(false)}
-            className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-          >
-            <X size={22} />
-          </button>
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white/95 px-4 py-3 shadow-[0_-5px_25px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+          <div>
+            <p className="text-xs text-gray-500">
+              Total for {passengers} passenger
+              {passengers > 1 ? "s" : ""}
+            </p>
 
-          <button
-            type="button"
-            onClick={previousImage}
-            className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:left-8"
-          >
-            <ChevronLeft size={25} />
-          </button>
-
-          <div className="flex max-h-[90vh] max-w-6xl items-center justify-center">
-            <img
-              src={hotelImages[selectedImage]}
-              alt={hotelName}
-              className="max-h-[85vh] max-w-full rounded-xl object-contain"
-            />
+            <p className="text-xl font-extrabold text-gray-900">
+              ₹{totalPrice.toLocaleString("en-IN")}
+            </p>
           </div>
 
           <button
-            type="button"
-            onClick={nextImage}
-            className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 sm:right-8"
+            onClick={() =>
+              navigate(`/flight-booking/${flight._id}`, {
+                state: {
+                  flight,
+                  passengers,
+                  totalPrice,
+                },
+              })
+            }
+            className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-blue-700"
           >
-            <ChevronRight size={25} />
-          </button>
+            Book Now
 
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-4 py-2 text-sm font-semibold text-white">
-            {selectedImage + 1} / {hotelImages.length}
-          </div>
+            <ArrowRight className="h-4 w-4" />
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 };
 
-export default HotelDetail;
+export default FlightDetails;
