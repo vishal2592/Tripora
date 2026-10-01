@@ -16,10 +16,10 @@ const {
 const adminAuth = require("../middleware/adminAuth.middleware");
 const { uploadImage } = require("../middleware/upload.middleware");
 
+//get client offer
 router.get("/client", getClientOffers);
 //get all offers
 router.get("/", getAllOffers);
-
 // get single offer
 router.get("/:id", getSingleOffer);
 //create offer

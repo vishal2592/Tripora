@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Tripora Razorpay Test</title>
+
+  <!-- Razorpay Checkout -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #f4f7fb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      font-size: 15px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      background: #f1f5f9;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 14px;
+    }
+
+    .success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <h1>Tripora Razorpay Test</h1>
+
+    <p class="subtitle">
+      Package Payment Testing
+    </p>
+
+    <label for="bookingId">
+      Package Booking MongoDB ID
+    </label>
+
+    <input
+      type="text"
+      id="bookingId"
+      placeholder="Enter Package Booking ID"
+    />
+
+    <button id="payButton">
+      Create Order & Pay
+    </button>
+
+    <div id="status" class="status">
+      Ready for payment testing...
+    </div>
+
+  </div>
+
+  <script>
+
+    // ==============================
+    // CONFIG
+    // ==============================
+
+    const API_BASE_URL = "http://localhost:8001";
+
+    // IMPORTANT:
+    // Yahan apna Razorpay TEST KEY ID lagao.
+    // Secret key yahan KABHI mat lagana.
+    const RAZORPAY_KEY_ID = "rzp_test_Tib1MyoFgtAtrQ";
+
+
+    // ==============================
+    // ELEMENTS
+    // ==============================
+
+    const bookingIdInput =
+      document.getElementById("bookingId");
+
+    const payButton =
+      document.getElementById("payButton");
+
+    const statusBox =
+      document.getElementById("status");
+
+
+    // ==============================
+    // USER JWT
+    // ==============================
+
+    // Yahan NEW TEST USER ka JWT token paste karo.
+    const USER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YWJkZTRkN2VmODRlNDkyMTNjZmJiMmMiLCJyb2xlIjoidXNlciIsImlhdCI6MTc5MDgzNDYzNywiZXhwIjoxNzkxNDM5NDM3fQ.qGKxcWu8L1BinyOLhMCIilWX5hVGaa4itizqwsHGJnY";
+
+
+    // ==============================
+    // STATUS FUNCTION
+    // ==============================
+
+    function showStatus(message, type = "") {
+
+      statusBox.textContent = message;
+
+      statusBox.className = "status";
+
+      if (type) {
+        statusBox.classList.add(type);
+      }
+    }
+
+
+    // ==============================
+    // PAYMENT BUTTON
+    // ==============================
+
+    payButton.addEventListener("click", async () => {
+
+      const bookingId =
+        bookingIdInput.value.trim();
+
+
+      // Booking ID validation
+      if (!bookingId) {
+
+        showStatus(
+          "Please enter Package Booking ID",
+          "error"
+        );
+
+        return;
+      }
+
+
+      // JWT validation
+     if (!USER_TOKEN || USER_TOKEN.trim() === "") {
+  showStatus(
+    "Please add your User JWT token in the code.",
+    "error"
+  );
+
+  return;
+}
+
+
+      // Razorpay key validation
+     if (!RAZORPAY_KEY_ID || RAZORPAY_KEY_ID.trim() === "") {
+  showStatus(
+    "Please add Razorpay TEST Key ID in the code.",
+    "error"
+  );
+
+  return;
+}
+
+
+      payButton.disabled = true;
+
+      showStatus(
+        "Creating Razorpay order..."
+      );
+
+
+      try {
+
+        // ==========================================
+        // STEP 1
+        // CREATE RAZORPAY ORDER
+        // ==========================================
+
+        const orderResponse = await fetch(
+          `${API_BASE_URL}/api/package-payments/${bookingId}/order`,
+          {
+            method: "POST",
+
+            headers: {
+              "Authorization": `Bearer ${USER_TOKEN}`,
+              "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({})
+          }
+        );
+
+
+        const orderData =
+          await orderResponse.json();
+
+
+        if (!orderResponse.ok || !orderData.success) {
+
+          throw new Error(
+            orderData.message ||
+            "Failed to create Razorpay order"
+          );
+        }
+
+
+        const order =
+          orderData.order;
+
+
+        showStatus(
+          `Razorpay order created successfully.\n\n` +
+          `Order ID: ${order.id}\n` +
+          `Amount: ₹${(order.amount / 100).toFixed(2)}\n\n` +
+          `Opening Razorpay Checkout...`
+        );
+
+
+        // ==========================================
+        // STEP 2
+        // RAZORPAY CHECKOUT
+        // ==========================================
+
+        const options = {
+
+          key: RAZORPAY_KEY_ID,
+
+          amount: order.amount,
+
+          currency: order.currency,
+
+          name: "Tripora",
+
+          description: "Package Booking Payment",
+
+          order_id: order.id,
+
+
+          handler: async function (response) {
+
+            console.log(
+              "Razorpay Response:",
+              response
+            );
+
+
+            showStatus(
+              "Payment successful.\n\n" +
+              "Verifying payment..."
+            );
+
+
+            try {
+
+              // ==================================
+              // STEP 3
+              // VERIFY PAYMENT
+              // ==================================
+
+              const verifyResponse =
+                await fetch(
+                  `${API_BASE_URL}/api/package-payments/${bookingId}/verify`,
+                  {
+                    method: "POST",
+
+                    headers: {
+                      "Authorization": `Bearer ${USER_TOKEN}`,
+                      "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+
+                      razorpay_order_id:
+                        response.razorpay_order_id,
+
+                      razorpay_payment_id:
+                        response.razorpay_payment_id,
+
+                      razorpay_signature:
+                        response.razorpay_signature
+
+                    })
+                  }
+                );
+
+
+              const verifyData =
+                await verifyResponse.json();
+
+
+              console.log(
+                "Verification Response:",
+                verifyData
+              );
+
+
+              if (
+                !verifyResponse.ok ||
+                !verifyData.success
+              ) {
+
+                throw new Error(
+                  verifyData.message ||
+                  "Payment verification failed"
+                );
+              }
+
+
+              // ==================================
+              // SUCCESS
+              // ==================================
+
+              showStatus(
+
+                "Payment verified successfully! 🎉\n\n" +
+
+                `Booking ID: ${
+                  verifyData.booking.bookingId
+                }\n\n` +
+
+                `Payment Status: ${
+                  verifyData.booking.paymentStatus
+                }\n\n` +
+
+                `Booking Status: ${
+                  verifyData.booking.bookingStatus
+                }\n\n` +
+
+               `Razorpay Payment ID: ${
+  verifyData.payment?.razorpayPaymentId || "Not returned"
+}`
+
+              , "success");
+
+
+            } catch (error) {
+
+              console.error(
+                "Verification Error:",
+                error
+              );
+
+
+              showStatus(
+                "Payment verification failed.\n\n" +
+                error.message,
+                "error"
+              );
+            }
+
+          },
+
+
+          prefill: {
+
+            name: "Razorpay Test User",
+
+            email: "razorpaytest@gmail.com",
+
+            contact: "9876543210"
+
+          },
+
+
+          theme: {
+
+            color: "#2563eb"
+
+          }
+
+        };
+
+
+        const razorpay =
+          new Razorpay(options);
+
+razorpay.on(
+  "payment.failed",
+  async function (response) {
+
+    console.error(
+      "Payment Failed:",
+      response
+    );
+
+    const errorDescription =
+      response.error?.description ||
+      "Razorpay payment failed";
+
+    showStatus(
+      "Payment failed.\n\n" +
+      errorDescription +
+      "\n\nUpdating payment status...",
+      "error"
+    );
+
+    try {
+
+      const failureResponse = await fetch(
+        `${API_BASE_URL}/api/package-payments/${bookingId}/failure`,
+        {
+          method: "POST",
+
+          headers: {
+            "Authorization": `Bearer ${USER_TOKEN}`,
+            "Content-Type": "application/json"
+          },
+
+          body: JSON.stringify({
+            razorpay_payment_id:
+              response.error?.metadata?.payment_id || "",
+
+            razorpay_order_id:
+              response.error?.metadata?.order_id || "",
+
+            reason: errorDescription
+          })
+        }
+      );
+
+      const failureData =
+        await failureResponse.json();
+
+      console.log(
+        "Failure Response:",
+        failureData
+      );
+
+      if (!failureResponse.ok || !failureData.success) {
+        throw new Error(
+          failureData.message ||
+          "Failed to update payment status"
+        );
+      }
+
+      showStatus(
+        "Payment failed.\n\n" +
+        `Payment Status: ${
+          failureData.payment.status
+        }\n\n` +
+        `Booking Status: ${
+          failureData.booking.bookingStatus
+        }\n\n` +
+        `Reason: ${
+          failureData.payment.failureReason
+        }`,
+        "error"
+      );
+
+    } catch (error) {
+
+      console.error(
+        "Failure Status Update Error:",
+        error
+      );
+
+      showStatus(
+        "Payment failed.\n\n" +
+        "Could not sync failure status with backend.\n\n" +
+        error.message,
+        "error"
+      );
+    }
+  }
+);
+
+        razorpay.open();
+
+
+      } catch (error) {
+
+        console.error(
+          "Payment Error:",
+          error
+        );
+
+
+        showStatus(
+          error.message,
+          "error"
+        );
+
+      } finally {
+
+        payButton.disabled = false;
+
+      }
+
+    });
+
+  </script>
+
+</body>
+</html>
