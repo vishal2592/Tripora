@@ -1,19 +1,20 @@
 const HotelBooking = require("../models/hotelBooking.model");
+const PackageBooking = require("../models/packageBooking.model");
 
 // GET MY BOOKINGS
-
 const getMyBookings = async (req, res) => {
   try {
-    // Logged-in user ID from JWT
     const userId = req.user.userId;
 
-    // Get user's hotel bookings
+    // ================= HOTEL BOOKINGS =================
+
     const hotelBookings = await HotelBooking.find({
       user: userId,
     }).sort({ createdAt: -1 });
 
-    // Normalize hotel bookings
-    const bookings = hotelBookings.map((booking) => ({
+    const normalizedHotelBookings = hotelBookings.map((booking) => ({
+      _id: booking._id,
+
       bookingId: booking.bookingId,
 
       bookingType: "hotel",
@@ -55,20 +56,85 @@ const getMyBookings = async (req, res) => {
       createdAt: booking.createdAt,
     }));
 
-    // Calculate summary
+    // ================= PACKAGE BOOKINGS =================
+
+    const packageBookings = await PackageBooking.find({
+      user: userId,
+    }).sort({ createdAt: -1 });
+
+    const normalizedPackageBookings = packageBookings.map((booking) => ({
+      _id: booking._id,
+
+      bookingId: booking.bookingId,
+
+      bookingType: "package",
+
+      status: booking.bookingStatus,
+
+      paymentStatus: booking.paymentStatus,
+
+      package: {
+        id: booking.package,
+        name: booking.packageDetails?.name || "",
+        destination: booking.packageDetails?.destination || "",
+        country: booking.packageDetails?.country || "",
+        duration: booking.packageDetails?.duration || "",
+        image: booking.packageDetails?.image || "",
+      },
+
+      travelDate: booking.travelDate,
+
+      travellers: {
+        adults: booking.travellers?.adults || 0,
+        children: booking.travellers?.children || 0,
+        infants: booking.travellers?.infants || 0,
+      },
+
+      passengers: booking.passengers || [],
+
+      pricing: {
+        adultPrice: booking.pricing?.adultPrice || 0,
+        childPrice: booking.pricing?.childPrice || 0,
+        infantPrice: booking.pricing?.infantPrice || 0,
+        adultsTotal: booking.pricing?.adultsTotal || 0,
+        childrenTotal: booking.pricing?.childrenTotal || 0,
+        infantsTotal: booking.pricing?.infantsTotal || 0,
+        subtotal: booking.pricing?.subtotal || 0,
+        taxes: booking.pricing?.taxes || 0,
+        convenienceFee: booking.pricing?.convenienceFee || 0,
+        totalAmount: booking.pricing?.totalAmount || 0,
+      },
+
+      createdAt: booking.createdAt,
+    }));
+
+    // ================= COMBINE BOOKINGS =================
+
+    const bookings = [
+      ...normalizedHotelBookings,
+      ...normalizedPackageBookings,
+    ].sort((a, b) => {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    // ================= SUMMARY =================
+
     const totalTrips = bookings.length;
 
     const upcoming = bookings.filter(
       (booking) =>
-        booking.status === "confirmed" || booking.status === "pending",
+        booking.status?.toLowerCase() === "confirmed" ||
+        booking.status?.toLowerCase() === "pending"
     ).length;
 
     const completed = bookings.filter(
-      (booking) => booking.status === "completed",
+      (booking) =>
+        booking.status?.toLowerCase() === "completed"
     ).length;
 
     const cancelled = bookings.filter(
-      (booking) => booking.status === "cancelled",
+      (booking) =>
+        booking.status?.toLowerCase() === "cancelled"
     ).length;
 
     return res.status(200).json({

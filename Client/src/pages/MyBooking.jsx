@@ -1,6 +1,11 @@
-
-import React, { useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+
 import {
   ArrowLeft,
   ArrowRight,
@@ -18,159 +23,186 @@ import {
   XCircle,
 } from "lucide-react";
 
+import {
+  getMyBookings,
+} from "../redux/slicer/MyBookingSlice";
+
 /* =========================================================
-   DEMO BOOKINGS
+   NORMALIZE BACKEND BOOKING
 ========================================================= */
 
-const initialBookings = [
-  {
-    id: "TRP15684742",
-    type: "flight",
-    status: "confirmed",
-    bookingDate: "10 September 2026",
-    amount: 5499,
+const normalizeBooking = (booking) => {
+  const type = String(
+    booking.bookingType || ""
+  ).toLowerCase();
 
-    airline: "IndiGo",
-    airlineCode: "6E",
-    flightNumber: "6E 2345",
+  const status = String(
+    booking.status ||
+      booking.bookingStatus ||
+      "pending"
+  ).toLowerCase();
 
-    from: {
-      city: "Delhi",
-      code: "DEL",
-      time: "06:30 AM",
-      airport: "Indira Gandhi International Airport",
-    },
+  /* ================= HOTEL ================= */
 
-    to: {
-      city: "Mumbai",
-      code: "BOM",
-      time: "08:40 AM",
-      airport: "Chhatrapati Shivaji Maharaj International Airport",
-    },
+  if (type === "hotel") {
+    return {
+      mongoId: booking._id,
 
-    date: "18 September 2026",
-    duration: "2h 10m",
-    passengers: 2,
+      id: booking.bookingId,
 
-    logo: "https://upload.wikimedia.org/wikipedia/commons/4/4a/IndiGo_Airlines_logo.svg",
-  },
+      type: "hotel",
 
-  {
-    id: "TRP98452163",
-    type: "hotel",
-    status: "confirmed",
-    bookingDate: "08 September 2026",
-    amount: 8999,
+      status,
 
-    hotelName: "The Taj Mumbai",
-    location: "Mumbai, Maharashtra",
-    image:
-      "https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=900&q=85",
+      // Keep raw createdAt for correct sorting
+      createdAt: booking.createdAt || null,
 
-    checkIn: "18 September 2026",
-    checkOut: "20 September 2026",
+      bookingDate: booking.createdAt
+        ? new Date(
+            booking.createdAt
+          ).toLocaleDateString(
+            "en-IN",
+            {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            }
+          )
+        : "",
 
-    nights: 2,
-    guests: 2,
-    room: "Deluxe Room",
-  },
+      amount: Number(
+        booking.totalAmount || 0
+      ),
 
-  {
-    id: "TRP72381942",
-    type: "package",
-    status: "confirmed",
-    bookingDate: "05 September 2026",
-    amount: 34999,
+      hotelName:
+        booking.hotel?.name ||
+        "Hotel",
 
-    packageName: "Dubai Explorer",
-    destination: "Dubai, UAE",
-    image:
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=900&q=85",
+      location:
+        booking.hotel?.location ||
+        "",
 
-    duration: "5 Days / 4 Nights",
-    travellers: 2,
+      image:
+        booking.hotel?.image ||
+        "",
 
-    includes: [
-      "Flights",
-      "Hotel",
-      "Airport Transfer",
-    ],
-  },
+      checkIn: booking.checkIn
+        ? new Date(
+            booking.checkIn
+          ).toLocaleDateString(
+            "en-IN",
+            {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            }
+          )
+        : "",
 
-  {
-    id: "TRP45281937",
-    type: "flight",
-    status: "completed",
-    bookingDate: "22 August 2026",
-    amount: 7399,
+      checkOut: booking.checkOut
+        ? new Date(
+            booking.checkOut
+          ).toLocaleDateString(
+            "en-IN",
+            {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            }
+          )
+        : "",
 
-    airline: "Air India",
-    airlineCode: "AI",
-    flightNumber: "AI 672",
+      nights: booking.nights || 0,
 
-    from: {
-      city: "Mumbai",
-      code: "BOM",
-      time: "09:15 AM",
-      airport: "Chhatrapati Shivaji Maharaj International Airport",
-    },
+      guests: booking.guests || 0,
 
-    to: {
-      city: "Delhi",
-      code: "DEL",
-      time: "11:25 AM",
-      airport: "Indira Gandhi International Airport",
-    },
+      room:
+        booking.room?.name ||
+        "Room",
+    };
+  }
 
-    date: "30 August 2026",
-    duration: "2h 10m",
-    passengers: 1,
+  /* ================= PACKAGE ================= */
 
-    logo: "https://upload.wikimedia.org/wikipedia/commons/9/9b/Air_India_Logo.svg",
-  },
+  if (type === "package") {
+    const adults = Number(
+      booking.travellers?.adults || 0
+    );
 
-  {
-    id: "TRP67382915",
-    type: "hotel",
-    status: "cancelled",
-    bookingDate: "15 August 2026",
-    amount: 6499,
+    const children = Number(
+      booking.travellers?.children || 0
+    );
 
-    hotelName: "Grand Hyatt Goa",
-    location: "Goa, India",
-    image:
-      "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=900&q=85",
+    const infants = Number(
+      booking.travellers?.infants || 0
+    );
 
-    checkIn: "25 August 2026",
-    checkOut: "27 August 2026",
+    return {
+      mongoId: booking._id,
 
-    nights: 2,
-    guests: 2,
-    room: "Premium Room",
-  },
+      id: booking.bookingId,
 
-  {
-    id: "TRP91827364",
-    type: "package",
-    status: "completed",
-    bookingDate: "01 July 2026",
-    amount: 29999,
+      type: "package",
 
-    packageName: "Bali Escape",
-    destination: "Bali, Indonesia",
-    image:
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=900&q=85",
+      status,
 
-    duration: "5 Days / 4 Nights",
-    travellers: 2,
+      // Keep raw createdAt for correct sorting
+      createdAt: booking.createdAt || null,
 
-    includes: [
-      "Flights",
-      "Hotel",
-      "Sightseeing",
-    ],
-  },
-];
+      bookingDate: booking.createdAt
+        ? new Date(
+            booking.createdAt
+          ).toLocaleDateString(
+            "en-IN",
+            {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            }
+          )
+        : "",
+
+      amount: Number(
+        booking.pricing?.totalAmount ||
+          0
+      ),
+
+      packageName:
+        booking.package?.name ||
+        booking.packageDetails?.name ||
+        "Holiday Package",
+
+      destination:
+        booking.package?.destination ||
+        booking.packageDetails?.destination ||
+        "",
+
+      image:
+        booking.package?.image ||
+        booking.packageDetails?.image ||
+        "",
+
+      duration:
+        booking.package?.duration ||
+        booking.packageDetails?.duration ||
+        "",
+
+      travellers:
+        adults +
+        children +
+        infants,
+
+      /*
+       * Keep this empty until actual
+       * package inclusions are returned
+       * by backend.
+       */
+      includes: [],
+    };
+  }
+
+  return null;
+};
 
 /* =========================================================
    MAIN COMPONENT
@@ -179,15 +211,54 @@ const initialBookings = [
 const MyBookings = () => {
   const navigate = useNavigate();
 
-  const [bookings, setBookings] = useState(initialBookings);
+  const dispatch = useDispatch();
 
-  const [activeTab, setActiveTab] = useState("all");
+  /* =======================================================
+     REDUX STATE
+  ======================================================= */
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const {
+    bookings: backendBookings,
+    summary,
+    loading,
+    error,
+  } = useSelector(
+    (state) => state.myBooking
+  );
 
-  const [statusFilter, setStatusFilter] = useState("all");
+  /* =======================================================
+     LOCAL UI STATE
+  ======================================================= */
 
-  const [sortBy, setSortBy] = useState("latest");
+  const [activeTab, setActiveTab] =
+    useState("all");
+
+  const [searchTerm, setSearchTerm] =
+    useState("");
+
+  const [statusFilter, setStatusFilter] =
+    useState("all");
+
+  const [sortBy, setSortBy] =
+    useState("latest");
+
+  /* =======================================================
+     FETCH BOOKINGS THROUGH REDUX
+  ======================================================= */
+
+  useEffect(() => {
+    dispatch(getMyBookings());
+  }, [dispatch]);
+
+  /* =======================================================
+     NORMALIZE BOOKINGS
+  ======================================================= */
+
+  const bookings = useMemo(() => {
+    return (backendBookings || [])
+      .map(normalizeBooking)
+      .filter(Boolean);
+  }, [backendBookings]);
 
   /* =======================================================
      FILTER BOOKINGS
@@ -196,59 +267,97 @@ const MyBookings = () => {
   const filteredBookings = useMemo(() => {
     let result = [...bookings];
 
-    /* Type filter */
+    /* =====================================================
+       TYPE FILTER
+    ===================================================== */
 
     if (activeTab !== "all") {
       result = result.filter(
-        (booking) => booking.type === activeTab
+        (booking) =>
+          booking.type === activeTab
       );
     }
 
-    /* Status filter */
+    /* =====================================================
+       STATUS FILTER
+    ===================================================== */
 
     if (statusFilter !== "all") {
       result = result.filter(
-        (booking) => booking.status === statusFilter
+        (booking) =>
+          booking.status ===
+          statusFilter
       );
     }
 
-    /* Search */
+    /* =====================================================
+       SEARCH
+    ===================================================== */
 
     if (searchTerm.trim()) {
-      const search = searchTerm.toLowerCase();
-
-      result = result.filter((booking) => {
-        const searchableText = [
-          booking.id,
-          booking.airline,
-          booking.flightNumber,
-          booking.from?.city,
-          booking.to?.city,
-          booking.hotelName,
-          booking.location,
-          booking.packageName,
-          booking.destination,
-        ]
-          .filter(Boolean)
-          .join(" ")
+      const search =
+        searchTerm
+          .trim()
           .toLowerCase();
 
-        return searchableText.includes(search);
-      });
+      result = result.filter(
+        (booking) => {
+          const searchableText = [
+            booking.id,
+
+            booking.airline,
+            booking.flightNumber,
+
+            booking.from?.city,
+            booking.to?.city,
+
+            booking.hotelName,
+            booking.location,
+
+            booking.packageName,
+            booking.destination,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+          return searchableText.includes(
+            search
+          );
+        }
+      );
     }
 
-    /* Sort */
+    /* =====================================================
+       SORT
+    ===================================================== */
 
     if (sortBy === "latest") {
-      result.reverse();
+      result.sort(
+        (a, b) =>
+          new Date(
+            b.createdAt || 0
+          ) -
+          new Date(
+            a.createdAt || 0
+          )
+      );
     }
 
     if (sortBy === "price-high") {
-      result.sort((a, b) => b.amount - a.amount);
+      result.sort(
+        (a, b) =>
+          Number(b.amount || 0) -
+          Number(a.amount || 0)
+      );
     }
 
     if (sortBy === "price-low") {
-      result.sort((a, b) => a.amount - b.amount);
+      result.sort(
+        (a, b) =>
+          Number(a.amount || 0) -
+          Number(b.amount || 0)
+      );
     }
 
     return result;
@@ -264,75 +373,163 @@ const MyBookings = () => {
      STATS
   ======================================================= */
 
-  const totalBookings = bookings.length;
+  /*
+   * Prefer backend summary because it is calculated
+   * from the complete booking collection.
+   */
 
-  const upcomingBookings = bookings.filter(
-    (booking) =>
-      booking.status === "confirmed" ||
-      booking.status === "pending"
-  ).length;
+  const totalBookings =
+    summary?.totalTrips ??
+    bookings.length;
 
-  const completedBookings = bookings.filter(
-    (booking) => booking.status === "completed"
-  ).length;
+  const upcomingBookings =
+    summary?.upcoming ??
+    bookings.filter(
+      (booking) =>
+        booking.status ===
+          "confirmed" ||
+        booking.status === "pending"
+    ).length;
 
-  const cancelledBookings = bookings.filter(
-    (booking) => booking.status === "cancelled"
-  ).length;
+  const completedBookings =
+    summary?.completed ??
+    bookings.filter(
+      (booking) =>
+        booking.status ===
+        "completed"
+    ).length;
+
+  const cancelledBookings =
+    summary?.cancelled ??
+    bookings.filter(
+      (booking) =>
+        booking.status ===
+        "cancelled"
+    ).length;
 
   /* =======================================================
      CANCEL BOOKING
   ======================================================= */
 
-  const handleCancelBooking = (bookingId) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to cancel this booking?"
-    );
+  const handleCancelBooking = async (
+    booking
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Are you sure you want to cancel this booking?"
+      );
 
     if (!confirmed) return;
 
-    setBookings((prev) =>
-      prev.map((booking) =>
-        booking.id === bookingId
-          ? {
-              ...booking,
-              status: "cancelled",
-            }
-          : booking
-      )
-    );
+    /*
+     * Package cancellation is already
+     * handled by the backend endpoint.
+     *
+     * For now, hotel cancellation API
+     * has not been connected.
+     */
+
+    if (booking.type === "hotel") {
+      window.alert(
+        "Hotel cancellation API is not connected yet."
+      );
+
+      return;
+    }
+
+    /*
+     * Package cancellation can be
+     * connected through the package
+     * booking API.
+     *
+     * We import api here only for the
+     * existing cancellation endpoint.
+     */
+
+    if (booking.type === "package") {
+      try {
+        const { default: api } =
+          await import("../redux/api");
+
+        await api.put(
+          `/package-bookings/${booking.mongoId}/cancel`,
+          {
+            cancellationReason:
+              "Cancelled by user",
+          }
+        );
+
+        /*
+         * Refresh Redux booking data
+         * after successful cancellation.
+         */
+
+        dispatch(getMyBookings());
+      } catch (error) {
+        console.error(
+          "Cancel Booking Error:",
+          error
+        );
+
+        window.alert(
+          error.response?.data?.message ||
+            "Failed to cancel booking."
+        );
+      }
+    }
   };
 
   /* =======================================================
      VIEW DETAILS
   ======================================================= */
 
-  const handleViewDetails = (booking) => {
-    if (booking.type === "flight") {
-      navigate(`/flight-booking/${booking.id}`, {
-        state: {
-          booking,
-        },
-      });
+  const handleViewDetails = (
+    booking
+  ) => {
+    /* ================= FLIGHT ================= */
+
+    if (
+      booking.type === "flight"
+    ) {
+      navigate(
+        `/flight-booking/${booking.mongoId}`,
+        {
+          state: {
+            booking,
+          },
+        }
+      );
 
       return;
     }
 
-    if (booking.type === "hotel") {
-      navigate(`/hotel-booking/${booking.id}`, {
-        state: {
-          booking,
-        },
-      });
+    /* ================= HOTEL ================= */
+
+    if (
+      booking.type === "hotel"
+    ) {
+      navigate(
+        `/hotel-booking/${booking.mongoId}`,
+        {
+          state: {
+            booking,
+          },
+        }
+      );
 
       return;
     }
 
-    navigate(`/package-booking/${booking.id}`, {
-      state: {
-        booking,
-      },
-    });
+    /* ================= PACKAGE ================= */
+
+    navigate(
+      `/package-booking/${booking.mongoId}`,
+      {
+        state: {
+          booking,
+        },
+      }
+    );
   };
 
   return (
@@ -355,6 +552,7 @@ const MyBookings = () => {
           </button>
 
           <div className="min-w-0">
+
             <h1 className="truncate text-base font-black text-slate-900">
               My Bookings
             </h1>
@@ -362,6 +560,7 @@ const MyBookings = () => {
             <p className="text-[11px] text-slate-500">
               Manage your trips
             </p>
+
           </div>
 
         </div>
@@ -382,7 +581,9 @@ const MyBookings = () => {
 
           <button
             type="button"
-            onClick={() => navigate("/")}
+            onClick={() =>
+              navigate("/")
+            }
             className="transition hover:text-blue-600"
           >
             Home
@@ -420,7 +621,9 @@ const MyBookings = () => {
 
           <button
             type="button"
-            onClick={() => navigate("/")}
+            onClick={() =>
+              navigate("/")
+            }
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"
           >
             Explore Trips
@@ -436,25 +639,35 @@ const MyBookings = () => {
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 
           <BookingStat
-            icon={<Ticket size={18} />}
+            icon={
+              <Ticket size={18} />
+            }
             value={totalBookings}
             label="Total Trips"
           />
 
           <BookingStat
-            icon={<Clock3 size={18} />}
+            icon={
+              <Clock3 size={18} />
+            }
             value={upcomingBookings}
             label="Upcoming"
           />
 
           <BookingStat
-            icon={<CheckCircle2 size={18} />}
+            icon={
+              <CheckCircle2
+                size={18}
+              />
+            }
             value={completedBookings}
             label="Completed"
           />
 
           <BookingStat
-            icon={<XCircle size={18} />}
+            icon={
+              <XCircle size={18} />
+            }
             value={cancelledBookings}
             label="Cancelled"
           />
@@ -474,32 +687,61 @@ const MyBookings = () => {
             <div className="flex min-w-max items-center gap-1 rounded-xl bg-slate-100 p-1">
 
               <BookingTab
-                active={activeTab === "all"}
-                onClick={() => setActiveTab("all")}
+                active={
+                  activeTab === "all"
+                }
+                onClick={() =>
+                  setActiveTab("all")
+                }
               >
                 All
               </BookingTab>
 
               <BookingTab
-                active={activeTab === "flight"}
-                onClick={() => setActiveTab("flight")}
-                icon={<Plane size={14} />}
+                active={
+                  activeTab === "flight"
+                }
+                onClick={() =>
+                  setActiveTab(
+                    "flight"
+                  )
+                }
+                icon={
+                  <Plane size={14} />
+                }
               >
                 Flights
               </BookingTab>
 
               <BookingTab
-                active={activeTab === "hotel"}
-                onClick={() => setActiveTab("hotel")}
-                icon={<Hotel size={14} />}
+                active={
+                  activeTab === "hotel"
+                }
+                onClick={() =>
+                  setActiveTab(
+                    "hotel"
+                  )
+                }
+                icon={
+                  <Hotel size={14} />
+                }
               >
                 Hotels
               </BookingTab>
 
               <BookingTab
-                active={activeTab === "package"}
-                onClick={() => setActiveTab("package")}
-                icon={<Package size={14} />}
+                active={
+                  activeTab ===
+                  "package"
+                }
+                onClick={() =>
+                  setActiveTab(
+                    "package"
+                  )
+                }
+                icon={
+                  <Package size={14} />
+                }
               >
                 Packages
               </BookingTab>
@@ -524,7 +766,11 @@ const MyBookings = () => {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) =>
+                  setSearchTerm(
+                    e.target.value
+                  )
+                }
                 placeholder="Search booking ID, city, hotel..."
                 className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
               />
@@ -532,10 +778,14 @@ const MyBookings = () => {
               {searchTerm && (
                 <button
                   type="button"
-                  onClick={() => setSearchTerm("")}
+                  onClick={() =>
+                    setSearchTerm("")
+                  }
                   className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-700"
                 >
-                  <XCircle size={16} />
+                  <XCircle
+                    size={16}
+                  />
                 </button>
               )}
 
@@ -546,10 +796,17 @@ const MyBookings = () => {
             <div className="relative">
 
               <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                value={
+                  statusFilter
+                }
+                onChange={(e) =>
+                  setStatusFilter(
+                    e.target.value
+                  )
+                }
                 className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 pr-10 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:w-44"
               >
+
                 <option value="all">
                   All Status
                 </option>
@@ -569,6 +826,7 @@ const MyBookings = () => {
                 <option value="pending">
                   Pending
                 </option>
+
               </select>
 
               <ChevronDown
@@ -584,9 +842,14 @@ const MyBookings = () => {
 
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) =>
+                  setSortBy(
+                    e.target.value
+                  )
+                }
                 className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-4 pr-10 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:w-44"
               >
+
                 <option value="latest">
                   Latest
                 </option>
@@ -598,6 +861,7 @@ const MyBookings = () => {
                 <option value="price-low">
                   Price: Low
                 </option>
+
               </select>
 
               <ChevronDown
@@ -626,8 +890,14 @@ const MyBookings = () => {
               </h2>
 
               <p className="mt-0.5 text-xs text-slate-500">
-                {filteredBookings.length} booking
-                {filteredBookings.length !== 1 ? "s" : ""} found
+                {loading
+                  ? "Loading bookings..."
+                  : `${filteredBookings.length} booking${
+                      filteredBookings.length !==
+                      1
+                        ? "s"
+                        : ""
+                    } found`}
               </p>
 
             </div>
@@ -635,67 +905,120 @@ const MyBookings = () => {
           </div>
 
           {/* =================================================
-              BOOKING LIST
+              LOADING
           ================================================= */}
 
-          {filteredBookings.length > 0 ? (
+          {loading ? (
+            <LoadingBookings />
+          ) : error ? (
+            <BookingError
+              message={error}
+              onRetry={() =>
+                dispatch(
+                  getMyBookings()
+                )
+              }
+            />
+          ) : filteredBookings.length >
+            0 ? (
             <div className="space-y-4">
 
-              {filteredBookings.map((booking) => {
+              {filteredBookings.map(
+                (booking) => {
 
-                if (booking.type === "flight") {
+                  if (
+                    booking.type ===
+                    "flight"
+                  ) {
+                    return (
+                      <FlightBookingCard
+                        key={
+                          booking.mongoId ||
+                          booking.id
+                        }
+                        booking={
+                          booking
+                        }
+                        onViewDetails={() =>
+                          handleViewDetails(
+                            booking
+                          )
+                        }
+                        onCancel={() =>
+                          handleCancelBooking(
+                            booking
+                          )
+                        }
+                      />
+                    );
+                  }
+
+                  if (
+                    booking.type ===
+                    "hotel"
+                  ) {
+                    return (
+                      <HotelBookingCard
+                        key={
+                          booking.mongoId ||
+                          booking.id
+                        }
+                        booking={
+                          booking
+                        }
+                        onViewDetails={() =>
+                          handleViewDetails(
+                            booking
+                          )
+                        }
+                        onCancel={() =>
+                          handleCancelBooking(
+                            booking
+                          )
+                        }
+                      />
+                    );
+                  }
+
                   return (
-                    <FlightBookingCard
-                      key={booking.id}
-                      booking={booking}
+                    <PackageBookingCard
+                      key={
+                        booking.mongoId ||
+                        booking.id
+                      }
+                      booking={
+                        booking
+                      }
                       onViewDetails={() =>
-                        handleViewDetails(booking)
+                        handleViewDetails(
+                          booking
+                        )
                       }
                       onCancel={() =>
-                        handleCancelBooking(booking.id)
+                        handleCancelBooking(
+                          booking
+                        )
                       }
                     />
                   );
                 }
-
-                if (booking.type === "hotel") {
-                  return (
-                    <HotelBookingCard
-                      key={booking.id}
-                      booking={booking}
-                      onViewDetails={() =>
-                        handleViewDetails(booking)
-                      }
-                      onCancel={() =>
-                        handleCancelBooking(booking.id)
-                      }
-                    />
-                  );
-                }
-
-                return (
-                  <PackageBookingCard
-                    key={booking.id}
-                    booking={booking}
-                    onViewDetails={() =>
-                      handleViewDetails(booking)
-                    }
-                    onCancel={() =>
-                      handleCancelBooking(booking.id)
-                    }
-                  />
-                );
-              })}
+              )}
 
             </div>
           ) : (
             <EmptyBookings
-              activeTab={activeTab}
-              searchTerm={searchTerm}
+              activeTab={
+                activeTab
+              }
+              searchTerm={
+                searchTerm
+              }
               onClear={() => {
                 setSearchTerm("");
                 setActiveTab("all");
-                setStatusFilter("all");
+                setStatusFilter(
+                  "all"
+                );
               }}
             />
           )}
@@ -703,6 +1026,87 @@ const MyBookings = () => {
         </section>
 
       </main>
+
+    </div>
+  );
+};
+
+/* =========================================================
+   LOADING BOOKINGS
+========================================================= */
+
+const LoadingBookings = () => {
+  return (
+    <div className="space-y-4">
+
+      {[1, 2].map((item) => (
+        <div
+          key={item}
+          className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+        >
+
+          <div className="animate-pulse">
+
+            <div className="h-5 w-28 bg-slate-200" />
+
+            <div className="space-y-4 p-5">
+
+              <div className="h-5 w-2/3 rounded bg-slate-200" />
+
+              <div className="h-4 w-1/3 rounded bg-slate-200" />
+
+              <div className="grid gap-3 sm:grid-cols-3">
+
+                <div className="h-12 rounded-xl bg-slate-100" />
+
+                <div className="h-12 rounded-xl bg-slate-100" />
+
+                <div className="h-12 rounded-xl bg-slate-100" />
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      ))}
+
+    </div>
+  );
+};
+
+/* =========================================================
+   ERROR
+========================================================= */
+
+const BookingError = ({
+  message,
+  onRetry,
+}) => {
+  return (
+    <div className="rounded-3xl border border-red-100 bg-white px-5 py-14 text-center shadow-sm">
+
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+        <XCircle size={28} />
+      </div>
+
+      <h3 className="mt-5 text-xl font-black text-slate-900">
+        Unable to load bookings
+      </h3>
+
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+        {message}
+      </p>
+
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-xs font-bold text-white transition hover:bg-blue-700"
+      >
+        Try Again
+      </button>
+
     </div>
   );
 };
@@ -711,7 +1115,11 @@ const MyBookings = () => {
    BOOKING STAT
 ========================================================= */
 
-const BookingStat = ({ icon, value, label }) => {
+const BookingStat = ({
+  icon,
+  value,
+  label,
+}) => {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
 
@@ -769,19 +1177,24 @@ const FlightBookingCard = ({
   return (
     <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
 
-      {/* Top */}
-
       <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
 
         <div className="flex min-w-0 items-center gap-3">
 
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-white p-2 shadow-sm">
 
-            <img
-              src={booking.logo}
-              alt={booking.airline}
-              className="max-h-7 max-w-full object-contain"
-            />
+            {booking.logo ? (
+              <img
+                src={booking.logo}
+                alt={booking.airline}
+                className="max-h-7 max-w-full object-contain"
+              />
+            ) : (
+              <Plane
+                size={18}
+                className="text-blue-600"
+              />
+            )}
 
           </div>
 
@@ -800,42 +1213,41 @@ const FlightBookingCard = ({
             </div>
 
             <p className="mt-0.5 text-xs text-slate-500">
-              {booking.date} • {booking.duration}
+              {booking.date} •{" "}
+              {booking.duration}
             </p>
 
           </div>
 
         </div>
 
-        <StatusBadge status={booking.status} />
+        <StatusBadge
+          status={
+            booking.status
+          }
+        />
 
       </div>
-
-      {/* Flight Details */}
 
       <div className="p-4 sm:p-5">
 
         <div className="grid gap-5 md:grid-cols-[1fr_auto_1fr] md:items-center">
 
-          {/* FROM */}
-
           <div className="text-left">
 
             <p className="text-2xl font-black tracking-tight text-slate-900">
-              {booking.from.code}
+              {booking.from?.code}
             </p>
 
             <p className="mt-1 text-xs font-bold text-slate-700">
-              {booking.from.city}
+              {booking.from?.city}
             </p>
 
             <p className="mt-1 text-xs text-slate-400">
-              {booking.from.time}
+              {booking.from?.time}
             </p>
 
           </div>
-
-          {/* ROUTE */}
 
           <div className="hidden min-w-[150px] items-center gap-2 md:flex">
 
@@ -850,32 +1262,35 @@ const FlightBookingCard = ({
           </div>
 
           <div className="flex items-center gap-2 text-xs text-slate-400 md:hidden">
-            <div className="h-px flex-1 bg-slate-200" />
-            <Plane size={14} className="text-blue-600" />
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
 
-          {/* TO */}
+            <div className="h-px flex-1 bg-slate-200" />
+
+            <Plane
+              size={14}
+              className="text-blue-600"
+            />
+
+            <div className="h-px flex-1 bg-slate-200" />
+
+          </div>
 
           <div className="text-left md:text-right">
 
             <p className="text-2xl font-black tracking-tight text-slate-900">
-              {booking.to.code}
+              {booking.to?.code}
             </p>
 
             <p className="mt-1 text-xs font-bold text-slate-700">
-              {booking.to.city}
+              {booking.to?.city}
             </p>
 
             <p className="mt-1 text-xs text-slate-400">
-              {booking.to.time}
+              {booking.to?.time}
             </p>
 
           </div>
 
         </div>
-
-        {/* Bottom */}
 
         <div className="mt-5 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-3">
 
@@ -887,23 +1302,31 @@ const FlightBookingCard = ({
           <BookingMeta
             label="Passengers"
             value={`${booking.passengers} Traveller${
-              booking.passengers > 1 ? "s" : ""
+              booking.passengers > 1
+                ? "s"
+                : ""
             }`}
           />
 
           <BookingMeta
             label="Total Fare"
-            value={`₹${booking.amount.toLocaleString("en-IN")}`}
+            value={`₹${Number(
+              booking.amount || 0
+            ).toLocaleString(
+              "en-IN"
+            )}`}
             highlight
           />
 
         </div>
 
-        {/* Actions */}
-
         <BookingActions
-          status={booking.status}
-          onViewDetails={onViewDetails}
+          status={
+            booking.status
+          }
+          onViewDetails={
+            onViewDetails
+          }
           onCancel={onCancel}
         />
 
@@ -927,23 +1350,29 @@ const HotelBookingCard = ({
 
       <div className="flex flex-col md:flex-row">
 
-        {/* IMAGE */}
-
         <div className="relative h-52 w-full shrink-0 overflow-hidden md:h-auto md:w-60">
 
-          <img
-            src={booking.image}
-            alt={booking.hotelName}
-            className="h-full w-full object-cover"
-          />
+          {booking.image ? (
+            <img
+              src={booking.image}
+              alt={booking.hotelName}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full min-h-[208px] w-full items-center justify-center bg-slate-100 text-slate-400">
+              <Hotel size={36} />
+            </div>
+          )}
 
           <div className="absolute left-3 top-3">
-            <StatusBadge status={booking.status} />
+            <StatusBadge
+              status={
+                booking.status
+              }
+            />
           </div>
 
         </div>
-
-        {/* CONTENT */}
 
         <div className="min-w-0 flex-1 p-4 sm:p-5">
 
@@ -961,44 +1390,55 @@ const HotelBookingCard = ({
 
               <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
                 <MapPin size={14} />
-                {booking.location}
+
+                {booking.location ||
+                  "Location not available"}
               </p>
 
             </div>
-
-            {/* Dates */}
 
             <div className="grid gap-3 sm:grid-cols-2">
 
               <DateBox
                 label="Check-in"
-                value={booking.checkIn}
+                value={
+                  booking.checkIn
+                }
               />
 
               <DateBox
                 label="Check-out"
-                value={booking.checkOut}
+                value={
+                  booking.checkOut
+                }
               />
 
             </div>
-
-            {/* Meta */}
 
             <div className="grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-3">
 
               <BookingMeta
                 label="Booking ID"
-                value={booking.id}
+                value={
+                  booking.id
+                }
               />
 
               <BookingMeta
                 label="Room"
-                value={booking.room}
+                value={
+                  booking.room
+                }
               />
 
               <BookingMeta
                 label="Total"
-                value={`₹${booking.amount.toLocaleString("en-IN")}`}
+                value={`₹${Number(
+                  booking.amount ||
+                    0
+                ).toLocaleString(
+                  "en-IN"
+                )}`}
                 highlight
               />
 
@@ -1008,17 +1448,24 @@ const HotelBookingCard = ({
 
               <button
                 type="button"
-                onClick={onViewDetails}
+                onClick={
+                  onViewDetails
+                }
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700"
               >
                 View Details
-                <ArrowRight size={14} />
+                <ArrowRight
+                  size={14}
+                />
               </button>
 
-              {booking.status === "confirmed" && (
+              {booking.status ===
+                "confirmed" && (
                 <button
                   type="button"
-                  onClick={onCancel}
+                  onClick={
+                    onCancel
+                  }
                   className="inline-flex items-center justify-center rounded-xl border border-red-100 px-4 py-2.5 text-xs font-bold text-red-600 transition hover:bg-red-50"
                 >
                   Cancel Booking
@@ -1051,23 +1498,31 @@ const PackageBookingCard = ({
 
       <div className="flex flex-col md:flex-row">
 
-        {/* IMAGE */}
-
         <div className="relative h-52 w-full shrink-0 overflow-hidden md:h-auto md:w-60">
 
-          <img
-            src={booking.image}
-            alt={booking.packageName}
-            className="h-full w-full object-cover"
-          />
+          {booking.image ? (
+            <img
+              src={booking.image}
+              alt={booking.packageName}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full min-h-[208px] w-full items-center justify-center bg-slate-100 text-slate-400">
+              <Package
+                size={36}
+              />
+            </div>
+          )}
 
           <div className="absolute left-3 top-3">
-            <StatusBadge status={booking.status} />
+            <StatusBadge
+              status={
+                booking.status
+              }
+            />
           </div>
 
         </div>
-
-        {/* CONTENT */}
 
         <div className="min-w-0 flex-1 p-4 sm:p-5">
 
@@ -1081,63 +1536,84 @@ const PackageBookingCard = ({
 
           <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
             <MapPin size={14} />
-            {booking.destination}
+
+            {booking.destination ||
+              "Destination not available"}
           </p>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
 
             <BookingMeta
               label="Duration"
-              value={booking.duration}
+              value={
+                booking.duration
+              }
             />
 
             <BookingMeta
               label="Travellers"
               value={`${booking.travellers} Traveller${
-                booking.travellers > 1 ? "s" : ""
+                booking.travellers >
+                1
+                  ? "s"
+                  : ""
               }`}
             />
 
             <BookingMeta
               label="Total"
-              value={`₹${booking.amount.toLocaleString("en-IN")}`}
+              value={`₹${Number(
+                booking.amount ||
+                  0
+              ).toLocaleString(
+                "en-IN"
+              )}`}
               highlight
             />
 
           </div>
 
-          {/* Includes */}
+          {booking.includes?.length >
+            0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
 
-          <div className="mt-4 flex flex-wrap gap-2">
+              {booking.includes.map(
+                (item) => (
+                  <span
+                    key={item}
+                    className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600"
+                  >
+                    ✓ {item}
+                  </span>
+                )
+              )}
 
-            {booking.includes.map((item) => (
-              <span
-                key={item}
-                className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600"
-              >
-                ✓ {item}
-              </span>
-            ))}
-
-          </div>
-
-          {/* Actions */}
+            </div>
+          )}
 
           <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
 
             <button
               type="button"
-              onClick={onViewDetails}
+              onClick={
+                onViewDetails
+              }
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700"
             >
               View Details
-              <ArrowRight size={14} />
+
+              <ArrowRight
+                size={14}
+              />
             </button>
 
-            {booking.status === "confirmed" && (
+            {booking.status ===
+              "confirmed" && (
               <button
                 type="button"
-                onClick={onCancel}
+                onClick={
+                  onCancel
+                }
                 className="inline-flex items-center justify-center rounded-xl border border-red-100 px-4 py-2.5 text-xs font-bold text-red-600 transition hover:bg-red-50"
               >
                 Cancel Booking
@@ -1158,17 +1634,26 @@ const PackageBookingCard = ({
    DATE BOX
 ========================================================= */
 
-const DateBox = ({ label, value }) => {
+const DateBox = ({
+  label,
+  value,
+}) => {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
 
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-        <CalendarDays size={13} />
+
+        <CalendarDays
+          size={13}
+        />
+
         {label}
+
       </div>
 
       <p className="mt-1.5 text-xs font-bold text-slate-800">
-        {value}
+        {value ||
+          "Not available"}
       </p>
 
     </div>
@@ -1198,7 +1683,7 @@ const BookingMeta = ({
             : "text-slate-800"
         }`}
       >
-        {value}
+        {value || "-"}
       </p>
 
     </div>
@@ -1219,14 +1704,20 @@ const BookingActions = ({
 
       <button
         type="button"
-        onClick={onViewDetails}
+        onClick={
+          onViewDetails
+        }
         className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-blue-700"
       >
         View Details
-        <ArrowRight size={14} />
+
+        <ArrowRight
+          size={14}
+        />
       </button>
 
-      {status === "confirmed" && (
+      {status ===
+        "confirmed" && (
         <button
           type="button"
           onClick={onCancel}
@@ -1244,40 +1735,62 @@ const BookingActions = ({
    STATUS BADGE
 ========================================================= */
 
-const StatusBadge = ({ status }) => {
-
+const StatusBadge = ({
+  status,
+}) => {
   const statusConfig = {
     confirmed: {
       label: "Confirmed",
-      icon: <CheckCircle2 size={13} />,
+
+      icon: (
+        <CheckCircle2
+          size={13}
+        />
+      ),
+
       className:
         "bg-emerald-50 text-emerald-700 border-emerald-100",
     },
 
     completed: {
       label: "Completed",
-      icon: <CheckCircle2 size={13} />,
+
+      icon: (
+        <CheckCircle2
+          size={13}
+        />
+      ),
+
       className:
         "bg-blue-50 text-blue-700 border-blue-100",
     },
 
     cancelled: {
       label: "Cancelled",
-      icon: <XCircle size={13} />,
+
+      icon: (
+        <XCircle size={13} />
+      ),
+
       className:
         "bg-red-50 text-red-700 border-red-100",
     },
 
     pending: {
       label: "Pending",
-      icon: <Clock3 size={13} />,
+
+      icon: (
+        <Clock3 size={13} />
+      ),
+
       className:
         "bg-amber-50 text-amber-700 border-amber-100",
     },
   };
 
   const config =
-    statusConfig[status] || statusConfig.pending;
+    statusConfig[status] ||
+    statusConfig.pending;
 
   return (
     <span
@@ -1310,11 +1823,14 @@ const EmptyBookings = ({
       </h3>
 
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+
         {searchTerm
           ? "We couldn't find a booking matching your search."
-          : activeTab !== "all"
+          : activeTab !==
+            "all"
           ? `You don't have any ${activeTab} bookings yet.`
           : "Your upcoming trips and past bookings will appear here."}
+
       </p>
 
       <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
@@ -1329,11 +1845,17 @@ const EmptyBookings = ({
 
         <button
           type="button"
-          onClick={() => window.location.href = "/"}
+          onClick={() =>
+            (window.location.href =
+              "/")
+          }
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-xs font-bold text-white transition hover:bg-blue-700"
         >
           Explore Trips
-          <ArrowRight size={14} />
+
+          <ArrowRight
+            size={14}
+          />
         </button>
 
       </div>
@@ -1343,5 +1865,3 @@ const EmptyBookings = ({
 };
 
 export default MyBookings;
-
-

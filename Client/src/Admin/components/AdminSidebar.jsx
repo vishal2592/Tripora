@@ -72,11 +72,11 @@ const AdminSidebar = ({
       path: "/admin/adminusers",
       icon: Users,
     },
-    // {
-    //   label: "Payments",
-    //   path: "/admin/adminpayment",
-    //   icon: CircleDollarSign,
-    // },
+    {
+      label: "Payments",
+      path: "/admin/adminpayment",
+      icon: CircleDollarSign,
+    },
     // {
     //   label: "Reviews",
     //   path: "/admin/adminreview",
