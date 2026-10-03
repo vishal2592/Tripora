@@ -121,7 +121,7 @@ const WhyChooseTripora = () => {
             </div>
 
             {/* CTA */}
-            <button
+            {/* <button
               type="button"
               className="group mt-9 inline-flex items-center gap-3 rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl"
             >
@@ -130,7 +130,7 @@ const WhyChooseTripora = () => {
               <ArrowRight
                 className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
               />
-            </button>
+            </button> */}
           </div>
 
           {/* =====================================================

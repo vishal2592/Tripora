@@ -15,6 +15,7 @@ import {
   Utensils,
   Users,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const packages = [
   {
@@ -448,7 +449,8 @@ const HolidayPackages = () => {
                         </p>
                       </div>
 
-                      <button
+                      <Link to='/packages'>
+                        <button
                         type="button"
                         className="group flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2.5 text-[10px] font-bold text-white shadow-md shadow-blue-600/20 transition hover:bg-blue-700"
                       >
@@ -459,6 +461,7 @@ const HolidayPackages = () => {
                           className="transition-transform group-hover:translate-x-1"
                         />
                       </button>
+                      </Link>
                     </div>
                   </div>
                 </div>

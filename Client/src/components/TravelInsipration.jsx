@@ -125,14 +125,14 @@ const TravelInspiration = () => {
                 </div>
               </div>
 
-              <button
+              {/* <button
                 type="button"
                 className="group/btn mt-6 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition-all duration-300 hover:bg-blue-600 hover:text-white"
               >
                 Read story
 
                 <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover/btn:translate-x-1" />
-              </button>
+              </button> */}
             </div>
           </article>
 

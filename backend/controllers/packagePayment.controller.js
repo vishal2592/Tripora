@@ -23,10 +23,16 @@ const createPackageRazorpayOrder = async (req, res) => {
       });
     }
 
-    const booking = await PackageBooking.findOne({ _id: id, user: userId });
+    const booking = await PackageBooking.findOne({
+      _id: id,
+      user: userId,
+    });
 
     console.log("PACKAGE BOOKING:", booking);
-    console.log("PACKAGE BOOKING PRICING:", booking?.pricing);
+    console.log(
+      "PACKAGE BOOKING PRICING:",
+      booking?.pricing
+    );
 
     if (!booking) {
       return res.status(404).json({
@@ -42,6 +48,14 @@ const createPackageRazorpayOrder = async (req, res) => {
       });
     }
 
+    // Already paid booking ko dobara payment nahi karwana
+    if (booking.paymentStatus === "Paid") {
+      return res.status(400).json({
+        success: false,
+        message: "Payment is already completed",
+      });
+    }
+
     const totalAmount = booking.pricing.totalAmount;
 
     if (!totalAmount || totalAmount <= 0) {
@@ -51,19 +65,30 @@ const createPackageRazorpayOrder = async (req, res) => {
       });
     }
 
-    const amountInPaise = Math.round(totalAmount * 100);
+    const amountInPaise = Math.round(
+      totalAmount * 100
+    );
 
-    // Create Razorpay order
-    const razorpayOrder = await razorpay.orders.create({
-      amount: amountInPaise,
-      currency: "INR",
-      receipt: booking.bookingId,
-      notes: {
-        bookingId: booking.bookingId,
-        bookingType: "Package",
-        userId: userId.toString(),
-      },
-    });
+    // ==========================================
+    // CREATE RAZORPAY ORDER
+    // ==========================================
+
+    const razorpayOrder =
+      await razorpay.orders.create({
+        amount: amountInPaise,
+        currency: "INR",
+        receipt: booking.bookingId,
+
+        notes: {
+          bookingId: booking.bookingId,
+          bookingType: "Package",
+          userId: userId.toString(),
+        },
+      });
+
+    // ==========================================
+    // CREATE PAYMENT RECORD
+    // ==========================================
 
     const payment = await Payment.create({
       user: userId,
@@ -76,24 +101,43 @@ const createPackageRazorpayOrder = async (req, res) => {
       status: "Created",
     });
 
+    // ==========================================
+    // SEND RESPONSE
+    // ==========================================
+
     return res.status(201).json({
       success: true,
       message: "Razorpay order created successfully",
+
+      // IMPORTANT:
+      // Sirf PUBLIC Razorpay Key ID frontend ko bhejna hai.
+      // Secret key kabhi frontend ko nahi bhejni.
+      razorpayKey: process.env.RAZORPAY_KEY_ID,
+
       order: {
         id: razorpayOrder.id,
         amount: razorpayOrder.amount,
         currency: razorpayOrder.currency,
         receipt: razorpayOrder.receipt,
       },
+
       payment: {
         id: payment._id,
         bookingId: payment.bookingId,
         amount: payment.amount,
         status: payment.status,
       },
+
+      // Agar frontend ko booking details chahiye
+      // to booking bhi response mein bhej sakte ho.
+      booking,
     });
   } catch (error) {
-    console.error("Create Package Razorpay Order Error:", error);
+    console.error(
+      "Create Package Razorpay Order Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to create Razorpay order",

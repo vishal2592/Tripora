@@ -433,6 +433,7 @@ const PopularDestinations = () => {
             </div>
           </div>
 
+         <Link to='/destinations'>
           <button
             type="button"
             className="flex w-fit items-center gap-1.5 rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-700"
@@ -440,6 +441,7 @@ const PopularDestinations = () => {
             Start Exploring
             <ArrowRight size={13} />
           </button>
+          </Link>
         </div>
 
       </div>

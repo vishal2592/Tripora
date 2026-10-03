@@ -9,6 +9,8 @@ import savedReducer from './slicer/savedHotelSlice';
 import packageReducer from './slicer/packageSlice'
 import offerReducer from './slicer/offferSlice'
 import adminUserReducer from './slicer/adminUserSlice'
+import packageBookingReducer from './slicer/packageBookingSlice'
+import packagePaymentReducer from './slicer/packagePaymentSlice'
 
 const store = configureStore({
   reducer: {
@@ -21,6 +23,8 @@ const store = configureStore({
     package : packageReducer,
     offer : offerReducer,
     users : adminUserReducer,
+    packageBooking : packageBookingReducer,
+    packagePayment : packagePaymentReducer,
   },
 });
 

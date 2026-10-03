@@ -1,8 +1,7 @@
-
-import React from "react";
+import React, { useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft,
   ArrowRight,
   CalendarDays,
   Check,
@@ -18,65 +17,265 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { getSinglePackageBooking } from "../redux/slicer/packageBookingSlice";
+
 const PackageBookingSuccess = () => {
   const navigate = useNavigate();
   const { bookingId } = useParams();
   const { state } = useLocation();
 
-  const packageData = state?.packageData || {
-    title: "Dubai Premium Escape",
-    destination: "Dubai, UAE",
-    duration: "5 Days / 4 Nights",
-    image:
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80",
-    rating: 4.8,
-    reviews: 324,
-  };
+  const dispatch = useDispatch();
 
-  const travellers = state?.travellers || {
-    adults: 2,
-    children: 0,
-    infants: 0,
-  };
+  const {
+    booking: reduxBooking,
+    singleLoading,
+    error: bookingError,
+  } = useSelector((state) => state.packageBooking);
 
-  const passenger = state?.passenger || {
-    firstName: "Vishal",
-    lastName: "Kumar",
-    email: "vishal@example.com",
-    mobile: "+91 98765 43210",
-  };
+  // =========================================================
+  // BOOKING DATA
+  // =========================================================
 
-  const travelDate = state?.travelDate || "20 September 2026";
+  const booking = state?.booking || reduxBooking;
 
-  const totalAmount = Number(state?.totalAmount) || 38574;
+  // =========================================================
+  // FETCH BOOKING ON REFRESH
+  // =========================================================
+  useEffect(() => {
+    /*
+      bookingId URL me MongoDB _id hai.
 
-  const paymentMethod = state?.paymentMethod || "UPI";
+      Example:
+      /package-booking-success/68dabc1234567890abcdef12
+    */
 
-  const safeBookingId = bookingId || state?.bookingId || "TRP15684742";
+    if (!booking && bookingId) {
+      dispatch(getSinglePackageBooking(bookingId));
+    }
+  }, [dispatch, bookingId, booking]);
+
+  // =========================================================
+  // PACKAGE DATA
+  // =========================================================
+
+  const packageData = useMemo(() => {
+    const backendPackage = booking?.package;
+    const packageDetails = booking?.packageDetails;
+
+    const statePackage = state?.packageData;
+
+    return {
+      title:
+        packageDetails?.name ||
+        backendPackage?.name ||
+        backendPackage?.title ||
+        statePackage?.title ||
+        statePackage?.name ||
+        "Dubai Premium Escape",
+
+      destination:
+        packageDetails?.destination ||
+        backendPackage?.destination?.name ||
+        statePackage?.destination ||
+        "Dubai, UAE",
+
+      country:
+        packageDetails?.country ||
+        backendPackage?.destination?.country ||
+        statePackage?.country ||
+        "",
+
+      duration:
+        packageDetails?.duration ||
+        backendPackage?.duration ||
+        statePackage?.duration ||
+        "5 Days / 4 Nights",
+
+      image:
+        packageDetails?.image ||
+        backendPackage?.image ||
+        statePackage?.image ||
+        "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80",
+
+      rating:
+        backendPackage?.rating ??
+        statePackage?.rating ??
+        null,
+
+      reviews:
+        backendPackage?.reviews ??
+        statePackage?.reviews ??
+        null,
+
+      price:
+        backendPackage?.price ??
+        statePackage?.price ??
+        34999,
+    };
+  }, [booking, state]);
+
+  // =========================================================
+  // TRAVELLERS
+  // =========================================================
+
+  const travellers = useMemo(() => {
+    return (
+      booking?.travellers ||
+      state?.travellers || {
+        adults: 2,
+        children: 0,
+        infants: 0,
+      }
+    );
+  }, [booking, state]);
+
+  // =========================================================
+  // PASSENGERS
+  // =========================================================
+
+  const passengers = useMemo(() => {
+    if (Array.isArray(booking?.passengers)) {
+      return booking.passengers;
+    }
+
+    if (Array.isArray(state?.passengers)) {
+      return state.passengers;
+    }
+
+    return [];
+  }, [booking, state]);
+
+  // =========================================================
+  // PRIMARY PASSENGER
+  // =========================================================
+
+  const passenger = useMemo(() => {
+    const backendPassenger = passengers[0];
+
+    if (backendPassenger) {
+      const nameParts = String(
+        backendPassenger.fullName || ""
+      )
+        .trim()
+        .split(/\s+/);
+
+      return {
+        firstName: nameParts[0] || "",
+        lastName: nameParts.slice(1).join(" ") || "",
+        fullName: backendPassenger.fullName || "",
+        email: backendPassenger.email || "",
+        mobile:
+          backendPassenger.mobileNumber ||
+          backendPassenger.mobile ||
+          "",
+        age: backendPassenger.age,
+        gender: backendPassenger.gender,
+      };
+    }
+
+    return (
+      state?.passenger || {
+        firstName: "",
+        lastName: "",
+        email: "",
+        mobile: "",
+      }
+    );
+  }, [passengers, state]);
+
+  // =========================================================
+  // TRAVEL DATE
+  // =========================================================
+
+  const travelDate =
+    booking?.travelDate ||
+    state?.travelDate ||
+    "20 September 2026";
+
+  // =========================================================
+  // PRICING
+  // =========================================================
+
+  const pricing = booking?.pricing || state?.pricing || {};
 
   const packageSubtotal =
+    Number(pricing.subtotal) ||
     Number(state?.packageSubtotal) ||
     Number(packageData.price) ||
     34999;
 
   const taxes =
-    Number(state?.taxes) ||
-    Math.round(packageSubtotal * 0.1);
+    pricing.taxes !== undefined
+      ? Number(pricing.taxes)
+      : Number(state?.taxes) ||
+        Math.round(packageSubtotal * 0.05);
 
   const convenienceFee =
-    Number(state?.convenienceFee) || 75;
+    pricing.convenienceFee !== undefined
+      ? Number(pricing.convenienceFee)
+      : Number(state?.convenienceFee) || 299;
+
+  const totalAmount =
+    pricing.totalAmount !== undefined
+      ? Number(pricing.totalAmount)
+      : Number(state?.totalAmount) ||
+        packageSubtotal + taxes + convenienceFee;
+
+  // =========================================================
+  // PAYMENT METHOD
+  // =========================================================
+
+  const paymentMethod =
+    state?.paymentMethod ||
+    "Razorpay";
+
+  // =========================================================
+  // DISPLAY BOOKING ID
+  // =========================================================
+
+  /*
+    IMPORTANT:
+
+    bookingId from URL = MongoDB _id
+
+    booking.bookingId = human-readable ID
+
+    User ko human-readable booking ID dikhani hai.
+  */
+
+  const safeBookingId =
+    booking?.bookingId ||
+    state?.displayBookingId ||
+    state?.booking?.bookingId ||
+    "Booking ID unavailable";
+
+  // =========================================================
+  // TRAVELLER COUNT
+  // =========================================================
 
   const travellerCount =
     Number(travellers.adults || 0) +
     Number(travellers.children || 0) +
     Number(travellers.infants || 0);
 
+  // =========================================================
+  // CURRENCY FORMAT
+  // =========================================================
+
   const formatCurrency = (amount) => {
-    return `₹${Number(amount || 0).toLocaleString("en-IN")}`;
+    return `₹${Number(amount || 0).toLocaleString(
+      "en-IN"
+    )}`;
   };
 
+  // =========================================================
+  // DATE FORMAT
+  // =========================================================
+
   const formatTravelDate = (date) => {
-    if (!date) return "20 September 2026";
+    if (!date) {
+      return "20 September 2026";
+    }
 
     const parsedDate = new Date(date);
 
@@ -91,9 +290,40 @@ const PackageBookingSuccess = () => {
     });
   };
 
+  // =========================================================
+  // DOWNLOAD / PRINT
+  // =========================================================
+
   const handleDownload = () => {
     window.print();
   };
+
+  // =========================================================
+  // LOADING
+  // =========================================================
+
+  if (!booking && singleLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="rounded-2xl border border-slate-200 bg-white px-8 py-7 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50">
+            <Plane
+              size={22}
+              className="animate-pulse text-blue-600"
+            />
+          </div>
+
+          <h2 className="mt-4 text-base font-black text-slate-900">
+            Loading Booking Details
+          </h2>
+
+          <p className="mt-1 text-xs text-slate-500">
+            Please wait while we load your confirmed booking.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -118,6 +348,7 @@ const PackageBookingSuccess = () => {
               <p className="text-[17px] font-black leading-none tracking-tight text-slate-900">
                 Tripora
               </p>
+
               <p className="mt-0.5 text-[9px] font-semibold text-slate-400">
                 Travel Your Way
               </p>
@@ -126,7 +357,11 @@ const PackageBookingSuccess = () => {
 
           {/* Secure booking */}
           <div className="hidden items-center gap-2 sm:flex">
-            <ShieldCheck size={16} className="text-green-600" />
+            <ShieldCheck
+              size={16}
+              className="text-green-600"
+            />
+
             <span className="text-xs font-semibold text-slate-600">
               Secure Booking
             </span>
@@ -180,6 +415,32 @@ const PackageBookingSuccess = () => {
           </div>
         </section>
 
+        {/* ================= FETCH ERROR ================= */}
+        {bookingError && !booking && (
+          <section className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 sm:p-5">
+            <p className="text-sm font-extrabold text-red-900">
+              Unable to load booking details
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-red-700">
+              {bookingError}
+            </p>
+
+            <button
+              type="button"
+              onClick={() =>
+                bookingId &&
+                dispatch(
+                  getSinglePackageBooking(bookingId)
+                )
+              }
+              className="mt-3 rounded-lg bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700"
+            >
+              Try Again
+            </button>
+          </section>
+        )}
+
         {/* ================= CONFIRMATION MESSAGE ================= */}
         <section className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4 sm:p-5">
           <div className="flex items-start gap-3">
@@ -224,7 +485,10 @@ const PackageBookingSuccess = () => {
               </div>
 
               <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-[10px] font-extrabold text-green-700">
-                <Check size={12} strokeWidth={3} />
+                <Check
+                  size={12}
+                  strokeWidth={3}
+                />
                 Confirmed
               </span>
             </div>
@@ -251,6 +515,7 @@ const PackageBookingSuccess = () => {
                   {packageData.rating && (
                     <span className="text-[10px] font-bold text-slate-500">
                       ★ {packageData.rating}
+
                       {packageData.reviews
                         ? ` (${packageData.reviews})`
                         : ""}
@@ -267,7 +532,19 @@ const PackageBookingSuccess = () => {
                     size={14}
                     className="shrink-0 text-blue-600"
                   />
-                  <span>{packageData.destination}</span>
+
+                  <span>
+                    {packageData.destination}
+
+                    {packageData.country &&
+                    !packageData.destination
+                      ?.toLowerCase()
+                      ?.includes(
+                        packageData.country.toLowerCase()
+                      )
+                      ? `, ${packageData.country}`
+                      : ""}
+                  </span>
                 </div>
 
                 <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
@@ -275,6 +552,7 @@ const PackageBookingSuccess = () => {
                     size={14}
                     className="shrink-0 text-blue-600"
                   />
+
                   <span>{packageData.duration}</span>
                 </div>
               </div>
@@ -296,6 +574,7 @@ const PackageBookingSuccess = () => {
               <h2 className="text-sm font-black text-slate-900">
                 Booking Details
               </h2>
+
               <p className="text-[10px] font-medium text-slate-400">
                 Your confirmed trip information
               </p>
@@ -307,6 +586,7 @@ const PackageBookingSuccess = () => {
             <div className="rounded-xl bg-slate-50 p-3">
               <div className="flex items-center gap-1.5 text-slate-400">
                 <CalendarDays size={13} />
+
                 <span className="text-[9px] font-bold uppercase tracking-wider">
                   Travel Date
                 </span>
@@ -321,6 +601,7 @@ const PackageBookingSuccess = () => {
             <div className="rounded-xl bg-slate-50 p-3">
               <div className="flex items-center gap-1.5 text-slate-400">
                 <Users size={13} />
+
                 <span className="text-[9px] font-bold uppercase tracking-wider">
                   Travellers
                 </span>
@@ -328,14 +609,18 @@ const PackageBookingSuccess = () => {
 
               <p className="mt-2 text-xs font-extrabold text-slate-900">
                 {travellerCount}{" "}
-                {travellerCount === 1 ? "Traveller" : "Travellers"}
+                {travellerCount === 1
+                  ? "Traveller"
+                  : "Travellers"}
               </p>
 
               <p className="mt-0.5 text-[9px] font-medium text-slate-400">
                 {travellers.adults || 0} Adults
+
                 {travellers.children
                   ? ` • ${travellers.children} Children`
                   : ""}
+
                 {travellers.infants
                   ? ` • ${travellers.infants} Infants`
                   : ""}
@@ -346,13 +631,14 @@ const PackageBookingSuccess = () => {
             <div className="rounded-xl bg-slate-50 p-3">
               <div className="flex items-center gap-1.5 text-slate-400">
                 <CheckCircle2 size={13} />
+
                 <span className="text-[9px] font-bold uppercase tracking-wider">
                   Status
                 </span>
               </div>
 
               <p className="mt-2 text-xs font-extrabold text-green-600">
-                Confirmed
+                {booking?.bookingStatus || "Confirmed"}
               </p>
 
               <p className="mt-0.5 text-[9px] font-medium text-slate-400">
@@ -364,13 +650,14 @@ const PackageBookingSuccess = () => {
             <div className="rounded-xl bg-slate-50 p-3">
               <div className="flex items-center gap-1.5 text-slate-400">
                 <WalletCards size={13} />
+
                 <span className="text-[9px] font-bold uppercase tracking-wider">
                   Payment
                 </span>
               </div>
 
               <p className="mt-2 text-xs font-extrabold text-slate-900">
-                Paid
+                {booking?.paymentStatus || "Paid"}
               </p>
 
               <p className="mt-0.5 text-[9px] font-medium text-slate-400">
@@ -387,31 +674,86 @@ const PackageBookingSuccess = () => {
           </h2>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {/* Primary Traveller */}
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
               <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
                 Primary Traveller
               </p>
 
               <p className="mt-1 text-sm font-extrabold text-slate-900">
-                {passenger?.firstName || "Vishal"}{" "}
-                {passenger?.lastName || "Kumar"}
+                {passenger?.fullName ||
+                  `${passenger?.firstName || ""} ${
+                    passenger?.lastName || ""
+                  }`.trim() ||
+                  "Traveller"}
               </p>
+
+              {passenger?.gender && (
+                <p className="mt-1 text-[10px] font-medium text-slate-400">
+                  {passenger.gender}
+
+                  {passenger.age !== undefined &&
+                  passenger.age !== null
+                    ? ` • ${passenger.age} years`
+                    : ""}
+                </p>
+              )}
             </div>
 
+            {/* Contact */}
             <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
               <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
                 Contact
               </p>
 
               <p className="mt-1 text-xs font-bold text-slate-700">
-                {passenger?.mobile || "+91 98765 43210"}
+                {passenger?.mobile || "Contact number unavailable"}
               </p>
 
               <p className="mt-0.5 break-all text-[10px] font-medium text-slate-400">
-                {passenger?.email || "vishal@example.com"}
+                {passenger?.email || "Email unavailable"}
               </p>
             </div>
           </div>
+
+          {/* Additional Travellers */}
+          {passengers.length > 1 && (
+            <div className="mt-4">
+              <p className="mb-2 text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                Additional Travellers
+              </p>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                {passengers
+                  .slice(1)
+                  .map((traveller, index) => (
+                    <div
+                      key={
+                        traveller._id ||
+                        `${traveller.fullName}-${index}`
+                      }
+                      className="rounded-xl border border-slate-100 bg-slate-50 p-3"
+                    >
+                      <p className="text-xs font-extrabold text-slate-800">
+                        {traveller.fullName ||
+                          `Traveller ${index + 2}`}
+                      </p>
+
+                      <p className="mt-1 text-[10px] font-medium text-slate-400">
+                        {traveller.age !== undefined &&
+                        traveller.age !== null
+                          ? `${traveller.age} years`
+                          : ""}
+
+                        {traveller.gender
+                          ? ` • ${traveller.gender}`
+                          : ""}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ================= PAYMENT SUMMARY ================= */}
@@ -428,6 +770,7 @@ const PackageBookingSuccess = () => {
               <h2 className="text-sm font-black text-slate-900">
                 Payment Summary
               </h2>
+
               <p className="text-[10px] font-medium text-slate-400">
                 Your payment has been successfully processed
               </p>
@@ -435,33 +778,40 @@ const PackageBookingSuccess = () => {
           </div>
 
           <div className="mt-5 space-y-3">
+            {/* Package Fare */}
             <div className="flex items-center justify-between gap-4 text-xs">
               <span className="font-medium text-slate-500">
                 Package Fare
               </span>
+
               <span className="font-bold text-slate-900">
                 {formatCurrency(packageSubtotal)}
               </span>
             </div>
 
+            {/* Taxes */}
             <div className="flex items-center justify-between gap-4 text-xs">
               <span className="font-medium text-slate-500">
                 Taxes & Fees
               </span>
+
               <span className="font-bold text-slate-900">
                 {formatCurrency(taxes)}
               </span>
             </div>
 
+            {/* Convenience Fee */}
             <div className="flex items-center justify-between gap-4 text-xs">
               <span className="font-medium text-slate-500">
                 Convenience Fee
               </span>
+
               <span className="font-bold text-slate-900">
                 {formatCurrency(convenienceFee)}
               </span>
             </div>
 
+            {/* Total */}
             <div className="border-t border-dashed border-slate-200 pt-3">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-sm font-black text-slate-900">
@@ -493,8 +843,8 @@ const PackageBookingSuccess = () => {
 
               <div className="mt-2 space-y-1.5 text-xs leading-5 text-blue-800">
                 <p>
-                  • Your booking is confirmed and payment has been
-                  received.
+                  • Your booking is confirmed and payment has
+                  been received.
                 </p>
 
                 <p>
@@ -506,8 +856,8 @@ const PackageBookingSuccess = () => {
                 </p>
 
                 <p>
-                  • You can view your complete booking anytime from
-                  My Bookings.
+                  • You can view your complete booking anytime
+                  from My Bookings.
                 </p>
               </div>
             </div>
@@ -517,30 +867,36 @@ const PackageBookingSuccess = () => {
         {/* ================= ACTION BUTTONS ================= */}
         <section className="mt-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+            {/* My Bookings */}
             <button
               type="button"
               onClick={() => navigate("/my-bookings")}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-xs font-extrabold text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800 sm:w-auto"
             >
               View My Bookings
+
               <ArrowRight size={15} />
             </button>
 
+            {/* Download */}
             <button
               type="button"
               onClick={handleDownload}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-extrabold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto"
             >
               <Download size={15} />
+
               Download Booking
             </button>
 
+            {/* Home */}
             <button
               type="button"
               onClick={() => navigate("/")}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-extrabold text-slate-700 shadow-sm transition hover:bg-slate-50 sm:w-auto"
             >
               <Home size={15} />
+
               Back to Home
             </button>
           </div>
@@ -564,4 +920,3 @@ const PackageBookingSuccess = () => {
 };
 
 export default PackageBookingSuccess;
-
