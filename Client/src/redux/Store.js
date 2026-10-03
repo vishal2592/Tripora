@@ -12,6 +12,7 @@ import adminUserReducer from './slicer/adminUserSlice'
 import packageBookingReducer from './slicer/packageBookingSlice'
 import packagePaymentReducer from './slicer/packagePaymentSlice'
 import myBookingReducer from './slicer/MyBookingSlice'
+import paymentReducer from './slicer/paymentSlice'
 
 const store = configureStore({
   reducer: {
@@ -27,6 +28,7 @@ const store = configureStore({
     packageBooking : packageBookingReducer,
     packagePayment : packagePaymentReducer,
     myBooking : myBookingReducer,
+    payment : paymentReducer,
   },
 });
 

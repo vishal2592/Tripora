@@ -15,11 +15,8 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
-  Check,
   CheckCircle2,
-  ChevronRight,
   Clock3,
-  CreditCard,
   Hotel,
   LockKeyhole,
   Mail,
@@ -102,9 +99,9 @@ const fallbackBooking = {
 // =========================================================
 
 const formatPrice = (price) => {
-  return new Intl.NumberFormat(
-    "en-IN"
-  ).format(Number(price || 0));
+  return new Intl.NumberFormat("en-IN").format(
+    Number(price || 0)
+  );
 };
 
 const parseDate = (dateValue) => {
@@ -112,9 +109,7 @@ const parseDate = (dateValue) => {
 
   const date = new Date(dateValue);
 
-  if (
-    Number.isNaN(date.getTime())
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return null;
   }
 
@@ -151,8 +146,7 @@ const calculateNights = (
 };
 
 const formatDate = (dateValue) => {
-  const date =
-    parseDate(dateValue);
+  const date = parseDate(dateValue);
 
   if (!date) {
     return dateValue || "-";
@@ -220,9 +214,7 @@ const HotelBookNow = () => {
 
   const {
     hotel: apiHotel,
-
     loading: hotelLoading,
-
     error: hotelError,
   } = useSelector(
     (state) => state.hotel
@@ -235,13 +227,9 @@ const HotelBookNow = () => {
   const [formData, setFormData] =
     useState({
       firstName: "",
-
       lastName: "",
-
       email: "",
-
       mobile: "",
-
       specialRequest: "",
     });
 
@@ -292,6 +280,8 @@ const HotelBookNow = () => {
     return {
       ...fallbackHotel,
 
+      // IMPORTANT:
+      // Keep actual MongoDB hotel _id
       id: apiHotel._id,
 
       name:
@@ -448,8 +438,10 @@ const HotelBookNow = () => {
       }
     }
 
-    return rooms[0] ||
-      fallbackRoom;
+    return (
+      rooms[0] ||
+      fallbackRoom
+    );
   }, [
     roomId,
     rooms,
@@ -640,62 +632,120 @@ const HotelBookNow = () => {
   // CONTINUE TO PAYMENT
   // =======================================================
 
-const handleContinue = () => {
-  if (!hotelId) {
-    setErrors({
-      general:
-        "Hotel information is missing. Please go back and select the hotel again.",
-    });
-    return;
-  }
+  const handleContinue = () => {
+    // Make sure actual MongoDB hotel ID exists
+    if (!hotelId) {
+      setErrors({
+        general:
+          "Hotel information is missing. Please go back and select the hotel again.",
+      });
 
-  if (!validateForm()) {
-    return;
-  }
+      return;
+    }
 
-  setIsSubmitting(true);
+    // Validate guest form
+    if (!validateForm()) {
+      return;
+    }
 
-  dispatch(
-    setBookingData({
-      selectedHotel: hotel,
-      roomDetails: selectedRoom,
-      checkIn,
-      checkOut,
-      nights,
-      guests,
-      guestDetails: {
-        ...formData,
-        countryCode: "+91",
-      },
-      roomTotal: totalRoomPrice,
-      taxes: taxes,
-      totalAmount: totalPrice,
-      paymentMethod: "upi",
-    })
-  );
+    // Same guest details will be used in
+    // Redux and navigation state
+    const bookingGuestDetails = {
+      ...formData,
+      countryCode: "+91",
+    };
 
-  navigate(`/hotels/${hotelId}/payment`, {
-    state: {
-      hotelId,
-      roomId,
-      hotel,
-      selectedRoom,
-      checkIn,
-      checkOut,
-      guests,
-      nights,
-      roomPrice,
-      baseRoomTotal,
-      extraGuests,
-      extraGuestFeePerNight,
-      extraGuestTotal,
-      totalRoomPrice,
-      taxes,
-      totalPrice,
-      guestDetails: formData,
-    },
-  });
-};
+    setIsSubmitting(true);
+
+    // =====================================================
+    // SAVE BOOKING DATA IN REDUX
+    // =====================================================
+
+    dispatch(
+      setBookingData({
+        selectedHotel: hotel,
+
+        // Actual selected room
+        roomDetails: selectedRoom,
+
+        checkIn,
+
+        checkOut,
+
+        nights,
+
+        guests,
+
+        guestDetails:
+          bookingGuestDetails,
+
+        roomTotal:
+          totalRoomPrice,
+
+        taxes,
+
+        totalAmount:
+          totalPrice,
+
+        // IMPORTANT:
+        // Actual payment method is Razorpay
+        paymentMethod: "razorpay",
+      })
+    );
+
+    // =====================================================
+    // GO TO PAYMENT PAGE
+    // =====================================================
+
+    navigate(
+      `/hotels/${hotelId}/payment`,
+      {
+        state: {
+          // IMPORTANT:
+          // Actual MongoDB Hotel _id
+          hotelId,
+
+          // Local/synthetic room id
+          roomId,
+
+          hotel,
+
+          selectedRoom,
+
+          checkIn,
+
+          checkOut,
+
+          guests,
+
+          nights,
+
+          roomPrice,
+
+          baseRoomTotal,
+
+          extraGuests,
+
+          extraGuestFeePerNight,
+
+          extraGuestTotal,
+
+          totalRoomPrice,
+
+          taxes,
+
+          totalPrice,
+
+          guestDetails:
+            bookingGuestDetails,
+
+          // Keep payment information
+          // available to HotelPayment
+          paymentMethod: "razorpay",
+        },
+      }
+    );
+  };
 
   // =======================================================
   // LOADING

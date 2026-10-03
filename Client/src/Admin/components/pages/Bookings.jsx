@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -23,14 +24,22 @@ import {
   XCircle,
 } from "lucide-react";
 
+// ======================================================
+// HOTEL BOOKING REDUX
+// ======================================================
+
 import {
-  getAllBooking as getAllHotelBookings,
-  cancelBooking as cancelHotelBooking,
+  getAllHotelBookings,
+  adminCancelHotelBooking,
 } from "../../../redux/slicer/hotelBookingSlice";
+
+// ======================================================
+// PACKAGE BOOKING REDUX
+// ======================================================
 
 import {
   getAllPackageBookings,
-  adminCancelPackageBooking
+  adminCancelPackageBooking,
 } from "../../../redux/slicer/packageBookingSlice";
 
 // ======================================================
@@ -181,11 +190,26 @@ const normalizeHotelBooking = (booking) => {
       ? booking.userDetails
       : {};
 
+  // ====================================================
+  // BOOKING ID
+  // ====================================================
+
+  // Backend admin hotel routes use business bookingId
+  // Example: HTL28907159
   const bookingId = firstValue(
     booking?.bookingId,
     booking?._id,
     booking?.id
   );
+
+  const mongoId = firstValue(
+    booking?._id,
+    ""
+  );
+
+  // ====================================================
+  // HOTEL
+  // ====================================================
 
   const hotelName = firstValue(
     hotel?.hotelName,
@@ -220,34 +244,75 @@ const normalizeHotelBooking = (booking) => {
     ""
   );
 
+  // ====================================================
+  // GUEST
+  // ====================================================
+
+  const guestDetails =
+    booking?.guestDetails &&
+    typeof booking.guestDetails === "object"
+      ? booking.guestDetails
+      : {};
+
+  const guestNameFromDetails = [
+    guestDetails?.firstName,
+    guestDetails?.lastName,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   const guestName = firstValue(
     booking?.guestName,
+
     booking?.guest?.name,
     booking?.guest?.fullName,
+
+    guestDetails?.fullName,
+    guestNameFromDetails,
+
     user?.name,
     user?.fullName,
+
     booking?.name,
+
     "Guest"
   );
 
   const guestEmail = firstValue(
     booking?.guestEmail,
+
     booking?.guest?.email,
+
+    guestDetails?.email,
+
     user?.email,
+
     booking?.email,
+
     ""
   );
 
   const guestMobile = firstValue(
     booking?.guestMobile,
+
     booking?.guest?.mobileNumber,
     booking?.guest?.mobile,
+
+    guestDetails?.mobile,
+    guestDetails?.mobileNumber,
+
     user?.mobile,
     user?.mobileNumber,
+
     booking?.mobile,
     booking?.mobileNumber,
+
     ""
   );
+
+  // ====================================================
+  // DATES
+  // ====================================================
 
   const checkIn = firstValue(
     booking?.checkIn,
@@ -261,20 +326,69 @@ const normalizeHotelBooking = (booking) => {
     booking?.checkOutTime
   );
 
+  const bookingDate = firstValue(
+    booking?.createdAt,
+    booking?.bookingDate,
+    booking?.createdOn
+  );
+
+  // ====================================================
+  // ROOMS
+  // ====================================================
+
   const rooms = Number(
     firstValue(
       booking?.rooms,
       booking?.numberOfRooms,
       booking?.roomCount,
+      booking?.roomDetails?.quantity,
       1
     )
   );
+
+  // ====================================================
+  // ROOM DETAILS
+  // ====================================================
+
+  const roomName = firstValue(
+    booking?.roomDetails?.name,
+    ""
+  );
+
+  const roomPrice = Number(
+    firstValue(
+      booking?.roomDetails?.price,
+      0
+    )
+  );
+
+  const roomBed = firstValue(
+    booking?.roomDetails?.bed,
+    ""
+  );
+
+  const meal = firstValue(
+    booking?.roomDetails?.meal,
+    ""
+  );
+
+  const roomCancellation = firstValue(
+    booking?.roomDetails?.cancellation,
+    ""
+  );
+
+  // ====================================================
+  // GUEST COUNT
+  // ====================================================
 
   const adults = Number(
     firstValue(
       booking?.adults,
       booking?.guests?.adults,
       booking?.travellers?.adults,
+      booking?.guestDetails?.adults,
+      booking?.roomDetails?.guests,
+      booking?.guests,
       1
     )
   );
@@ -284,9 +398,14 @@ const normalizeHotelBooking = (booking) => {
       booking?.children,
       booking?.guests?.children,
       booking?.travellers?.children,
+      booking?.guestDetails?.children,
       0
     )
   );
+
+  // ====================================================
+  // AMOUNT
+  // ====================================================
 
   const amount = Number(
     firstValue(
@@ -300,6 +419,10 @@ const normalizeHotelBooking = (booking) => {
     )
   );
 
+  // ====================================================
+  // STATUS
+  // ====================================================
+
   const status = normalizeStatus(
     firstValue(
       booking?.bookingStatus,
@@ -307,6 +430,10 @@ const normalizeHotelBooking = (booking) => {
       "Pending"
     )
   );
+
+  // ====================================================
+  // PAYMENT STATUS
+  // ====================================================
 
   const paymentStatus = normalizePaymentStatus(
     firstValue(
@@ -316,27 +443,36 @@ const normalizeHotelBooking = (booking) => {
     )
   );
 
-  const bookingDate = firstValue(
-    booking?.createdAt,
-    booking?.bookingDate,
-    booking?.createdOn
-  );
+  // ====================================================
+  // IMAGE
+  // ====================================================
 
   const image = firstValue(
     hotel?.image,
     hotel?.images?.[0],
+    booking?.hotelDetails?.image,
     booking?.image,
     booking?.hotelImage,
     ""
   );
 
+  // ====================================================
+  // RETURN NORMALIZED HOTEL BOOKING
+  // ====================================================
+
   return {
+    // IMPORTANT:
+    // id is business bookingId
     id: String(
-      bookingId || `hotel-${Math.random()}`
+      booking?.bookingId ||
+        booking?._id ||
+        booking?.id ||
+        `hotel-${Math.random()}`
     ),
 
-    mongoId:
-      booking?._id || bookingId,
+    bookingId: booking?.bookingId || "",
+
+    mongoId,
 
     type: "Hotel",
 
@@ -364,6 +500,13 @@ const normalizeHotelBooking = (booking) => {
     checkOut,
 
     rooms,
+
+    roomName,
+    roomPrice,
+    roomBed,
+    meal,
+    roomCancellation,
+
     adults,
     children,
 
@@ -438,22 +581,21 @@ const normalizePackageBooking = (booking) => {
     packageData?.destination
   );
 
-  const destination =
-    firstValue(
-      typeof destinationValue === "object"
-        ? destinationValue?.name
-        : destinationValue,
+  const destination = firstValue(
+    typeof destinationValue === "object"
+      ? destinationValue?.name
+      : destinationValue,
 
-      booking?.destination?.name,
+    booking?.destination?.name,
 
-      typeof booking?.destination === "string"
-        ? booking.destination
-        : "",
+    typeof booking?.destination === "string"
+      ? booking.destination
+      : "",
 
-      booking?.location,
+    booking?.location,
 
-      ""
-    );
+    ""
+  );
 
   // ====================================================
   // COUNTRY
@@ -594,8 +736,7 @@ const normalizePackageBooking = (booking) => {
   );
 
   // ====================================================
-  // IMPORTANT:
-  // YOUR API HAS pricing.totalAmount
+  // AMOUNT
   // ====================================================
 
   const amount = Number(
@@ -662,6 +803,9 @@ const normalizePackageBooking = (booking) => {
     mongoId:
       booking?._id || bookingId,
 
+    bookingId:
+      booking?.bookingId || "",
+
     type: "Package",
 
     title: packageName,
@@ -727,24 +871,47 @@ const Bookings = () => {
   const dispatch = useDispatch();
 
   // ====================================================
-  // REDUX
+  // REDUX - HOTEL
   // ====================================================
 
-  const {
-    bookings: hotelBookings = [],
-    loading: hotelLoading = false,
-    error: hotelError = null,
-  } = useSelector(
-    (state) => state.hotelBooking || {}
-  );
+ const hotelBookingState = useSelector(
+  (state) => state.booking
+);
 
-  const {
-    bookings: packageBookings = [],
-    loading: packageLoading = false,
-    error: packageError = null,
-  } = useSelector(
+  const hotelBookings = Array.isArray(
+    hotelBookingState.bookings
+  )
+    ? hotelBookingState.bookings
+    : [];
+
+  const hotelLoading =
+    hotelBookingState.loading || false;
+
+  const hotelError =
+    hotelBookingState.error || null;
+
+    console.log("HOTEL REDUX STATE:", hotelBookingState);
+console.log("HOTEL BOOKINGS:", hotelBookings);
+
+  // ====================================================
+  // REDUX - PACKAGE
+  // ====================================================
+
+  const packageBookingState = useSelector(
     (state) => state.packageBooking || {}
   );
+
+  const packageBookings = Array.isArray(
+    packageBookingState.bookings
+  )
+    ? packageBookingState.bookings
+    : [];
+
+  const packageLoading =
+    packageBookingState.loading || false;
+
+  const packageError =
+    packageBookingState.error || null;
 
   // ====================================================
   // STATES
@@ -789,7 +956,7 @@ const Bookings = () => {
     useState(null);
 
   // ====================================================
-  // FETCH
+  // FETCH BOOKINGS
   // ====================================================
 
   useEffect(() => {
@@ -833,6 +1000,7 @@ const Bookings = () => {
   const filteredBookings = useMemo(() => {
     let data = [...allBookings];
 
+    // TAB
     if (activeTab !== "All") {
       data = data.filter(
         (booking) =>
@@ -840,6 +1008,7 @@ const Bookings = () => {
       );
     }
 
+    // SEARCH
     const searchValue =
       search.trim().toLowerCase();
 
@@ -847,6 +1016,7 @@ const Bookings = () => {
       data = data.filter((booking) => {
         const searchableText = [
           booking.id,
+          booking.bookingId,
           booking.mongoId,
           booking.title,
           booking.location,
@@ -869,6 +1039,7 @@ const Bookings = () => {
       });
     }
 
+    // STATUS
     if (statusFilter !== "All") {
       data = data.filter(
         (booking) =>
@@ -876,6 +1047,7 @@ const Bookings = () => {
       );
     }
 
+    // PAYMENT
     if (paymentFilter !== "All") {
       data = data.filter(
         (booking) =>
@@ -884,6 +1056,7 @@ const Bookings = () => {
       );
     }
 
+    // DATE
     if (dateFilter !== "All") {
       const now = new Date();
 
@@ -920,6 +1093,7 @@ const Bookings = () => {
       });
     }
 
+    // SORT
     data.sort((a, b) => {
       if (sortBy === "newest") {
         return (
@@ -1068,7 +1242,7 @@ const Bookings = () => {
   };
 
   // ====================================================
-  // CANCEL
+  // CANCEL BOOKING
   // ====================================================
 
   const handleCancelBooking = async () => {
@@ -1077,8 +1251,24 @@ const Bookings = () => {
     try {
       setCancelLoading(true);
 
-      const bookingId =
-        cancelBookingData.mongoId;
+      // IMPORTANT:
+      // Hotel backend expects business bookingId
+      // Package backend may expect Mongo _id.
+      let bookingId;
+
+      if (
+        cancelBookingData.type ===
+        "Hotel"
+      ) {
+        bookingId =
+          cancelBookingData.bookingId ||
+          cancelBookingData.id;
+      } else {
+        bookingId =
+          cancelBookingData.mongoId ||
+          cancelBookingData.bookingId ||
+          cancelBookingData.id;
+      }
 
       if (!bookingId) {
         throw new Error(
@@ -1086,14 +1276,27 @@ const Bookings = () => {
         );
       }
 
+      // ==================================================
+      // HOTEL ADMIN CANCEL
+      // ==================================================
+
       if (
         cancelBookingData.type ===
         "Hotel"
       ) {
         await dispatch(
-          cancelHotelBooking(bookingId)
+          adminCancelHotelBooking({
+            bookingId,
+            cancellationReason:
+              cancelReason ||
+              "Cancelled by admin",
+          })
         ).unwrap();
       }
+
+      // ==================================================
+      // PACKAGE ADMIN CANCEL
+      // ==================================================
 
       if (
         cancelBookingData.type ===
@@ -1109,6 +1312,10 @@ const Bookings = () => {
         ).unwrap();
       }
 
+      // ==================================================
+      // CLOSE MODALS
+      // ==================================================
+
       setCancelBookingData(null);
       setSelectedBooking(null);
       setOpenMenu(null);
@@ -1117,13 +1324,17 @@ const Bookings = () => {
         "Cancelled by admin"
       );
 
+      // ==================================================
+      // REFRESH
+      // ==================================================
+
       await dispatch(
         getAllHotelBookings()
-      );
+      ).unwrap();
 
       await dispatch(
         getAllPackageBookings()
-      );
+      ).unwrap();
     } catch (error) {
       console.error(
         "Booking cancellation error:",
@@ -1249,8 +1460,11 @@ const Bookings = () => {
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
+          {/* TOTAL */}
+
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between">
+
               <div>
                 <p className="text-sm font-medium text-slate-500">
                   Total Bookings
@@ -1264,9 +1478,11 @@ const Bookings = () => {
               <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
                 <CalendarDays size={21} />
               </div>
+
             </div>
 
             <div className="mt-4 flex items-center gap-3 text-xs text-slate-500">
+
               <span>
                 Hotels:{" "}
                 <b className="text-slate-700">
@@ -1280,11 +1496,16 @@ const Bookings = () => {
                   {stats.packageCount}
                 </b>
               </span>
+
             </div>
           </div>
 
+          {/* CONFIRMED */}
+
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
             <div className="flex items-start justify-between">
+
               <div>
                 <p className="text-sm font-medium text-slate-500">
                   Confirmed
@@ -1298,15 +1519,21 @@ const Bookings = () => {
               <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600">
                 <CheckCircle2 size={21} />
               </div>
+
             </div>
 
             <p className="mt-4 text-xs text-slate-500">
               Confirmed bookings
             </p>
+
           </div>
 
+          {/* PENDING */}
+
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
             <div className="flex items-start justify-between">
+
               <div>
                 <p className="text-sm font-medium text-slate-500">
                   Pending
@@ -1320,15 +1547,21 @@ const Bookings = () => {
               <div className="rounded-xl bg-amber-50 p-3 text-amber-600">
                 <Clock3 size={21} />
               </div>
+
             </div>
 
             <p className="mt-4 text-xs text-slate-500">
               Awaiting confirmation
             </p>
+
           </div>
 
+          {/* REVENUE */}
+
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+
             <div className="flex items-start justify-between">
+
               <div>
                 <p className="text-sm font-medium text-slate-500">
                   Revenue
@@ -1344,12 +1577,15 @@ const Bookings = () => {
               <div className="rounded-xl bg-purple-50 p-3 text-purple-600">
                 <CircleDollarSign size={21} />
               </div>
+
             </div>
 
             <p className="mt-4 text-xs text-slate-500">
               From paid / confirmed bookings
             </p>
+
           </div>
+
         </div>
 
         {/* MAIN CARD */}
@@ -1359,6 +1595,7 @@ const Bookings = () => {
           {/* TABS */}
 
           <div className="border-b border-slate-200 px-4 pt-4 sm:px-6">
+
             <div className="flex gap-6 overflow-x-auto">
 
               {[
@@ -1408,6 +1645,7 @@ const Bookings = () => {
                   )}
                 </button>
               ))}
+
             </div>
           </div>
 
@@ -1417,7 +1655,10 @@ const Bookings = () => {
 
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto_auto_auto_auto]">
 
+              {/* SEARCH */}
+
               <div className="relative">
+
                 <Search
                   size={18}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -1436,9 +1677,13 @@ const Bookings = () => {
                   placeholder="Search booking, guest, hotel, package..."
                   className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100"
                 />
+
               </div>
 
+              {/* STATUS */}
+
               <div className="relative">
+
                 <select
                   value={statusFilter}
                   onChange={(e) => {
@@ -1479,9 +1724,13 @@ const Bookings = () => {
                   size={16}
                   className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
                 />
+
               </div>
 
+              {/* PAYMENT */}
+
               <div className="relative">
+
                 <select
                   value={paymentFilter}
                   onChange={(e) => {
@@ -1518,9 +1767,13 @@ const Bookings = () => {
                   size={16}
                   className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
                 />
+
               </div>
 
+              {/* DATE */}
+
               <div className="relative">
+
                 <select
                   value={dateFilter}
                   onChange={(e) => {
@@ -1553,9 +1806,13 @@ const Bookings = () => {
                   size={16}
                   className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
                 />
+
               </div>
 
+              {/* SORT */}
+
               <div className="relative">
+
                 <select
                   value={sortBy}
                   onChange={(e) =>
@@ -1586,12 +1843,17 @@ const Bookings = () => {
                   size={16}
                   className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
                 />
+
               </div>
+
             </div>
+
+            {/* FILTER SUMMARY */}
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
               <div className="flex items-center gap-2 text-sm text-slate-500">
+
                 <Filter size={16} />
 
                 <span>
@@ -1607,6 +1869,7 @@ const Bookings = () => {
                     ? "s"
                     : ""}
                 </span>
+
               </div>
 
               <button
@@ -1618,31 +1881,36 @@ const Bookings = () => {
 
                 Clear Filters
               </button>
+
             </div>
+
           </div>
 
           {/* LOADING */}
 
           {loading && (
             <div className="flex items-center justify-center gap-3 px-6 py-12 text-sm text-slate-500">
+
               <RefreshCw
                 size={19}
                 className="animate-spin text-blue-600"
               />
 
               Loading bookings...
+
             </div>
           )}
 
           {!loading && (
             <>
-              {/* DESKTOP */}
+              {/* DESKTOP TABLE */}
 
               <div className="hidden overflow-x-auto lg:block">
 
                 <table className="w-full min-w-[1100px]">
 
                   <thead>
+
                     <tr className="border-b border-slate-200 bg-slate-50/80">
 
                       <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -1672,7 +1940,9 @@ const Bookings = () => {
                       <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500">
                         Action
                       </th>
+
                     </tr>
+
                   </thead>
 
                   <tbody className="divide-y divide-slate-100">
@@ -1687,6 +1957,7 @@ const Bookings = () => {
                           {/* BOOKING */}
 
                           <td className="px-6 py-4">
+
                             <div className="flex items-center gap-3">
 
                               <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-slate-100">
@@ -1707,6 +1978,7 @@ const Bookings = () => {
                                   />
                                 ) : (
                                   <div className="flex h-full w-full items-center justify-center text-blue-600">
+
                                     {booking.type ===
                                     "Hotel" ? (
                                       <BedDouble
@@ -1717,8 +1989,10 @@ const Bookings = () => {
                                         size={21}
                                       />
                                     )}
+
                                   </div>
                                 )}
+
                               </div>
 
                               <div className="min-w-0">
@@ -1726,61 +2000,86 @@ const Bookings = () => {
                                 <div className="mb-1 flex items-center gap-2">
 
                                   <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
-                                    {booking.type}
+                                    {
+                                      booking.type
+                                    }
                                   </span>
 
                                 </div>
 
                                 <p className="max-w-[240px] truncate text-sm font-bold text-slate-900">
-                                  {booking.title}
+                                  {
+                                    booking.title
+                                  }
                                 </p>
 
                                 <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                                  <MapPin size={12} />
+
+                                  <MapPin
+                                    size={12}
+                                  />
 
                                   <span className="max-w-[220px] truncate">
                                     {booking.location ||
                                       "Location unavailable"}
                                   </span>
+
                                 </div>
 
                                 <p className="mt-1 text-[11px] text-slate-400">
                                   ID:{" "}
-                                  {booking.id}
+                                  {
+                                    booking.id
+                                  }
                                 </p>
+
                               </div>
+
                             </div>
+
                           </td>
 
                           {/* GUEST */}
 
                           <td className="px-6 py-4">
+
                             <div>
 
                               <p className="text-sm font-semibold text-slate-800">
-                                {booking.guestName ||
-                                  "Guest"}
+                                {
+                                  booking.guestName ||
+                                  "Guest"
+                                }
                               </p>
 
                               <p className="mt-1 max-w-[190px] truncate text-xs text-slate-500">
-                                {booking.guestEmail ||
+                                {
+                                  booking.guestEmail ||
                                   booking.guestMobile ||
-                                  "No contact"}
+                                  "No contact"
+                                }
                               </p>
 
                               <div className="mt-1 flex items-center gap-1 text-xs text-slate-400">
-                                <Users size={12} />
 
-                                {booking.guests ||
-                                  1}{" "}
+                                <Users
+                                  size={12}
+                                />
+
+                                {
+                                  booking.guests ||
+                                  1
+                                }{" "}
                                 guest
                                 {(booking.guests ||
                                   1) !== 1
                                   ? "s"
                                   : ""}
+
                               </div>
 
                             </div>
+
                           </td>
 
                           {/* DATE */}
@@ -1824,11 +2123,13 @@ const Bookings = () => {
                           {/* AMOUNT */}
 
                           <td className="px-6 py-4">
+
                             <p className="text-sm font-bold text-slate-900">
                               {formatCurrency(
                                 booking.amount
                               )}
                             </p>
+
                           </td>
 
                           {/* PAYMENT */}
@@ -1856,7 +2157,9 @@ const Bookings = () => {
                                 booking.status
                               )}`}
                             >
-                              {booking.status}
+                              {
+                                booking.status
+                              }
                             </span>
 
                           </td>
@@ -1917,6 +2220,11 @@ const Bookings = () => {
                                           booking
                                         );
 
+                                        setCancelReason(
+                                          booking.cancellationReason ||
+                                            "Cancelled by admin"
+                                        );
+
                                         setOpenMenu(
                                           null
                                         );
@@ -1933,13 +2241,19 @@ const Bookings = () => {
 
                                 </div>
                               )}
+
                             </div>
+
                           </td>
+
                         </tr>
                       )
                     )}
+
                   </tbody>
+
                 </table>
+
               </div>
 
               {/* MOBILE */}
@@ -1967,6 +2281,7 @@ const Bookings = () => {
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-blue-600">
+
                               {booking.type ===
                               "Hotel" ? (
                                 <BedDouble
@@ -1977,6 +2292,7 @@ const Bookings = () => {
                                   size={22}
                                 />
                               )}
+
                             </div>
                           )}
 
@@ -1987,7 +2303,9 @@ const Bookings = () => {
                           <div className="mb-1 flex items-center justify-between gap-2">
 
                             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-600">
-                              {booking.type}
+                              {
+                                booking.type
+                              }
                             </span>
 
                             <span
@@ -1995,25 +2313,34 @@ const Bookings = () => {
                                 booking.status
                               )}`}
                             >
-                              {booking.status}
+                              {
+                                booking.status
+                              }
                             </span>
 
                           </div>
 
                           <h3 className="truncate text-sm font-bold text-slate-900">
-                            {booking.title}
+                            {
+                              booking.title
+                            }
                           </h3>
 
                           <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
-                            <MapPin size={12} />
+
+                            <MapPin
+                              size={12}
+                            />
 
                             <span className="truncate">
                               {booking.location ||
                                 "Location unavailable"}
                             </span>
+
                           </div>
 
                         </div>
+
                       </div>
 
                       <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
@@ -2024,8 +2351,10 @@ const Bookings = () => {
                           </p>
 
                           <p className="mt-1 truncate text-sm font-semibold text-slate-700">
-                            {booking.guestName ||
-                              "Guest"}
+                            {
+                              booking.guestName ||
+                              "Guest"
+                            }
                           </p>
                         </div>
 
@@ -2091,11 +2420,16 @@ const Bookings = () => {
                           "Cancelled" && (
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
                               setCancelBookingData(
                                 booking
-                              )
-                            }
+                              );
+
+                              setCancelReason(
+                                booking.cancellationReason ||
+                                  "Cancelled by admin"
+                              );
+                            }}
                             className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100"
                           >
                             <XCircle
@@ -2107,6 +2441,7 @@ const Bookings = () => {
                         )}
 
                       </div>
+
                     </div>
                   )
                 )}
@@ -2153,7 +2488,9 @@ const Bookings = () => {
                 <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
 
                   <p className="text-sm text-slate-500">
+
                     Showing{" "}
+
                     <span className="font-semibold text-slate-700">
                       {Math.min(
                         (currentPage - 1) *
@@ -2162,7 +2499,9 @@ const Bookings = () => {
                         filteredBookings.length
                       )}
                     </span>{" "}
+
                     to{" "}
+
                     <span className="font-semibold text-slate-700">
                       {Math.min(
                         currentPage *
@@ -2170,12 +2509,15 @@ const Bookings = () => {
                         filteredBookings.length
                       )}
                     </span>{" "}
+
                     of{" "}
+
                     <span className="font-semibold text-slate-700">
                       {
                         filteredBookings.length
                       }
                     </span>
+
                   </p>
 
                   <div className="flex items-center gap-2">
@@ -2264,8 +2606,10 @@ const Bookings = () => {
                   </div>
                 </div>
               )}
+
             </>
           )}
+
         </div>
       </div>
 
@@ -2288,9 +2632,12 @@ const Bookings = () => {
             }
           >
 
+            {/* HEADER */}
+
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-6">
 
               <div>
+
                 <div className="flex items-center gap-2">
 
                   {selectedBooking.type ===
@@ -2317,6 +2664,7 @@ const Bookings = () => {
                 <h2 className="mt-1 text-lg font-bold text-slate-900">
                   Booking Details
                 </h2>
+
               </div>
 
               <button
@@ -2351,6 +2699,7 @@ const Bookings = () => {
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-blue-600">
+
                       {selectedBooking.type ===
                       "Hotel" ? (
                         <BedDouble
@@ -2361,6 +2710,7 @@ const Bookings = () => {
                           size={28}
                         />
                       )}
+
                     </div>
                   )}
 
@@ -2375,12 +2725,14 @@ const Bookings = () => {
                   </h3>
 
                   <div className="mt-1 flex items-center gap-1 text-sm text-slate-500">
+
                     <MapPin size={14} />
 
                     {
                       selectedBooking.location ||
                       "Location unavailable"
                     }
+
                   </div>
 
                   <p className="mt-2 text-xs text-slate-400">
@@ -2391,6 +2743,7 @@ const Bookings = () => {
                   </p>
 
                 </div>
+
               </div>
 
               {/* STATUS */}
@@ -2398,6 +2751,7 @@ const Bookings = () => {
               <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
 
                 <div className="rounded-xl bg-slate-50 p-3">
+
                   <p className="text-[11px] text-slate-400">
                     Status
                   </p>
@@ -2411,9 +2765,11 @@ const Bookings = () => {
                       selectedBooking.status
                     }
                   </span>
+
                 </div>
 
                 <div className="rounded-xl bg-slate-50 p-3">
+
                   <p className="text-[11px] text-slate-400">
                     Payment
                   </p>
@@ -2427,9 +2783,11 @@ const Bookings = () => {
                       selectedBooking.paymentStatus
                     }
                   </span>
+
                 </div>
 
                 <div className="rounded-xl bg-slate-50 p-3">
+
                   <p className="text-[11px] text-slate-400">
                     Amount
                   </p>
@@ -2439,9 +2797,11 @@ const Bookings = () => {
                       selectedBooking.amount
                     )}
                   </p>
+
                 </div>
 
                 <div className="rounded-xl bg-slate-50 p-3">
+
                   <p className="text-[11px] text-slate-400">
                     Booking Date
                   </p>
@@ -2451,6 +2811,7 @@ const Bookings = () => {
                       selectedBooking.rawDate
                     )}
                   </p>
+
                 </div>
 
               </div>
@@ -2518,6 +2879,7 @@ const Bookings = () => {
                   </div>
 
                 </div>
+
               </div>
 
               {/* BOOKING INFO */}
@@ -2533,6 +2895,7 @@ const Bookings = () => {
                   {selectedBooking.type ===
                     "Hotel" && (
                     <>
+
                       <div>
                         <p className="text-xs text-slate-400">
                           Check-in
@@ -2571,6 +2934,57 @@ const Bookings = () => {
 
                       <div>
                         <p className="text-xs text-slate-400">
+                          Room
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-slate-700">
+                          {
+                            selectedBooking.roomName ||
+                            "N/A"
+                          }
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-slate-400">
+                          Bed
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-slate-700">
+                          {
+                            selectedBooking.roomBed ||
+                            "N/A"
+                          }
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-slate-400">
+                          Meal
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-slate-700">
+                          {
+                            selectedBooking.meal ||
+                            "N/A"
+                          }
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-slate-400">
+                          Room Price
+                        </p>
+
+                        <p className="mt-1 text-sm font-semibold text-slate-700">
+                          {formatCurrency(
+                            selectedBooking.roomPrice
+                          )}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-slate-400">
                           Address
                         </p>
 
@@ -2581,12 +2995,14 @@ const Bookings = () => {
                           }
                         </p>
                       </div>
+
                     </>
                   )}
 
                   {selectedBooking.type ===
                     "Package" && (
                     <>
+
                       <div>
                         <p className="text-xs text-slate-400">
                           Travel Date
@@ -2637,11 +3053,15 @@ const Bookings = () => {
                           }
                         </p>
                       </div>
+
                     </>
                   )}
 
                 </div>
+
               </div>
+
+              {/* CANCEL */}
 
               {selectedBooking.status !==
                 "Cancelled" && (
@@ -2650,6 +3070,11 @@ const Bookings = () => {
                   onClick={() => {
                     setCancelBookingData(
                       selectedBooking
+                    );
+
+                    setCancelReason(
+                      selectedBooking.cancellationReason ||
+                        "Cancelled by admin"
                     );
 
                     setSelectedBooking(
@@ -2665,6 +3090,7 @@ const Bookings = () => {
               )}
 
             </div>
+
           </div>
         </div>
       )}
@@ -2689,6 +3115,8 @@ const Bookings = () => {
             }
           >
 
+            {/* HEADER */}
+
             <div className="mb-5 flex items-start gap-4">
 
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
@@ -2696,6 +3124,7 @@ const Bookings = () => {
               </div>
 
               <div>
+
                 <h3 className="text-lg font-bold text-slate-900">
                   Cancel Booking?
                 </h3>
@@ -2708,6 +3137,7 @@ const Bookings = () => {
                   }{" "}
                   booking?
                 </p>
+
               </div>
 
             </div>
@@ -2741,6 +3171,22 @@ const Bookings = () => {
                 </span>
 
               </div>
+
+              <div className="mt-2 flex items-center justify-between">
+
+                <span className="text-xs text-slate-400">
+                  Booking ID
+                </span>
+
+                <span className="text-xs font-semibold text-slate-700">
+                  {
+                    cancelBookingData.bookingId ||
+                    cancelBookingData.id
+                  }
+                </span>
+
+              </div>
+
             </div>
 
             {/* REASON */}
@@ -2821,3 +3267,4 @@ const Bookings = () => {
 };
 
 export default Bookings;
+

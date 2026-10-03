@@ -1,7 +1,15 @@
-
-import React, { useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import { useDispatch } from "react-redux";
+
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,7 +30,12 @@ import {
   WalletCards,
 } from "lucide-react";
 
-import { createHotelBooking } from "../redux/slicer/hotelBookingSlice";
+import {
+  createHotelBooking,
+  createHotelRazorpayOrder,
+  verifyHotelRazorpayPayment,
+  handleHotelPaymentFailure,
+} from "../redux/slicer/hotelBookingSlice";
 
 // ============================================================
 // FALLBACK DATA
@@ -89,7 +102,10 @@ const formatDate = (value) => {
   });
 };
 
-const calculateNights = (checkIn, checkOut) => {
+const calculateNights = (
+  checkIn,
+  checkOut
+) => {
   const start = parseDate(checkIn);
   const end = parseDate(checkOut);
 
@@ -123,21 +139,121 @@ const HotelPayment = () => {
   const dispatch = useDispatch();
 
   // ==========================================================
+  // RAZORPAY SDK STATE
+  // ==========================================================
+
+  const [
+    razorpayLoaded,
+    setRazorpayLoaded,
+  ] = useState(false);
+
+  // ==========================================================
+  // LOAD RAZORPAY CHECKOUT
+  // ==========================================================
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadRazorpay = () => {
+      return new Promise((resolve) => {
+        // Already loaded
+        if (window.Razorpay) {
+          resolve(true);
+          return;
+        }
+
+        // Script already exists
+        const existingScript =
+          document.querySelector(
+            'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+          );
+
+        if (existingScript) {
+          existingScript.addEventListener(
+            "load",
+            () => resolve(true),
+            { once: true }
+          );
+
+          existingScript.addEventListener(
+            "error",
+            () => resolve(false),
+            { once: true }
+          );
+
+          return;
+        }
+
+        // Create script
+        const script =
+          document.createElement("script");
+
+        script.src =
+          "https://checkout.razorpay.com/v1/checkout.js";
+
+        script.async = true;
+
+        script.onload = () => {
+          resolve(true);
+        };
+
+        script.onerror = () => {
+          resolve(false);
+        };
+
+        document.body.appendChild(script);
+      });
+    };
+
+    loadRazorpay().then((loaded) => {
+      if (isMounted) {
+        setRazorpayLoaded(loaded);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // ==========================================================
   // BOOKING STATE FROM HOTEL BOOK NOW
   // ==========================================================
 
-  const bookingState = location.state || {};
+  const bookingState =
+    location.state || {};
+
+  // ==========================================================
+  // HOTEL
+  // ==========================================================
 
   const hotel =
-    bookingState.hotel || fallbackHotel;
+    bookingState.hotel ||
+    fallbackHotel;
+
+  // ==========================================================
+  // SELECTED ROOM
+  // ==========================================================
 
   const selectedRoom =
     bookingState.selectedRoom ||
     bookingState.room ||
     fallbackRoom;
 
+  // ==========================================================
+  // IMPORTANT:
+  // THIS MUST BE MONGODB HOTEL _id
+  // ==========================================================
+
   const hotelId =
-    bookingState.hotelId || id;
+    bookingState.hotelId ||
+    hotel._id ||
+    hotel.id ||
+    id;
+
+  // ==========================================================
+  // DATES
+  // ==========================================================
 
   const checkIn =
     bookingState.checkIn ||
@@ -147,9 +263,17 @@ const HotelPayment = () => {
     bookingState.checkOut ||
     fallbackBooking.checkOut;
 
+  // ==========================================================
+  // GUESTS
+  // ==========================================================
+
   const guests =
     bookingState.guests ??
     fallbackBooking.guests;
+
+  // ==========================================================
+  // NIGHTS
+  // ==========================================================
 
   const nights =
     Number(bookingState.nights) ||
@@ -159,7 +283,7 @@ const HotelPayment = () => {
     );
 
   // ==========================================================
-  // PRICE CALCULATION
+  // ROOM PRICE
   // ==========================================================
 
   const roomPrice = Number(
@@ -168,10 +292,19 @@ const HotelPayment = () => {
       fallbackRoom.price
   );
 
+  // ==========================================================
+  // TOTAL ROOM PRICE
+  // ==========================================================
+
   const totalRoomPrice = Number(
     bookingState.totalRoomPrice ??
+      bookingState.roomTotal ??
       roomPrice * nights
   );
+
+  // ==========================================================
+  // TAXES
+  // ==========================================================
 
   const taxes = Number(
     bookingState.taxes ??
@@ -181,8 +314,13 @@ const HotelPayment = () => {
       )
   );
 
+  // ==========================================================
+  // TOTAL PRICE
+  // ==========================================================
+
   const totalPrice = Number(
     bookingState.totalPrice ??
+      bookingState.totalAmount ??
       totalRoomPrice + taxes
   );
 
@@ -197,11 +335,16 @@ const HotelPayment = () => {
   // PAYMENT STATE
   // ==========================================================
 
-  const [paymentMethod, setPaymentMethod] =
-    useState(
-      bookingState.paymentMethod ||
-        "upi"
-    );
+  const [
+    paymentMethod,
+    setPaymentMethod,
+  ] = useState(
+    bookingState.paymentMethod ||
+      "upi"
+  );
+
+  // These fields are UI-only.
+  // Razorpay collects the real payment details.
 
   const [upiId, setUpiId] =
     useState("");
@@ -226,11 +369,15 @@ const HotelPayment = () => {
   const [errors, setErrors] =
     useState({});
 
-  const [isProcessing, setIsProcessing] =
-    useState(false);
+  const [
+    isProcessing,
+    setIsProcessing,
+  ] = useState(false);
 
-  const [showSuccess, setShowSuccess] =
-    useState(false);
+  const [
+    showSuccess,
+    setShowSuccess,
+  ] = useState(false);
 
   // ==========================================================
   // GUEST COUNT TEXT
@@ -278,7 +425,9 @@ const HotelPayment = () => {
   // CARD CHANGE
   // ==========================================================
 
-  const handleCardChange = (event) => {
+  const handleCardChange = (
+    event
+  ) => {
     const {
       name,
       value,
@@ -294,6 +443,41 @@ const HotelPayment = () => {
       [name]: "",
       payment: "",
     }));
+  };
+
+  // ==========================================================
+  // NORMALIZE GUEST COUNT
+  // ==========================================================
+
+  const getNumericGuests = () => {
+    let numericGuests = 1;
+
+    if (
+      typeof guests === "number"
+    ) {
+      numericGuests = guests;
+    } else if (
+      typeof guests === "string"
+    ) {
+      numericGuests =
+        Number(guests) || 1;
+    } else if (
+      guests &&
+      typeof guests === "object"
+    ) {
+      numericGuests =
+        Number(
+          guests.adults || 0
+        ) +
+        Number(
+          guests.children || 0
+        );
+    }
+
+    return Math.max(
+      1,
+      Number(numericGuests) || 1
+    );
   };
 
   // ==========================================================
@@ -345,93 +529,58 @@ const HotelPayment = () => {
     }
 
     // --------------------------------------------------------
-    // UPI
-    // --------------------------------------------------------
-
-    if (paymentMethod === "upi") {
-      if (!upiId.trim()) {
-        newErrors.upiId =
-          "Please enter your UPI ID";
-      } else if (
-        !/^[\w.-]+@[\w.-]+$/.test(
-          upiId
-        )
-      ) {
-        newErrors.upiId =
-          "Please enter a valid UPI ID";
-      }
-    }
-
-    // --------------------------------------------------------
-    // CARD
-    // --------------------------------------------------------
-
-    if (paymentMethod === "card") {
-      const cleanCardNumber =
-        cardData.number.replace(
-          /\s/g,
-          ""
-        );
-
-      if (!cleanCardNumber) {
-        newErrors.number =
-          "Card number is required";
-      } else if (
-        !/^\d{16}$/.test(
-          cleanCardNumber
-        )
-      ) {
-        newErrors.number =
-          "Enter a valid 16-digit card number";
-      }
-
-      if (!cardData.holder.trim()) {
-        newErrors.holder =
-          "Card holder name is required";
-      }
-
-      if (!cardData.expiry.trim()) {
-        newErrors.expiry =
-          "Expiry date is required";
-      }
-
-      if (!cardData.cvv.trim()) {
-        newErrors.cvv =
-          "CVV is required";
-      } else if (
-        !/^\d{3,4}$/.test(
-          cardData.cvv
-        )
-      ) {
-        newErrors.cvv =
-          "Enter a valid CVV";
-      }
-    }
-
-    // --------------------------------------------------------
-    // NET BANKING
+    // PRICE
     // --------------------------------------------------------
 
     if (
-      paymentMethod === "netbanking"
+      !Number.isFinite(roomPrice) ||
+      roomPrice < 0
     ) {
-      if (!bank) {
-        newErrors.bank =
-          "Please select your bank";
-      }
+      newErrors.payment =
+        "Invalid room price. Please go back and select the room again.";
+    }
+
+    if (
+      !Number.isFinite(totalRoomPrice) ||
+      totalRoomPrice < 0
+    ) {
+      newErrors.payment =
+        "Invalid room total. Please go back and try again.";
+    }
+
+    if (
+      !Number.isFinite(taxes) ||
+      taxes < 0
+    ) {
+      newErrors.payment =
+        "Invalid tax amount. Please go back and try again.";
+    }
+
+    if (
+      !Number.isFinite(totalPrice) ||
+      totalPrice <= 0
+    ) {
+      newErrors.payment =
+        "Invalid booking amount. Please go back and try again.";
     }
 
     // --------------------------------------------------------
-    // WALLET
+    // DATES
     // --------------------------------------------------------
 
+    const startDate =
+      parseDate(checkIn);
+
+    const endDate =
+      parseDate(checkOut);
+
     if (
-      paymentMethod === "wallet"
+      !startDate ||
+      !endDate ||
+      endDate <= startDate
     ) {
-      if (!wallet) {
-        newErrors.wallet =
-          "Please select a wallet";
-      }
+      newErrors.payment =
+        "Invalid check-in or check-out date.";
     }
 
     // --------------------------------------------------------
@@ -452,7 +601,7 @@ const HotelPayment = () => {
   };
 
   // ==========================================================
-  // CREATE BOOKING AFTER PAYMENT
+  // HANDLE PAYMENT
   // ==========================================================
 
   const handlePayment = async (
@@ -460,11 +609,32 @@ const HotelPayment = () => {
   ) => {
     event.preventDefault();
 
+    // Prevent duplicate click
+    if (isProcessing) {
+      return;
+    }
+
     // --------------------------------------------------------
-    // VALIDATE PAYMENT
+    // VALIDATE
     // --------------------------------------------------------
 
     if (!validatePayment()) {
+      return;
+    }
+
+    // --------------------------------------------------------
+    // RAZORPAY SDK CHECK
+    // --------------------------------------------------------
+
+    if (
+      !razorpayLoaded ||
+      !window.Razorpay
+    ) {
+      setErrors({
+        payment:
+          "Razorpay Checkout is still loading. Please wait a moment and try again.",
+      });
+
       return;
     }
 
@@ -477,34 +647,23 @@ const HotelPayment = () => {
       // NORMALIZE GUEST COUNT
       // ======================================================
 
-      let numericGuests = 1;
+      const numericGuests =
+        getNumericGuests();
 
-      if (
-        typeof guests === "number"
-      ) {
-        numericGuests = guests;
-      } else if (
-        typeof guests === "string"
-      ) {
-        numericGuests =
-          Number(guests) || 1;
-      } else if (
-        guests &&
-        typeof guests === "object"
-      ) {
-        numericGuests =
-          Number(
-            guests.adults || 0
-          ) +
-          Number(
-            guests.children || 0
-          );
-      }
+      // ======================================================
+      // HOTEL LOCATION
+      // ======================================================
 
-      numericGuests = Math.max(
-        1,
-        numericGuests
-      );
+      const hotelLocation =
+        hotel.location ||
+        [
+          hotel.city,
+          hotel.state,
+          hotel.country,
+        ]
+          .filter(Boolean)
+          .join(", ") ||
+        fallbackHotel.location;
 
       // ======================================================
       // BOOKING PAYLOAD
@@ -512,10 +671,15 @@ const HotelPayment = () => {
 
       const bookingPayload = {
         // ----------------------------------------------------
-        // HOTEL
+        // IMPORTANT:
+        // This must be MongoDB Hotel _id
         // ----------------------------------------------------
 
         hotelId,
+
+        // ----------------------------------------------------
+        // HOTEL DETAILS
+        // ----------------------------------------------------
 
         hotelDetails: {
           name:
@@ -529,17 +693,11 @@ const HotelPayment = () => {
             fallbackHotel.image,
 
           location:
-            hotel.location ||
-            `${hotel.city || ""}${
-              hotel.state
-                ? `, ${hotel.state}`
-                : ""
-            }` ||
-            fallbackHotel.location,
+            hotelLocation,
         },
 
         // ----------------------------------------------------
-        // ROOM
+        // ROOM DETAILS
         // ----------------------------------------------------
 
         roomDetails: {
@@ -586,15 +744,15 @@ const HotelPayment = () => {
 
         guestDetails: {
           firstName:
-            guestDetails.firstName ||
+            guestDetails.firstName?.trim() ||
             "",
 
           lastName:
-            guestDetails.lastName ||
+            guestDetails.lastName?.trim() ||
             "",
 
           email:
-            guestDetails.email ||
+            guestDetails.email?.trim() ||
             "",
 
           countryCode:
@@ -602,11 +760,11 @@ const HotelPayment = () => {
             "+91",
 
           mobile:
-            guestDetails.mobile ||
+            guestDetails.mobile?.trim() ||
             "",
 
           specialRequest:
-            guestDetails.specialRequest ||
+            guestDetails.specialRequest?.trim() ||
             "",
         },
 
@@ -627,43 +785,54 @@ const HotelPayment = () => {
         // ----------------------------------------------------
         // PAYMENT METHOD
         // ----------------------------------------------------
+        // Actual payment happens through Razorpay.
 
-        paymentMethod,
+        paymentMethod: "razorpay",
       };
 
       console.log(
-        "Hotel Booking Payload:",
+        "======================================"
+      );
+
+      console.log(
+        "HOTEL BOOKING PAYLOAD"
+      );
+
+      console.log(
         bookingPayload
       );
 
-      // ======================================================
-      // CREATE BOOKING IN BACKEND
-      // ======================================================
-
-      const result = await dispatch(
-        createHotelBooking(
-          bookingPayload
-        )
-      ).unwrap();
+      console.log(
+        "MongoDB Hotel ID:",
+        hotelId
+      );
 
       console.log(
-        "Hotel Booking Response:",
-        result
+        "======================================"
       );
 
       // ======================================================
-      // GET REAL BOOKING
+      // STEP 1
+      // CREATE PENDING HOTEL BOOKING
       // ======================================================
 
+      const bookingResult =
+        await dispatch(
+          createHotelBooking(
+            bookingPayload
+          )
+        ).unwrap();
+
+      console.log(
+        "Hotel Booking Response:",
+        bookingResult
+      );
+
       const createdBooking =
-        result?.booking;
+        bookingResult?.booking;
 
       const bookingId =
         createdBooking?.bookingId;
-
-      // ======================================================
-      // CHECK BOOKING ID
-      // ======================================================
 
       if (!bookingId) {
         throw new Error(
@@ -672,52 +841,338 @@ const HotelPayment = () => {
       }
 
       // ======================================================
-      // PAYMENT COMPLETE
+      // STEP 2
+      // CREATE RAZORPAY ORDER
       // ======================================================
 
-      setIsProcessing(false);
+      const orderResult =
+        await dispatch(
+          createHotelRazorpayOrder(
+            bookingId
+          )
+        ).unwrap();
 
-      setShowSuccess(true);
+      console.log(
+        "Razorpay Order Response:",
+        orderResult
+      );
 
-      // Small delay so user sees success state
-      setTimeout(() => {
-        navigate(
-          `/booking-success/${bookingId}`,
-          {
-            state: {
-              bookingId,
+      const razorpayOrder =
+        orderResult?.order;
 
-              hotel,
-
-              selectedRoom,
-
-              checkIn,
-
-              checkOut,
-
-              guests,
-
-              nights,
-
-              taxes,
-
-              totalRoomPrice,
-
-              totalPrice,
-
-              guestDetails,
-
-              paymentMethod,
-
-              booking:
-                createdBooking,
-            },
-          }
+      if (!razorpayOrder?.id) {
+        throw new Error(
+          "Razorpay order was not created."
         );
-      }, 700);
+      }
+
+      if (
+        !orderResult?.razorpayKey
+      ) {
+        throw new Error(
+          "Razorpay key was not received from server."
+        );
+      }
+
+      // ======================================================
+      // STEP 3
+      // RAZORPAY CHECKOUT OPTIONS
+      // ======================================================
+
+      const options = {
+        key: orderResult.razorpayKey,
+
+        amount:
+          razorpayOrder.amount,
+
+        currency:
+          razorpayOrder.currency ||
+          "INR",
+
+        name: "Tripora",
+
+        description:
+          `Hotel Booking - ${bookingId}`,
+
+        order_id:
+          razorpayOrder.id,
+
+        // ----------------------------------------------------
+        // PREFILL
+        // ----------------------------------------------------
+
+        prefill: {
+          name: `${guestDetails.firstName || ""} ${
+            guestDetails.lastName || ""
+          }`.trim(),
+
+          email:
+            guestDetails.email || "",
+
+          contact: `${(
+            guestDetails.countryCode ||
+            "+91"
+          ).replace(
+            /\s/g,
+            ""
+          )}${(
+            guestDetails.mobile || ""
+          ).replace(/\s/g, "")}`,
+        },
+
+        // ----------------------------------------------------
+        // NOTES
+        // ----------------------------------------------------
+
+        notes: {
+          bookingId,
+          hotelId,
+        },
+
+        // ----------------------------------------------------
+        // THEME
+        // ----------------------------------------------------
+
+        theme: {
+          color: "#2563eb",
+        },
+
+        // ----------------------------------------------------
+        // MODAL
+        // ----------------------------------------------------
+
+        modal: {
+          ondismiss: () => {
+            console.log(
+              "Razorpay checkout closed"
+            );
+
+            setIsProcessing(false);
+
+            setErrors({
+              payment:
+                "Payment window was closed. Your booking is still pending.",
+            });
+          },
+        },
+
+        // ====================================================
+        // PAYMENT SUCCESS
+        // ====================================================
+
+        handler: async (
+          response
+        ) => {
+          try {
+            console.log(
+              "Razorpay Payment Response:",
+              response
+            );
+
+            setIsProcessing(true);
+
+            // ------------------------------------------------
+            // Validate Razorpay response
+            // ------------------------------------------------
+
+            if (
+              !response?.razorpay_order_id ||
+              !response?.razorpay_payment_id ||
+              !response?.razorpay_signature
+            ) {
+              throw new Error(
+                "Incomplete Razorpay payment response."
+              );
+            }
+
+            // =================================================
+            // STEP 4
+            // VERIFY PAYMENT ON BACKEND
+            // =================================================
+
+            const verifyResult =
+              await dispatch(
+                verifyHotelRazorpayPayment(
+                  {
+                    bookingId,
+
+                    paymentData: {
+                      razorpay_order_id:
+                        response.razorpay_order_id,
+
+                      razorpay_payment_id:
+                        response.razorpay_payment_id,
+
+                      razorpay_signature:
+                        response.razorpay_signature,
+                    },
+                  }
+                )
+              ).unwrap();
+
+            console.log(
+              "Payment Verification Response:",
+              verifyResult
+            );
+
+            // =================================================
+            // VERIFIED SUCCESSFULLY
+            // =================================================
+
+            setIsProcessing(false);
+
+            setShowSuccess(true);
+
+            // ------------------------------------------------
+            // Redirect to success page
+            // ------------------------------------------------
+
+            setTimeout(() => {
+              navigate(
+                `/booking-success/${bookingId}`,
+                {
+                  replace: true,
+
+                  state: {
+                    bookingId,
+
+                    hotel,
+
+                    selectedRoom,
+
+                    checkIn,
+
+                    checkOut,
+
+                    guests,
+
+                    nights,
+
+                    taxes,
+
+                    totalRoomPrice,
+
+                    totalPrice,
+
+                    guestDetails,
+
+                    paymentMethod:
+                      "razorpay",
+
+                    booking:
+                      verifyResult?.booking ||
+                      createdBooking,
+
+                    payment:
+                      verifyResult?.payment,
+                  },
+                }
+              );
+            }, 700);
+          } catch (
+            verificationError
+          ) {
+            console.error(
+              "Payment Verification Error:",
+              verificationError
+            );
+
+            setIsProcessing(false);
+
+            setShowSuccess(false);
+
+            setErrors({
+              payment:
+                typeof verificationError ===
+                "string"
+                  ? verificationError
+                  : verificationError?.message ||
+                    "Payment was received but verification failed. Please contact support.",
+            });
+          }
+        },
+      };
+
+      // ======================================================
+      // STEP 5
+      // CREATE RAZORPAY INSTANCE
+      // ======================================================
+
+      const razorpay =
+        new window.Razorpay(
+          options
+        );
+
+      // ======================================================
+      // PAYMENT FAILED
+      // ======================================================
+
+      razorpay.on(
+        "payment.failed",
+        async (response) => {
+          console.error(
+            "Razorpay Payment Failed:",
+            response
+          );
+
+          try {
+            await dispatch(
+              handleHotelPaymentFailure(
+                {
+                  bookingId,
+
+                  paymentData: {
+                    razorpay_order_id:
+                      response?.error
+                        ?.metadata
+                        ?.order_id ||
+                      razorpayOrder.id,
+
+                    razorpay_payment_id:
+                      response?.error
+                        ?.metadata
+                        ?.payment_id ||
+                      "",
+
+                    reason:
+                      response?.error
+                        ?.description ||
+                      "Payment failed",
+                  },
+                }
+              )
+            ).unwrap();
+          } catch (
+            failureError
+          ) {
+            console.error(
+              "Payment Failure Update Error:",
+              failureError
+            );
+          }
+
+          setIsProcessing(false);
+
+          setShowSuccess(false);
+
+          setErrors({
+            payment:
+              response?.error
+                ?.description ||
+              "Payment failed. Please try again.",
+          });
+        }
+      );
+
+      // ======================================================
+      // STEP 6
+      // OPEN RAZORPAY
+      // ======================================================
+
+      razorpay.open();
     } catch (error) {
       console.error(
-        "Hotel Booking Error:",
+        "Hotel Payment Error:",
         error
       );
 
@@ -727,8 +1182,7 @@ const HotelPayment = () => {
 
       setErrors({
         payment:
-          typeof error ===
-          "string"
+          typeof error === "string"
             ? error
             : error?.message ||
               "Payment/booking failed. Please try again.",
@@ -906,6 +1360,18 @@ const HotelPayment = () => {
                   </p>
                 </div>
               </div>
+
+              {/* Razorpay Loading */}
+
+              {!razorpayLoaded &&
+                !errors.payment && (
+                  <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                    <p className="text-sm font-semibold text-blue-700">
+                      Loading secure
+                      Razorpay checkout...
+                    </p>
+                  </div>
+                )}
 
               {/* Backend / Booking Error */}
 
@@ -1191,8 +1657,9 @@ const HotelPayment = () => {
                     </h3>
 
                     <p className="mt-1 text-xs text-slate-500">
-                      Enter your UPI ID
-                      to continue.
+                      Razorpay will open
+                      the secure UPI
+                      payment window.
                     </p>
                   </div>
 
@@ -1234,21 +1701,16 @@ const HotelPayment = () => {
                         );
                       }}
                       placeholder="example@upi"
-                      className={`h-12 w-full rounded-xl border bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
-                        errors.upiId
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                          : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
-                      }`}
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                     />
                   </div>
 
-                  {errors.upiId && (
-                    <p className="mt-1.5 text-xs font-medium text-red-500">
-                      {
-                        errors.upiId
-                      }
-                    </p>
-                  )}
+                  <p className="mt-2 text-xs text-slate-400">
+                    This field is for UI
+                    preference only. Razorpay
+                    will securely collect the
+                    actual payment information.
+                  </p>
 
                   <div className="my-5 flex items-center gap-3">
                     <div className="h-px flex-1 bg-slate-200" />
@@ -1271,12 +1733,10 @@ const HotelPayment = () => {
                       Scan to Pay
                     </p>
 
-                    <p className="mt-1 text-xs text-slate-500">
-                      QR payment will
-                      be available
-                      with payment
-                      gateway
-                      integration.
+                    <p className="mt-1 px-5 text-center text-xs text-slate-500">
+                      Razorpay Checkout will
+                      provide the available
+                      payment options.
                     </p>
                   </div>
                 </div>
@@ -1291,283 +1751,36 @@ const HotelPayment = () => {
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <div className="mb-5">
                     <h3 className="text-base font-bold text-slate-900">
-                      Card Details
+                      Card Payment
                     </h3>
 
                     <p className="mt-1 text-xs text-slate-500">
-                      Enter your card
-                      details securely.
+                      Your card details will
+                      be collected securely by
+                      Razorpay Checkout.
                     </p>
                   </div>
 
-                  <div>
-                    <label
-                      htmlFor="cardNumber"
-                      className="mb-2 block text-sm font-semibold text-slate-700"
-                    >
-                      Card Number
-                    </label>
-
-                    <div className="relative">
+                  <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                    <div className="flex items-start gap-3">
                       <CreditCard
-                        size={17}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        size={20}
+                        className="mt-0.5 text-blue-600"
                       />
 
-                      <input
-                        id="cardNumber"
-                        name="number"
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={19}
-                        value={
-                          cardData.number
-                        }
-                        onChange={(
-                          event
-                        ) => {
-                          const numbers =
-                            event.target.value.replace(
-                              /\D/g,
-                              ""
-                            );
-
-                          const formatted =
-                            numbers
-                              .slice(
-                                0,
-                                16
-                              )
-                              .replace(
-                                /(.{4})/g,
-                                "$1 "
-                              )
-                              .trim();
-
-                          setCardData(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-                              number:
-                                formatted,
-                            })
-                          );
-
-                          setErrors(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-                              number:
-                                "",
-                              payment:
-                                "",
-                            })
-                          );
-                        }}
-                        placeholder="1234 5678 9012 3456"
-                        className={`h-12 w-full rounded-xl border bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
-                          errors.number
-                            ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                            : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
-                        }`}
-                      />
-                    </div>
-
-                    {errors.number && (
-                      <p className="mt-1.5 text-xs font-medium text-red-500">
-                        {
-                          errors.number
-                        }
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="mt-4">
-                    <label
-                      htmlFor="cardHolder"
-                      className="mb-2 block text-sm font-semibold text-slate-700"
-                    >
-                      Card Holder Name
-                    </label>
-
-                    <div className="relative">
-                      <User
-                        size={17}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      />
-
-                      <input
-                        id="cardHolder"
-                        name="holder"
-                        type="text"
-                        value={
-                          cardData.holder
-                        }
-                        onChange={
-                          handleCardChange
-                        }
-                        placeholder="Name on card"
-                        className={`h-12 w-full rounded-xl border bg-white pl-10 pr-4 text-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
-                          errors.holder
-                            ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                            : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
-                        }`}
-                      />
-                    </div>
-
-                    {errors.holder && (
-                      <p className="mt-1.5 text-xs font-medium text-red-500">
-                        {
-                          errors.holder
-                        }
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label
-                        htmlFor="expiry"
-                        className="mb-2 block text-sm font-semibold text-slate-700"
-                      >
-                        Expiry Date
-                      </label>
-
-                      <input
-                        id="expiry"
-                        name="expiry"
-                        type="text"
-                        maxLength={5}
-                        value={
-                          cardData.expiry
-                        }
-                        onChange={(
-                          event
-                        ) => {
-                          let value =
-                            event.target.value.replace(
-                              /\D/g,
-                              ""
-                            );
-
-                          if (
-                            value.length >
-                            2
-                          ) {
-                            value =
-                              value.slice(
-                                0,
-                                2
-                              ) +
-                              "/" +
-                              value.slice(
-                                2,
-                                4
-                              );
-                          }
-
-                          setCardData(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-                              expiry:
-                                value,
-                            })
-                          );
-
-                          setErrors(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-                              expiry:
-                                "",
-                              payment:
-                                "",
-                            })
-                          );
-                        }}
-                        placeholder="MM / YY"
-                        className={`h-12 w-full rounded-xl border bg-white px-4 text-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
-                          errors.expiry
-                            ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                            : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
-                        }`}
-                      />
-
-                      {errors.expiry && (
-                        <p className="mt-1.5 text-xs font-medium text-red-500">
-                          {
-                            errors.expiry
-                          }
+                      <div>
+                        <p className="text-sm font-bold text-blue-800">
+                          Secure Card Payment
                         </p>
-                      )}
-                    </div>
 
-                    <div>
-                      <label
-                        htmlFor="cvv"
-                        className="mb-2 block text-sm font-semibold text-slate-700"
-                      >
-                        CVV
-                      </label>
-
-                      <input
-                        id="cvv"
-                        name="cvv"
-                        type="password"
-                        inputMode="numeric"
-                        maxLength={4}
-                        value={
-                          cardData.cvv
-                        }
-                        onChange={(
-                          event
-                        ) => {
-                          const value =
-                            event.target.value.replace(
-                              /\D/g,
-                              ""
-                            );
-
-                          setCardData(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-                              cvv: value,
-                            })
-                          );
-
-                          setErrors(
-                            (
-                              previous
-                            ) => ({
-                              ...previous,
-                              cvv: "",
-                              payment:
-                                "",
-                            })
-                          );
-                        }}
-                        placeholder="•••"
-                        className={`h-12 w-full rounded-xl border bg-white px-4 text-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
-                          errors.cvv
-                            ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                            : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
-                        }`}
-                      />
-
-                      {errors.cvv && (
-                        <p className="mt-1.5 text-xs font-medium text-red-500">
-                          {
-                            errors.cvv
-                          }
+                        <p className="mt-1 text-xs leading-5 text-blue-700">
+                          Click the Pay button
+                          below. Razorpay will
+                          open a secure checkout
+                          where you can enter your
+                          card details.
                         </p>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1581,74 +1794,28 @@ const HotelPayment = () => {
                 "netbanking" && (
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <h3 className="text-base font-bold text-slate-900">
-                    Select Your Bank
+                    Net Banking
                   </h3>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    Choose your bank to
-                    continue.
+                    Razorpay will show the
+                    supported banks during
+                    checkout.
                   </p>
 
-                  <select
-                    value={bank}
-                    onChange={(
-                      event
-                    ) => {
-                      setBank(
-                        event.target.value
-                      );
+                  <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                    <div className="flex items-center gap-3">
+                      <WalletCards
+                        size={20}
+                        className="text-blue-600"
+                      />
 
-                      setErrors(
-                        (
-                          previous
-                        ) => ({
-                          ...previous,
-                          bank: "",
-                          payment:
-                            "",
-                        })
-                      );
-                    }}
-                    className={`mt-5 h-12 w-full rounded-xl border bg-white px-4 text-sm text-slate-700 outline-none transition focus:ring-4 ${
-                      errors.bank
-                        ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                        : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/10"
-                    }`}
-                  >
-                    <option value="">
-                      Select your bank
-                    </option>
-
-                    <option value="sbi">
-                      State Bank of
-                      India
-                    </option>
-
-                    <option value="hdfc">
-                      HDFC Bank
-                    </option>
-
-                    <option value="icici">
-                      ICICI Bank
-                    </option>
-
-                    <option value="axis">
-                      Axis Bank
-                    </option>
-
-                    <option value="kotak">
-                      Kotak Mahindra
-                      Bank
-                    </option>
-                  </select>
-
-                  {errors.bank && (
-                    <p className="mt-1.5 text-xs font-medium text-red-500">
-                      {
-                        errors.bank
-                      }
-                    </p>
-                  )}
+                      <p className="text-sm font-semibold text-blue-800">
+                        Bank selection will
+                        open inside Razorpay.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1660,80 +1827,28 @@ const HotelPayment = () => {
                 "wallet" && (
                 <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                   <h3 className="text-base font-bold text-slate-900">
-                    Select Wallet
+                    Wallet Payment
                   </h3>
 
                   <p className="mt-1 text-xs text-slate-500">
-                    Choose your preferred
-                    wallet.
+                    Razorpay will display the
+                    wallets currently available
+                    for your transaction.
                   </p>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                    {[
-                      {
-                        value:
-                          "paytm",
-                        label:
-                          "Paytm",
-                      },
-                      {
-                        value:
-                          "phonepe",
-                        label:
-                          "PhonePe",
-                      },
-                      {
-                        value:
-                          "amazonpay",
-                        label:
-                          "Amazon Pay",
-                      },
-                    ].map(
-                      (item) => (
-                        <button
-                          key={
-                            item.value
-                          }
-                          type="button"
-                          onClick={() => {
-                            setWallet(
-                              item.value
-                            );
+                  <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                    <div className="flex items-center gap-3">
+                      <WalletCards
+                        size={20}
+                        className="text-blue-600"
+                      />
 
-                            setErrors(
-                              (
-                                previous
-                              ) => ({
-                                ...previous,
-                                wallet:
-                                  "",
-                                payment:
-                                  "",
-                              })
-                            );
-                          }}
-                          className={`rounded-xl border p-4 text-sm font-semibold transition ${
-                            wallet ===
-                            item.value
-                              ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-blue-300"
-                          }`}
-                        >
-                          {
-                            item.label
-                          }
-                        </button>
-                      )
-                    )}
+                      <p className="text-sm font-semibold text-blue-800">
+                        Wallet selection will
+                        open inside Razorpay.
+                      </p>
+                    </div>
                   </div>
-
-                  {errors.wallet && (
-                    <p className="mt-2 text-xs font-medium text-red-500">
-                      {
-                        errors.wallet
-                      }
-                    </p>
-                  )}
                 </div>
               )}
 
@@ -1756,8 +1871,8 @@ const HotelPayment = () => {
 
                   <p className="mt-1 text-xs leading-5 text-emerald-700">
                     Your payment details
-                    are protected with
-                    secure encryption.
+                    are securely processed
+                    by Razorpay.
                   </p>
                 </div>
               </div>
@@ -1831,26 +1946,32 @@ const HotelPayment = () => {
                 )}
               </div>
 
-              {/* Desktop Pay */}
+              {/* =================================================
+                  DESKTOP PAY BUTTON
+              ================================================== */}
 
               <button
                 type="submit"
                 disabled={
-                  isProcessing
+                  isProcessing ||
+                  !razorpayLoaded
                 }
                 className="mt-6 hidden w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 lg:flex"
               >
                 {isProcessing
                   ? "Processing Payment..."
+                  : !razorpayLoaded
+                  ? "Loading Payment..."
                   : `Pay ₹${formatPrice(
                       totalPrice
                     )}`}
 
-                {!isProcessing && (
-                  <ArrowRight
-                    size={17}
-                  />
-                )}
+                {!isProcessing &&
+                  razorpayLoaded && (
+                    <ArrowRight
+                      size={17}
+                    />
+                  )}
               </button>
             </form>
 
@@ -2005,11 +2126,13 @@ const HotelPayment = () => {
 
                       <span>
                         {hotel.location ||
-                          `${hotel.city || ""}${
-                            hotel.state
-                              ? `, ${hotel.state}`
-                              : ""
-                          }` ||
+                          [
+                            hotel.city,
+                            hotel.state,
+                            hotel.country,
+                          ]
+                            .filter(Boolean)
+                            .join(", ") ||
                           fallbackHotel.location}
                       </span>
                     </div>
@@ -2238,21 +2361,25 @@ const HotelPayment = () => {
                     handlePayment
                   }
                   disabled={
-                    isProcessing
+                    isProcessing ||
+                    !razorpayLoaded
                   }
                   className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 lg:hidden"
                 >
                   {isProcessing
                     ? "Processing Payment..."
+                    : !razorpayLoaded
+                    ? "Loading Payment..."
                     : `Pay ₹${formatPrice(
                         totalPrice
                       )}`}
 
-                  {!isProcessing && (
-                    <ArrowRight
-                      size={17}
-                    />
-                  )}
+                  {!isProcessing &&
+                    razorpayLoaded && (
+                      <ArrowRight
+                        size={17}
+                      />
+                    )}
                 </button>
 
                 <div className="mt-4 flex items-start gap-2">
@@ -2263,11 +2390,11 @@ const HotelPayment = () => {
 
                   <p className="text-[11px] leading-4 text-slate-400">
                     Your payment is
-                    processed securely.
-                    You will receive your
-                    booking confirmation
-                    after successful
-                    payment.
+                    processed securely
+                    through Razorpay. You
+                    will receive your booking
+                    confirmation after
+                    successful payment.
                   </p>
                 </div>
               </div>
@@ -2322,13 +2449,13 @@ const HotelPayment = () => {
             </div>
 
             <h3 className="mt-5 text-xl font-bold text-slate-900">
-              Booking Created
+              Payment Successful
             </h3>
 
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Your hotel booking has
-              been created successfully.
-              Redirecting to your
+              Your payment has been
+              verified successfully.
+              Redirecting to your booking
               confirmation...
             </p>
           </div>
@@ -2339,4 +2466,3 @@ const HotelPayment = () => {
 };
 
 export default HotelPayment;
-
