@@ -5,6 +5,7 @@ const router = express.Router();
 const {
   createHotel,
   getAllHotels,
+  getAllAdminHotels,
   getSignleHotel,
   updateHotel,
   deleteHotel,
@@ -13,6 +14,8 @@ const adminAuth = require("../middleware/adminAuth.middleware");
 const { uploadHotelImages } = require("../middleware/upload.middleware");
 //get all hotels route
 router.get("/", getAllHotels);
+//get all admin hotels
+router.get("/admin/all", adminAuth, getAllAdminHotels);
 //get single hotel route
 router.get("/:id", getSignleHotel);
 //create hotel route

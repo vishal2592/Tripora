@@ -9,6 +9,7 @@ const {
   adminCancelPackageBooking,
 } = require("../controllers/packageBooking.controller");
 
+const adminAuth = require("../middleware/adminAuth.middleware");
 const authMiddleware = require("../middleware/auth.middleware");
 //get all package booking route
 router.get("/", authMiddleware, getMyPackageBooking);

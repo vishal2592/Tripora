@@ -14,12 +14,18 @@ const packageRoutes = require("./routes/package.route");
 const packageBookingRoutes = require("./routes/packageBooking.route");
 const packagePaymentRoutes = require("./routes/packagePayment.route");
 const offerRoutes = require("./routes/offer.route");
+const paymentRoutes = require("./routes/payment.route");
 const app = express();
 
 //middlewares
 app.use(cors());
 app.use(
   "/api/package-payments/webhook",
+  express.raw({ type: "application/json" }),
+);
+
+app.use(
+  "/api/hotel-bookings/webhook",
   express.raw({ type: "application/json" }),
 );
 app.use(express.json());
@@ -40,6 +46,7 @@ app.use("/api/packages", packageRoutes);
 app.use("/api/package-bookings", packageBookingRoutes);
 app.use("/api/package-payments", packagePaymentRoutes);
 app.use("/api/offers", offerRoutes);
+app.use("/api/payments", paymentRoutes);
 //test route
 app.get("/", (req, res) => {
   res.json({

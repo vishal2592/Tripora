@@ -130,6 +130,27 @@ const getAllHotels = async (req, res) => {
   }
 };
 
+// Get all hotels - Admin
+const getAllAdminHotels = async (req, res) => {
+  try {
+    const hotels = await Hotel.find().sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: hotels.length,
+      hotels,
+    });
+  } catch (error) {
+    console.error("Admin Get All Hotels Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 // get single hotel
 
 const getSignleHotel = async (req, res) => {
@@ -335,9 +356,11 @@ const deleteHotel = async (req, res) => {
     });
   }
 };
+
 module.exports = {
   createHotel,
   getAllHotels,
+  getAllAdminHotels,
   getSignleHotel,
   updateHotel,
   deleteHotel,

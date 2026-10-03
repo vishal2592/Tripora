@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Tripora Razorpay Test</title>
+  <title>Tripora Hotel Razorpay Test</title>
 
   <!-- Razorpay Checkout -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
@@ -107,25 +107,31 @@
     <h1>Tripora Razorpay Test</h1>
 
     <p class="subtitle">
-      Package Payment Testing
+      Hotel Payment Testing
     </p>
 
     <label for="bookingId">
-      Package Booking MongoDB ID
+      Hotel Booking ID
     </label>
 
     <input
       type="text"
       id="bookingId"
-      placeholder="Enter Package Booking ID"
+      value="HTL03737884"
+      placeholder="Enter Hotel Booking ID (e.g. HTL03737884)"
     />
 
     <button id="payButton">
-      Create Order & Pay
+      Create Hotel Order & Pay
     </button>
 
+    <p style="margin-top:12px;font-size:13px;color:#64748b;line-height:1.5;">
+      Stage 5.2: successful Razorpay payment will automatically send the
+      order ID, payment ID and signature to the Hotel Verify API.
+    </p>
+
     <div id="status" class="status">
-      Ready for payment testing...
+      Ready for Hotel payment testing...
     </div>
 
   </div>
@@ -163,7 +169,7 @@
     // ==============================
 
     // Yahan NEW TEST USER ka JWT token paste karo.
-    const USER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YWJkZTRkN2VmODRlNDkyMTNjZmJiMmMiLCJyb2xlIjoidXNlciIsImlhdCI6MTc5MDgzNDYzNywiZXhwIjoxNzkxNDM5NDM3fQ.qGKxcWu8L1BinyOLhMCIilWX5hVGaa4itizqwsHGJnY";
+    const USER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2YWIzOTk1N2JiNjM4OTNlOGYwZTFmMGQiLCJyb2xlIjoidXNlciIsImlhdCI6MTc5MTAwMjU5NSwiZXhwIjoxNzkxNjA3Mzk1fQ.uYuzZ5lbp3FF1fyvpEKU9pSxtOSe3HCkmLoyM8AeSWU";
 
 
     // ==============================
@@ -196,7 +202,7 @@
       if (!bookingId) {
 
         showStatus(
-          "Please enter Package Booking ID",
+          "Please enter Hotel Booking ID",
           "error"
         );
 
@@ -241,7 +247,7 @@
         // ==========================================
 
         const orderResponse = await fetch(
-          `${API_BASE_URL}/api/package-payments/${bookingId}/order`,
+          `${API_BASE_URL}/api/hotel-bookings/${bookingId}/order`,
           {
             method: "POST",
 
@@ -295,7 +301,7 @@
 
           name: "Tripora",
 
-          description: "Package Booking Payment",
+          description: "Hotel Booking Payment",
 
           order_id: order.id,
 
@@ -323,7 +329,7 @@
 
               const verifyResponse =
                 await fetch(
-                  `${API_BASE_URL}/api/package-payments/${bookingId}/verify`,
+                  `${API_BASE_URL}/api/hotel-bookings/${bookingId}/verify`,
                   {
                     method: "POST",
 
@@ -461,7 +467,7 @@ razorpay.on(
     try {
 
       const failureResponse = await fetch(
-        `${API_BASE_URL}/api/package-payments/${bookingId}/failure`,
+        `${API_BASE_URL}/api/hotel-bookings/${bookingId}/failure`,
         {
           method: "POST",
 
