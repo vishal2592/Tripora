@@ -51,6 +51,30 @@ export const getMyPackageBookings = createAsyncThunk(
 );
 
 // =====================================================
+// GET ALL PACKAGE BOOKINGS - ADMIN
+// GET /api/package-bookings/admin/all
+// =====================================================
+
+export const getAllPackageBookings = createAsyncThunk(
+  "packageBooking/getAllPackageBookings",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get(
+        "/package-bookings/all"
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to fetch all package bookings"
+      );
+    }
+  }
+);
+
+// =====================================================
 // GET SINGLE PACKAGE BOOKING
 // GET /api/package-bookings/:id
 // =====================================================
@@ -104,6 +128,33 @@ export const cancelPackageBooking = createAsyncThunk(
   }
 );
 
+
+export const adminCancelPackageBooking = createAsyncThunk(
+  "packageBooking/adminCancelPackageBooking",
+  async (
+    { id, cancellationReason },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.put(
+        `/package-bookings/admin/${id}/cancel`,
+        {
+          cancellationReason,
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to cancel package booking"
+      );
+    }
+  }
+);
+
+
 // =====================================================
 // INITIAL STATE
 // =====================================================
@@ -133,15 +184,30 @@ const packageBookingSlice = createSlice({
   initialState,
 
   reducers: {
+    // =================================================
+    // CLEAR ERROR
+    // =================================================
+
     clearPackageBookingError: (state) => {
       state.error = null;
     },
+
+    // =================================================
+    // CLEAR MESSAGE
+    // =================================================
 
     clearPackageBookingMessage: (state) => {
       state.message = "";
     },
 
+    // =================================================
+    // CLEAR COMPLETE STATE
+    // =================================================
+
     clearPackageBookingState: (state) => {
+      state.bookings = [];
+      state.booking = null;
+
       state.loading = false;
       state.createLoading = false;
       state.singleLoading = false;
@@ -152,6 +218,10 @@ const packageBookingSlice = createSlice({
       state.message = "";
       state.error = null;
     },
+
+    // =================================================
+    // CLEAR SELECTED BOOKING
+    // =================================================
 
     clearSelectedPackageBooking: (state) => {
       state.booking = null;
@@ -181,14 +251,15 @@ const packageBookingSlice = createSlice({
         (state, action) => {
           state.createLoading = false;
           state.loading = false;
+
           state.success = true;
           state.error = null;
 
           state.booking =
-            action.payload.booking || null;
+            action.payload?.booking || null;
 
           state.message =
-            action.payload.message ||
+            action.payload?.message ||
             "Package booking created successfully";
         }
       )
@@ -198,6 +269,7 @@ const packageBookingSlice = createSlice({
         (state, action) => {
           state.createLoading = false;
           state.loading = false;
+
           state.success = false;
 
           state.error =
@@ -216,6 +288,7 @@ const packageBookingSlice = createSlice({
         getMyPackageBookings.pending,
         (state) => {
           state.loading = true;
+          state.success = false;
           state.error = null;
         }
       )
@@ -224,12 +297,14 @@ const packageBookingSlice = createSlice({
         getMyPackageBookings.fulfilled,
         (state, action) => {
           state.loading = false;
+          state.success = true;
           state.error = null;
 
           state.bookings =
-            action.payload.bookings || [];
+            action.payload?.bookings || [];
 
-          state.message = "";
+          state.message =
+            action.payload?.message || "";
         }
       )
 
@@ -237,10 +312,51 @@ const packageBookingSlice = createSlice({
         getMyPackageBookings.rejected,
         (state, action) => {
           state.loading = false;
+          state.success = false;
 
           state.error =
             action.payload ||
             "Failed to fetch package bookings";
+        }
+      )
+
+      // =================================================
+      // GET ALL PACKAGE BOOKINGS - ADMIN
+      // =================================================
+
+      .addCase(
+        getAllPackageBookings.pending,
+        (state) => {
+          state.loading = true;
+          state.success = false;
+          state.error = null;
+        }
+      )
+
+      .addCase(
+        getAllPackageBookings.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.success = true;
+          state.error = null;
+
+          state.bookings =
+            action.payload?.bookings || [];
+
+          state.message =
+            action.payload?.message || "";
+        }
+      )
+
+      .addCase(
+        getAllPackageBookings.rejected,
+        (state, action) => {
+          state.loading = false;
+          state.success = false;
+
+          state.error =
+            action.payload ||
+            "Failed to fetch all package bookings";
         }
       )
 
@@ -260,10 +376,14 @@ const packageBookingSlice = createSlice({
         getSinglePackageBooking.fulfilled,
         (state, action) => {
           state.singleLoading = false;
+          state.success = true;
           state.error = null;
 
           state.booking =
-            action.payload.booking || null;
+            action.payload?.booking || null;
+
+          state.message =
+            action.payload?.message || "";
         }
       )
 
@@ -271,6 +391,7 @@ const packageBookingSlice = createSlice({
         getSinglePackageBooking.rejected,
         (state, action) => {
           state.singleLoading = false;
+          state.success = false;
 
           state.error =
             action.payload ||
@@ -286,6 +407,7 @@ const packageBookingSlice = createSlice({
         cancelPackageBooking.pending,
         (state) => {
           state.cancelLoading = true;
+          state.success = false;
           state.error = null;
         }
       )
@@ -294,20 +416,22 @@ const packageBookingSlice = createSlice({
         cancelPackageBooking.fulfilled,
         (state, action) => {
           state.cancelLoading = false;
-          state.error = null;
           state.success = true;
+          state.error = null;
 
           const updatedBooking =
-            action.payload.booking;
+            action.payload?.booking;
 
+          // Update selected booking
           state.booking =
             updatedBooking || state.booking;
 
+          // Success message
           state.message =
-            action.payload.message ||
+            action.payload?.message ||
             "Package booking cancelled successfully";
 
-          // Update booking in list
+          // Update booking inside bookings list
           if (updatedBooking?._id) {
             const index =
               state.bookings.findIndex(
@@ -327,12 +451,69 @@ const packageBookingSlice = createSlice({
         cancelPackageBooking.rejected,
         (state, action) => {
           state.cancelLoading = false;
+          state.success = false;
 
           state.error =
             action.payload ||
             "Failed to cancel package booking";
         }
-      );
+      )
+
+      .addCase(
+        adminCancelPackageBooking.pending,
+        (state) => {
+          state.cancelLoading = true;
+          state.success = false;
+          state.error = null;
+        }
+      )
+
+      .addCase(
+        adminCancelPackageBooking.fulfilled,
+        (state, action) => {
+          state.cancelLoading = false;
+          state.success = true;
+          state.error = null;
+
+          const updatedBooking =
+            action.payload?.booking;
+
+          // Update selected booking
+          state.booking =
+            updatedBooking || state.booking;
+
+          // Success message
+          state.message =
+            action.payload?.message ||
+            "Package booking cancelled successfully";
+
+          // Update booking inside bookings list
+          if (updatedBooking?._id) {
+            const index =
+              state.bookings.findIndex(
+                (item) =>
+                  item._id === updatedBooking._id
+              );
+
+            if (index !== -1) {
+              state.bookings[index] =
+                updatedBooking;
+            }
+          }
+        }
+      )
+
+      .addCase(
+        adminCancelPackageBooking.rejected,
+        (state, action) => {
+          state.cancelLoading = false;
+          state.success = false;
+
+          state.error =
+            action.payload ||
+            "Failed to cancel package booking";
+        }
+      )
   },
 });
 

@@ -8,8 +8,10 @@ const {
   getAllHotelBookings,
   updateHotelBooking,
   cancelHotelBooking,
+  adminCancelHotelBooking,
   deleteHotelBooking,
-  //razorpay
+
+  // Razorpay
   createHotelRazorpayOrder,
   verifyHotelRazorpayPayment,
   handleHotelPaymentFailure,
@@ -18,28 +20,96 @@ const {
 
 const adminAuth = require("../middleware/adminAuth.middleware");
 const authMiddleware = require("../middleware/auth.middleware");
-//create hotel booking route
-router.post("/", authMiddleware, createHotelBooking);
-//get all hotel bookings
-router.get("/", getAllHotelBookings);
 
-// Razorpay order
-router.post("/:bookingId/order", authMiddleware, createHotelRazorpayOrder);
-router.post("/:bookingId/verify", authMiddleware, verifyHotelRazorpayPayment);
-router.post("/:bookingId/failure", authMiddleware, handleHotelPaymentFailure);
+// ======================================================
+// CREATE HOTEL BOOKING - USER
+// ======================================================
 
 router.post(
-  "/webhook",
-
-  handleHotelPaymentWebhook,
+  "/",
+  authMiddleware,
+  createHotelBooking
 );
 
-//get hotel booking by id route
-router.get("/:bookingId", authMiddleware, getHotelBookingByBookingId);
-//update hotel booking route
-router.put("/:bookingId", updateHotelBooking);
-//cancel hotel booking route
-router.put("/:bookingId/cancel", cancelHotelBooking);
-router.delete("/admin/:bookingId", adminAuth, deleteHotelBooking);
+// ======================================================
+// ADMIN HOTEL BOOKING ROUTES
+// ======================================================
+
+// Get all hotel bookings - Admin
+router.get(
+  "/admin/all",
+  adminAuth,
+  getAllHotelBookings
+);
+
+// Cancel any hotel booking - Admin
+router.put(
+  "/admin/:bookingId/cancel",
+  adminAuth,
+  adminCancelHotelBooking
+);
+
+// Delete hotel booking - Admin
+router.delete(
+  "/admin/:bookingId",
+  adminAuth,
+  deleteHotelBooking
+);
+
+// ======================================================
+// RAZORPAY ROUTES
+// ======================================================
+
+// Create Razorpay order
+router.post(
+  "/:bookingId/order",
+  authMiddleware,
+  createHotelRazorpayOrder
+);
+
+// Verify Razorpay payment
+router.post(
+  "/:bookingId/verify",
+  authMiddleware,
+  verifyHotelRazorpayPayment
+);
+
+// Handle Razorpay payment failure
+router.post(
+  "/:bookingId/failure",
+  authMiddleware,
+  handleHotelPaymentFailure
+);
+
+// Razorpay webhook
+router.post(
+  "/webhook",
+  handleHotelPaymentWebhook
+);
+
+// ======================================================
+// USER HOTEL BOOKING ROUTES
+// ======================================================
+
+// Get hotel booking by booking ID
+router.get(
+  "/:bookingId",
+  authMiddleware,
+  getHotelBookingByBookingId
+);
+
+// Update hotel booking
+router.put(
+  "/:bookingId",
+  authMiddleware,
+  updateHotelBooking
+);
+
+// Cancel own hotel booking
+router.put(
+  "/:bookingId/cancel",
+  authMiddleware,
+  cancelHotelBooking
+);
 
 module.exports = router;

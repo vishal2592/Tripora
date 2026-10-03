@@ -1,3 +1,4 @@
+
 import React, {
   useEffect,
   useMemo,
@@ -56,6 +57,7 @@ const fallbackRoom = {
   bed: "1 King Bed",
   meal: "Breakfast Included",
   cancellation: "Free Cancellation",
+  guests: 2,
 };
 
 const fallbackBooking = {
@@ -70,13 +72,19 @@ const fallbackBooking = {
 // ======================================================
 
 const formatPrice = (price) => {
+  const numericPrice = Number(price);
+
   return new Intl.NumberFormat("en-IN").format(
-    Number(price || 0)
+    Number.isFinite(numericPrice)
+      ? numericPrice
+      : 0
   );
 };
 
 const parseDate = (value) => {
-  if (!value) return null;
+  if (!value) {
+    return null;
+  }
 
   const date = new Date(value);
 
@@ -108,7 +116,11 @@ const calculateNights = (
   const start = parseDate(checkIn);
   const end = parseDate(checkOut);
 
-  if (!start || !end || end <= start) {
+  if (
+    !start ||
+    !end ||
+    end <= start
+  ) {
     return 1;
   }
 
@@ -119,6 +131,51 @@ const calculateNights = (
         (1000 * 60 * 60 * 24)
     )
   );
+};
+
+const formatPaymentMethod = (
+  paymentMethod
+) => {
+  if (!paymentMethod) {
+    return "Razorpay";
+  }
+
+  const method = String(
+    paymentMethod
+  )
+    .trim()
+    .toLowerCase();
+
+  const labels = {
+    razorpay: "Razorpay",
+    upi: "UPI",
+    card: "Card",
+    netbanking: "Net Banking",
+    wallet: "Wallet",
+    "credit card": "Credit Card",
+    "debit card": "Debit Card",
+  };
+
+  return (
+    labels[method] ||
+    String(paymentMethod)
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) =>
+        char.toUpperCase()
+      )
+  );
+};
+
+const formatStatus = (status) => {
+  if (!status) {
+    return "-";
+  }
+
+  return String(status)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) =>
+      char.toUpperCase()
+    );
 };
 
 // ======================================================
@@ -139,7 +196,7 @@ const BookingSuccess = () => {
   // ====================================================
 
   const {
-    booking,
+    booking: reduxBooking,
     loading,
     error,
   } = useSelector(
@@ -150,7 +207,8 @@ const BookingSuccess = () => {
   // LOCAL STATE
   // ====================================================
 
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] =
+    useState(false);
 
   // ====================================================
   // OPTIONAL NAVIGATION STATE
@@ -160,7 +218,7 @@ const BookingSuccess = () => {
     Payment page se jo data aa raha hai,
     wo temporarily available rahega.
 
-    Lekin final source MongoDB booking hoga.
+    Final source MongoDB booking rahega.
   */
 
   const bookingState =
@@ -181,7 +239,41 @@ const BookingSuccess = () => {
   }, [dispatch, bookingId]);
 
   // ====================================================
-  // NORMALIZE BOOKING DATA
+  // USE ONLY CURRENT BOOKING
+  // ====================================================
+
+  /*
+    Agar Redux me kisi previous booking ka
+    data pada hua hai to usko current booking
+    ke liye use nahi karna hai.
+  */
+
+  const booking = useMemo(() => {
+    if (!reduxBooking) {
+      return null;
+    }
+
+    const reduxBookingId =
+      reduxBooking.bookingId ||
+      reduxBooking._id;
+
+    if (
+      bookingId &&
+      reduxBookingId &&
+      String(reduxBookingId) !==
+        String(bookingId)
+    ) {
+      return null;
+    }
+
+    return reduxBooking;
+  }, [
+    reduxBooking,
+    bookingId,
+  ]);
+
+  // ====================================================
+  // HOTEL
   // ====================================================
 
   const hotel = useMemo(() => {
@@ -233,7 +325,7 @@ const BookingSuccess = () => {
 
         price:
           Number(
-            booking.roomDetails.price ||
+            booking.roomDetails.price ??
               fallbackRoom.price
           ),
 
@@ -246,12 +338,14 @@ const BookingSuccess = () => {
           fallbackRoom.meal,
 
         cancellation:
-          booking.roomDetails.cancellation ||
+          booking.roomDetails
+            .cancellation ||
           fallbackRoom.cancellation,
 
         guests:
           Number(
-            booking.roomDetails.guests || 2
+            booking.roomDetails.guests ??
+              fallbackRoom.guests
           ),
       };
     }
@@ -294,25 +388,57 @@ const BookingSuccess = () => {
   // NIGHTS
   // ====================================================
 
-  const nights =
-    Number(
-      booking?.nights ||
-        bookingState.nights ||
-        calculateNights(
-          checkIn,
-          checkOut
-        )
-    ) || 1;
+  const nights = useMemo(() => {
+    const backendNights = Number(
+      booking?.nights
+    );
+
+    if (
+      Number.isFinite(
+        backendNights
+      ) &&
+      backendNights > 0
+    ) {
+      return backendNights;
+    }
+
+    const stateNights = Number(
+      bookingState.nights
+    );
+
+    if (
+      Number.isFinite(stateNights) &&
+      stateNights > 0
+    ) {
+      return stateNights;
+    }
+
+    return calculateNights(
+      checkIn,
+      checkOut
+    );
+  }, [
+    booking,
+    bookingState.nights,
+    checkIn,
+    checkOut,
+  ]);
 
   // ====================================================
   // PRICE
   // ====================================================
 
   const roomPrice = Number(
-    selectedRoom.price ||
-      selectedRoom.startingPrice ||
+    selectedRoom.price ??
+      selectedRoom.startingPrice ??
       fallbackRoom.price
   );
+
+  /*
+    Backend se saved values ko highest priority.
+    Isse BookingSuccess frontend calculation
+    ke bajay actual paid booking amount show karega.
+  */
 
   const totalRoomPrice = Number(
     booking?.roomTotal ??
@@ -348,7 +474,7 @@ const BookingSuccess = () => {
   const paymentMethod =
     booking?.paymentMethod ||
     bookingState.paymentMethod ||
-    "upi";
+    "razorpay";
 
   // ====================================================
   // PAYMENT STATUS
@@ -356,6 +482,7 @@ const BookingSuccess = () => {
 
   const paymentStatus =
     booking?.paymentStatus ||
+    bookingState.paymentStatus ||
     "paid";
 
   // ====================================================
@@ -364,6 +491,7 @@ const BookingSuccess = () => {
 
   const bookingStatus =
     booking?.bookingStatus ||
+    bookingState.bookingStatus ||
     "confirmed";
 
   // ====================================================
@@ -371,7 +499,9 @@ const BookingSuccess = () => {
   // ====================================================
 
   const guestCountText = useMemo(() => {
-    if (typeof guests === "number") {
+    if (
+      typeof guests === "number"
+    ) {
       return `${guests} ${
         guests === 1
           ? "Guest"
@@ -379,13 +509,18 @@ const BookingSuccess = () => {
       }`;
     }
 
-    if (typeof guests === "string") {
+    if (
+      typeof guests === "string"
+    ) {
       return guests;
     }
 
     if (
-      guests?.adults ||
-      guests?.children
+      guests &&
+      (
+        guests.adults ||
+        guests.children
+      )
     ) {
       const adults = Number(
         guests.adults || 0
@@ -409,7 +544,7 @@ const BookingSuccess = () => {
   }, [guests]);
 
   // ====================================================
-  // COPY BOOKING ID
+  // DISPLAY BOOKING ID
   // ====================================================
 
   const displayBookingId =
@@ -417,16 +552,28 @@ const BookingSuccess = () => {
     bookingId ||
     "Booking ID";
 
+  // ====================================================
+  // COPY BOOKING ID
+  // ====================================================
+
   const handleCopyBookingId =
     async () => {
       try {
+        if (
+          !displayBookingId ||
+          displayBookingId ===
+            "Booking ID"
+        ) {
+          return;
+        }
+
         await navigator.clipboard.writeText(
           displayBookingId
         );
 
         setCopied(true);
 
-        setTimeout(() => {
+        window.setTimeout(() => {
           setCopied(false);
         }, 1800);
       } catch (copyError) {
@@ -448,10 +595,14 @@ TRIPORA - BOOKING CONFIRMATION
 Booking ID: ${displayBookingId}
 
 BOOKING STATUS
-${bookingStatus.toUpperCase()}
+${formatStatus(
+  bookingStatus
+).toUpperCase()}
 
 PAYMENT STATUS
-${paymentStatus.toUpperCase()}
+${formatStatus(
+  paymentStatus
+).toUpperCase()}
 
 HOTEL
 ${hotel.name || fallbackHotel.name}
@@ -486,10 +637,16 @@ EMAIL
 ${guestDetails.email || "Not provided"}
 
 MOBILE
-${guestDetails.mobile || "Not provided"}
+${guestDetails.mobile
+      ? `${guestDetails.countryCode || "+91"} ${
+          guestDetails.mobile
+        }`
+      : "Not provided"}
 
 PAYMENT METHOD
-${paymentMethod.toUpperCase()}
+${formatPaymentMethod(
+  paymentMethod
+).toUpperCase()}
 
 ROOM TOTAL
 ₹${formatPrice(totalRoomPrice)}
@@ -533,7 +690,10 @@ Thank you for booking with Tripora.
   // LOADING STATE
   // ====================================================
 
-  if (loading && !booking) {
+  if (
+    loading &&
+    !booking
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
         <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
@@ -558,7 +718,10 @@ Thank you for booking with Tripora.
   // ERROR STATE
   // ====================================================
 
-  if (error && !booking) {
+  if (
+    error &&
+    !booking
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
         <div className="w-full max-w-md rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm">
@@ -575,19 +738,21 @@ Thank you for booking with Tripora.
           </p>
 
           <p className="mt-3 text-xs text-slate-400">
-            Booking ID: {bookingId || "-"}
+            Booking ID:{" "}
+            {bookingId || "-"}
           </p>
 
           <button
             type="button"
-            onClick={() =>
-              bookingId &&
-              dispatch(
-                getSingleBookingById(
-                  bookingId
-                )
-              )
-            }
+            onClick={() => {
+              if (bookingId) {
+                dispatch(
+                  getSingleBookingById(
+                    bookingId
+                  )
+                );
+              }
+            }}
             className="mt-6 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-700"
           >
             Try Again
@@ -596,6 +761,10 @@ Thank you for booking with Tripora.
       </div>
     );
   }
+
+  // ====================================================
+  // MAIN UI
+  // ====================================================
 
   return (
     <div className="min-h-screen bg-slate-50 pb-2">
@@ -649,8 +818,6 @@ Thank you for booking with Tripora.
       <div className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
           <div className="mx-auto flex max-w-3xl items-center justify-between">
-            {/* Step 1 */}
-
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
                 <Check
@@ -665,8 +832,6 @@ Thank you for booking with Tripora.
             </div>
 
             <div className="mx-2 h-px flex-1 bg-emerald-500 sm:mx-4" />
-
-            {/* Step 2 */}
 
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
@@ -683,8 +848,6 @@ Thank you for booking with Tripora.
 
             <div className="mx-2 h-px flex-1 bg-emerald-500 sm:mx-4" />
 
-            {/* Step 3 */}
-
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white">
                 <Check
@@ -699,8 +862,6 @@ Thank you for booking with Tripora.
             </div>
 
             <div className="mx-2 h-px flex-1 bg-emerald-500 sm:mx-4" />
-
-            {/* Step 4 */}
 
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md shadow-emerald-500/20">
@@ -1216,8 +1377,6 @@ Thank you for booking with Tripora.
 
           <aside className="lg:sticky lg:top-5 lg:self-start">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              {/* Header */}
-
               <div className="border-b border-slate-200 px-5 py-4">
                 <h2 className="text-lg font-bold text-slate-900">
                   Payment Summary
@@ -1237,7 +1396,9 @@ Thank you for booking with Tripora.
                       {paymentStatus ===
                       "paid"
                         ? "Payment Successful"
-                        : paymentStatus}
+                        : formatStatus(
+                            paymentStatus
+                          )}
                     </p>
                   </div>
 
@@ -1346,8 +1507,10 @@ Thank you for booking with Tripora.
                     Payment Method
                   </p>
 
-                  <p className="mt-1 text-sm font-bold uppercase text-slate-800">
-                    {paymentMethod}
+                  <p className="mt-1 text-sm font-bold text-slate-800">
+                    {formatPaymentMethod(
+                      paymentMethod
+                    )}
                   </p>
                 </div>
 

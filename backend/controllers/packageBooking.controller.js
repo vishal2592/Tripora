@@ -3,25 +3,39 @@ const PackageBooking = require("../models/packageBooking.model");
 const Package = require("../models/package.model");
 const Destination = require("../models/destination.model");
 
-// Create Package Booking
+// =====================================================
+// CREATE PACKAGE BOOKING
+// =====================================================
+
 const createPackageBooking = async (req, res) => {
   try {
     // Logged-in user ID from JWT middleware
     const userId = req.user.userId;
 
-    const { packageId, travelDate, adults, children, infants, passengers } =
-      req.body;
+    const {
+      packageId,
+      travelDate,
+      adults,
+      children,
+      infants,
+      passengers,
+    } = req.body;
 
-    // Required fields
+    // =====================================================
+    // Required Fields
+    // =====================================================
 
     if (!packageId || !travelDate || !adults || !passengers) {
       return res.status(400).json({
         success: false,
-        message: "packageId, travelDate, adults and passengers are required",
+        message:
+          "packageId, travelDate, adults and passengers are required",
       });
     }
 
+    // =====================================================
     // Validate Package ID
+    // =====================================================
 
     if (!mongoose.Types.ObjectId.isValid(packageId)) {
       return res.status(400).json({
@@ -30,11 +44,13 @@ const createPackageBooking = async (req, res) => {
       });
     }
 
+    // =====================================================
     // Find Package
+    // =====================================================
 
     const packageData = await Package.findById(packageId).populate(
       "destination",
-      "name country",
+      "name country"
     );
 
     if (!packageData) {
@@ -44,7 +60,9 @@ const createPackageBooking = async (req, res) => {
       });
     }
 
+    // =====================================================
     // Check Package Status
+    // =====================================================
 
     if (packageData.status !== "Active") {
       return res.status(400).json({
@@ -53,7 +71,70 @@ const createPackageBooking = async (req, res) => {
       });
     }
 
-    // Traveller counts
+    // =====================================================
+    // Destination Details
+    // =====================================================
+
+    let destinationName = "";
+    let destinationCountry = "";
+
+    // If destination is populated object
+    if (
+      packageData.destination &&
+      typeof packageData.destination === "object"
+    ) {
+      destinationName =
+        packageData.destination.name ||
+        packageData.destination.destination ||
+        "";
+
+      destinationCountry =
+        packageData.destination.country || "";
+    }
+
+    // If destination is stored as a string
+    else if (packageData.destination) {
+      destinationName = String(packageData.destination);
+    }
+
+    // Fallback from package itself
+    if (!destinationName) {
+      destinationName =
+        packageData.location ||
+        packageData.city ||
+        packageData.place ||
+        "";
+    }
+
+    if (!destinationCountry) {
+      destinationCountry =
+        packageData.country ||
+        "";
+    }
+
+    // =====================================================
+    // Validate Destination
+    // =====================================================
+
+    if (!String(destinationName).trim()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Package destination is missing. Please assign a destination to this package.",
+      });
+    }
+
+    if (!String(destinationCountry).trim()) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Package country is missing. Please assign a country to this package.",
+      });
+    }
+
+    // =====================================================
+    // Traveller Counts
+    // =====================================================
 
     const adultCount = Number(adults);
     const childCount = children ? Number(children) : 0;
@@ -80,7 +161,9 @@ const createPackageBooking = async (req, res) => {
       });
     }
 
-    // Passenger validation
+    // =====================================================
+    // Passenger Validation
+    // =====================================================
 
     if (!Array.isArray(passengers)) {
       return res.status(400).json({
@@ -89,7 +172,8 @@ const createPackageBooking = async (req, res) => {
       });
     }
 
-    const totalTravellers = adultCount + childCount + infantCount;
+    const totalTravellers =
+      adultCount + childCount + infantCount;
 
     if (passengers.length !== totalTravellers) {
       return res.status(400).json({
@@ -99,15 +183,21 @@ const createPackageBooking = async (req, res) => {
     }
 
     for (const passenger of passengers) {
-      if (!passenger.fullName || passenger.age === undefined) {
+      if (
+        !passenger.fullName ||
+        passenger.age === undefined
+      ) {
         return res.status(400).json({
           success: false,
-          message: "Each passenger must have fullName and age",
+          message:
+            "Each passenger must have fullName and age",
         });
       }
     }
 
-    // Travel Date validation
+    // =====================================================
+    // Travel Date Validation
+    // =====================================================
 
     const selectedTravelDate = new Date(travelDate);
 
@@ -118,21 +208,36 @@ const createPackageBooking = async (req, res) => {
       });
     }
 
+    // =====================================================
     // Package Pricing
+    // =====================================================
 
     const adultPrice = Number(packageData.price);
+
+    if (isNaN(adultPrice) || adultPrice < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid package price",
+      });
+    }
 
     const childPrice = adultPrice * 0.7;
 
     const infantPrice = adultPrice * 0.25;
 
-    const adultsTotal = adultPrice * adultCount;
+    const adultsTotal =
+      adultPrice * adultCount;
 
-    const childrenTotal = childPrice * childCount;
+    const childrenTotal =
+      childPrice * childCount;
 
-    const infantsTotal = infantPrice * infantCount;
+    const infantsTotal =
+      infantPrice * infantCount;
 
-    const subtotal = adultsTotal + childrenTotal + infantsTotal;
+    const subtotal =
+      adultsTotal +
+      childrenTotal +
+      infantsTotal;
 
     // 5% Tax
     const taxes = subtotal * 0.05;
@@ -140,18 +245,43 @@ const createPackageBooking = async (req, res) => {
     // Fixed convenience fee
     const convenienceFee = 299;
 
-    const totalAmount = subtotal + taxes + convenienceFee;
+    const totalAmount =
+      subtotal +
+      taxes +
+      convenienceFee;
 
+    // =====================================================
     // Generate Booking ID
+    // =====================================================
 
     const bookingId =
-      "TRP" + Date.now() + Math.floor(100 + Math.random() * 900);
+      "TRP" +
+      Date.now() +
+      Math.floor(100 + Math.random() * 900);
 
+    // =====================================================
     // Package Snapshot
+    // =====================================================
 
-    const destinationName = packageData.destination?.name || "";
+    const packageDetails = {
+      name: packageData.name || "Package",
 
+      destination:
+        String(destinationName).trim(),
+
+      country:
+        String(destinationCountry).trim(),
+
+      duration:
+        packageData.duration || "",
+
+      image:
+        packageData.image || "",
+    };
+
+    // =====================================================
     // Create Booking
+    // =====================================================
 
     const booking = await PackageBooking.create({
       bookingId,
@@ -160,13 +290,7 @@ const createPackageBooking = async (req, res) => {
 
       package: packageData._id,
 
-      packageDetails: {
-        name: packageData.name,
-        destination: destinationName,
-        country: packageData.country,
-        duration: packageData.duration,
-        image: packageData.image,
-      },
+      packageDetails,
 
       travelDate: selectedTravelDate,
 
@@ -198,13 +322,22 @@ const createPackageBooking = async (req, res) => {
       bookingStatus: "Pending",
     });
 
+    // =====================================================
     // Increase Package Booking Count
+    // =====================================================
 
-    await Package.findByIdAndUpdate(packageData._id, {
-      $inc: {
-        bookings: 1,
-      },
-    });
+    await Package.findByIdAndUpdate(
+      packageData._id,
+      {
+        $inc: {
+          bookings: 1,
+        },
+      }
+    );
+
+    // =====================================================
+    // Success Response
+    // =====================================================
 
     return res.status(201).json({
       success: true,
@@ -212,7 +345,10 @@ const createPackageBooking = async (req, res) => {
       booking,
     });
   } catch (error) {
-    console.error("Create Package Booking Error:", error);
+    console.error(
+      "Create Package Booking Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -222,7 +358,10 @@ const createPackageBooking = async (req, res) => {
   }
 };
 
-// get logged-in user's pacjage bookin
+// =====================================================
+// GET LOGGED-IN USER'S PACKAGE BOOKINGS
+// =====================================================
+
 const getMyPackageBooking = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -234,21 +373,28 @@ const getMyPackageBooking = async (req, res) => {
       });
     }
 
-    const bookings = await PackageBooking.find({ user: userId })
+    const bookings = await PackageBooking.find({
+      user: userId,
+    })
       .populate(
         "package",
-        "name destination country duration days nights price image",
+        "name destination country duration days nights price image"
       )
-      .sort({ createdAt: -1 });
+      .sort({
+        createdAt: -1,
+      });
 
-    //success response
     return res.status(200).json({
       success: true,
       count: bookings.length,
       bookings,
     });
   } catch (error) {
-    console.error("Get My Package Bookings Error:", error);
+    console.error(
+      "Get My Package Bookings Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch package bookings",
@@ -257,11 +403,40 @@ const getMyPackageBooking = async (req, res) => {
   }
 };
 
-//get single package booking
+const getallbookings = async (req, res) => {
+  try {
+    const bookings = await PackageBooking.find()
+      .populate(
+        "package",
+        "name destination country duration days nights price image"
+      )
+      .sort({
+        createdAt: -1,
+      });
+
+    return res.status(200).json({
+      success: true,
+      count: bookings.length,
+      bookings,
+    });
+  } catch (error) {
+    console.error(
+      "Get All Package Bookings Error:",
+      error
+    );
+  }
+}
+
+// =====================================================
+// GET SINGLE PACKAGE BOOKING
+// =====================================================
+
 const getSinglePackageBooking = async (req, res) => {
   try {
     const userId = req.user.userId;
+
     const { id } = req.params;
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -281,7 +456,7 @@ const getSinglePackageBooking = async (req, res) => {
       user: userId,
     }).populate(
       "package",
-      "name destination country duration days nights price image description highlights",
+      "name destination country duration days nights price image description highlights"
     );
 
     if (!booking) {
@@ -296,7 +471,11 @@ const getSinglePackageBooking = async (req, res) => {
       booking,
     });
   } catch (error) {
-    console.error("Get Single Package Booking Error:", error);
+    console.error(
+      "Get Single Package Booking Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch package booking",
@@ -305,10 +484,16 @@ const getSinglePackageBooking = async (req, res) => {
   }
 };
 
+// =====================================================
+// CANCEL PACKAGE BOOKING
+// =====================================================
+
 const cancelPackageBooking = async (req, res) => {
   try {
     const userId = req.user.userId;
+
     const { id } = req.params;
+
     const { cancellationReason } = req.body;
 
     if (!userId) {
@@ -340,6 +525,76 @@ const cancelPackageBooking = async (req, res) => {
     if (booking.bookingStatus === "Cancelled") {
       return res.status(400).json({
         success: false,
+        message:
+          "Package booking is already cancelled",
+      });
+    }
+
+    if (booking.bookingStatus === "Completed") {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Completed booking cannot be cancelled",
+      });
+    }
+
+    booking.bookingStatus = "Cancelled";
+
+    if (cancellationReason) {
+      booking.cancellationReason =
+        cancellationReason.trim();
+    }
+
+    await booking.save();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Package booking cancelled successfully",
+      booking,
+    });
+  } catch (error) {
+    console.error(
+      "Cancel Package Booking Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to cancel package booking",
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
+// ADMIN CANCEL PACKAGE BOOKING
+// =====================================================
+
+const adminCancelPackageBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cancellationReason } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID",
+      });
+    }
+
+    const booking = await PackageBooking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Package booking not found",
+      });
+    }
+
+    if (booking.bookingStatus === "Cancelled") {
+      return res.status(400).json({
+        success: false,
         message: "Package booking is already cancelled",
       });
     }
@@ -354,18 +609,25 @@ const cancelPackageBooking = async (req, res) => {
     booking.bookingStatus = "Cancelled";
 
     if (cancellationReason) {
-      booking.cancellationReason = cancellationReason.trim();
+      booking.cancellationReason =
+        cancellationReason.trim();
+    } else {
+      booking.cancellationReason =
+        "Cancelled by admin";
     }
 
     await booking.save();
 
     return res.status(200).json({
       success: true,
-      message: "Package booking cancelled successfully",
+      message: "Package booking cancelled successfully by admin",
       booking,
     });
   } catch (error) {
-    console.error("Cancel Package Booking Error:", error);
+    console.error(
+      "Admin Cancel Package Booking Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -375,79 +637,15 @@ const cancelPackageBooking = async (req, res) => {
   }
 };
 
-// Delete Package Booking
-const deletePackageBooking = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const { id } = req.params;
+// =====================================================
+// EXPORT
+// =====================================================
 
-    // Check user
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "User ID not found in token",
-      });
-    }
-
-    // Validate booking ID
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid booking ID",
-      });
-    }
-
-    // Find booking belonging to logged-in user
-    const booking = await PackageBooking.findOne({
-      _id: id,
-      user: userId,
-    });
-
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: "Package booking not found",
-      });
-    }
-
-    // Prevent deleting completed booking
-    if (booking.bookingStatus === "Completed") {
-      return res.status(400).json({
-        success: false,
-        message: "Completed booking cannot be deleted",
-      });
-    }
-
-    // Decrease package booking count
-    if (booking.package) {
-      await Package.findByIdAndUpdate(booking.package, {
-        $inc: {
-          bookings: -1,
-        },
-      });
-    }
-
-    // Delete booking
-    await PackageBooking.findByIdAndDelete(id);
-
-    return res.status(200).json({
-      success: true,
-      message: "Package booking deleted successfully",
-    });
-  } catch (error) {
-    console.error("Delete Package Booking Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to delete package booking",
-      error: error.message,
-    });
-  }
-};
 module.exports = {
   createPackageBooking,
   getMyPackageBooking,
   getSinglePackageBooking,
   cancelPackageBooking,
-  deletePackageBooking,
+  adminCancelPackageBooking,
+  getallbookings,
 };

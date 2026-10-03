@@ -3,12 +3,13 @@ const Hotel = require("../models/hotel.model");
 const Payment = require("../models/payment.model");
 const razorpay = require("../config/razorpay");
 const crypto = require("crypto");
+
+// ======================================================
+// CREATE HOTEL BOOKING
+// ======================================================
+
 const createHotelBooking = async (req, res) => {
   try {
-    // ==========================================
-    // GET LOGGED-IN USER ID FROM JWT
-    // ==========================================
-
     const userId = req.user?.userId;
 
     if (!userId) {
@@ -33,9 +34,9 @@ const createHotelBooking = async (req, res) => {
       paymentMethod,
     } = req.body;
 
-    // ==========================================
-    // CHECK REQUIRED FIELDS
-    // ==========================================
+    // ==================================================
+    // REQUIRED FIELDS
+    // ==================================================
 
     if (
       !hotelId ||
@@ -44,10 +45,7 @@ const createHotelBooking = async (req, res) => {
       !checkOut ||
       !nights ||
       !guests ||
-      !guestDetails ||
-      roomTotal === undefined ||
-      taxes === undefined ||
-      totalAmount === undefined
+      !guestDetails
     ) {
       return res.status(400).json({
         success: false,
@@ -55,9 +53,9 @@ const createHotelBooking = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // CHECK HOTEL EXISTS
-    // ==========================================
+    // ==================================================
+    // HOTEL
+    // ==================================================
 
     const hotel = await Hotel.findById(hotelId);
 
@@ -68,12 +66,29 @@ const createHotelBooking = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // GUEST DETAILS VALIDATION
-    // ==========================================
+    const hotelStatus = String(hotel.status || "")
+      .trim()
+      .toLowerCase();
 
-    const { firstName, lastName, email, countryCode, mobile, specialRequest } =
-      guestDetails;
+    if (hotelStatus !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: "This hotel is currently unavailable",
+      });
+    }
+
+    // ==================================================
+    // GUEST DETAILS
+    // ==================================================
+
+    const {
+      firstName,
+      lastName,
+      email,
+      countryCode,
+      mobile,
+      specialRequest,
+    } = guestDetails;
 
     if (!firstName || !lastName || !email || !mobile) {
       return res.status(400).json({
@@ -82,14 +97,17 @@ const createHotelBooking = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // VALIDATE DATES
-    // ==========================================
+    // ==================================================
+    // DATES
+    // ==================================================
 
     const startDate = new Date(checkIn);
     const endDate = new Date(checkOut);
 
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    if (
+      Number.isNaN(startDate.getTime()) ||
+      Number.isNaN(endDate.getTime())
+    ) {
       return res.status(400).json({
         success: false,
         message: "Invalid check-in or check-out date",
@@ -103,20 +121,18 @@ const createHotelBooking = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // VALIDATE NUMERIC VALUES
-    // ==========================================
+    // ==================================================
+    // NUMERIC VALUES
+    // ==================================================
 
     const roomPrice = Number(roomDetails.price);
     const bookingNights = Number(nights);
     const bookingGuests = Number(guests);
-    const bookingTaxes = Number(taxes);
 
     if (
       Number.isNaN(roomPrice) ||
       Number.isNaN(bookingNights) ||
-      Number.isNaN(bookingGuests) ||
-      Number.isNaN(bookingTaxes)
+      Number.isNaN(bookingGuests)
     ) {
       return res.status(400).json({
         success: false,
@@ -126,9 +142,10 @@ const createHotelBooking = async (req, res) => {
 
     if (
       roomPrice < 0 ||
+      !Number.isInteger(bookingNights) ||
       bookingNights < 1 ||
-      bookingGuests < 1 ||
-      bookingTaxes < 0
+      !Number.isInteger(bookingGuests) ||
+      bookingGuests < 1
     ) {
       return res.status(400).json({
         success: false,
@@ -136,48 +153,117 @@ const createHotelBooking = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // CALCULATE ROOM TOTAL ON BACKEND
-    // ==========================================
+    // ==================================================
+    // EXTRA GUEST CALCULATION
+    // ==================================================
 
-    const calculatedRoomTotal = roomPrice * bookingNights;
+    const roomCapacity = Number(roomDetails.guests || 2);
 
-    // ==========================================
-    // CALCULATE FINAL AMOUNT ON BACKEND
-    // ==========================================
+    const includedGuests =
+      Number.isFinite(roomCapacity) && roomCapacity > 0
+        ? roomCapacity
+        : 2;
 
-    const calculatedTotalAmount = calculatedRoomTotal + bookingTaxes;
+    const extraGuests = Math.max(
+      0,
+      bookingGuests - includedGuests
+    );
 
-    // ==========================================
-    // CHECK FRONTEND TOTAL
-    // ==========================================
+    const extraGuestFeePerNight = Math.round(
+      roomPrice * 0.1
+    );
 
-    const frontendTotalAmount = Number(totalAmount);
+    const baseRoomTotal =
+      roomPrice * bookingNights;
 
-    if (
-      Number.isNaN(frontendTotalAmount) ||
-      frontendTotalAmount !== calculatedTotalAmount
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Booking amount mismatch",
-      });
+    const extraGuestTotal =
+      extraGuests *
+      extraGuestFeePerNight *
+      bookingNights;
+
+    const calculatedRoomTotal =
+      baseRoomTotal + extraGuestTotal;
+
+    // ==================================================
+    // TAX CALCULATION
+    // ==================================================
+
+    const calculatedTaxes = Math.round(
+      calculatedRoomTotal * 0.12
+    );
+
+    const calculatedTotalAmount =
+      calculatedRoomTotal + calculatedTaxes;
+
+    // ==================================================
+    // OPTIONAL FRONTEND TOTAL VALIDATION
+    // ==================================================
+
+    if (roomTotal !== undefined) {
+      const frontendRoomTotal = Number(roomTotal);
+
+      if (
+        Number.isNaN(frontendRoomTotal) ||
+        frontendRoomTotal !== calculatedRoomTotal
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Room amount mismatch",
+          expected: calculatedRoomTotal,
+          received: frontendRoomTotal,
+        });
+      }
     }
 
-    // ==========================================
-    // GENERATE BOOKING ID
-    // ==========================================
+    if (taxes !== undefined) {
+      const frontendTaxes = Number(taxes);
 
-    const bookingId = `HTL${Date.now().toString().slice(-8)}`;
+      if (
+        Number.isNaN(frontendTaxes) ||
+        frontendTaxes !== calculatedTaxes
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Tax amount mismatch",
+          expected: calculatedTaxes,
+          received: frontendTaxes,
+        });
+      }
+    }
 
-    // ==========================================
-    // CREATE HOTEL BOOKING
-    // ==========================================
+    if (totalAmount !== undefined) {
+      const frontendTotalAmount =
+        Number(totalAmount);
+
+      if (
+        Number.isNaN(frontendTotalAmount) ||
+        frontendTotalAmount !==
+          calculatedTotalAmount
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Booking amount mismatch",
+          expected: calculatedTotalAmount,
+          received: frontendTotalAmount,
+        });
+      }
+    }
+
+    // ==================================================
+    // BOOKING ID
+    // ==================================================
+
+    const bookingId = `HTL${Date.now()
+      .toString()
+      .slice(-8)}`;
+
+    // ==================================================
+    // CREATE BOOKING
+    // ==================================================
 
     const booking = await HotelBooking.create({
       bookingId,
 
-      // Logged-in user's MongoDB ObjectId
       user: userId,
 
       hotel: hotel._id,
@@ -185,19 +271,19 @@ const createHotelBooking = async (req, res) => {
       hotelDetails: {
         name: hotel.hotelName,
         image: hotel.image || "",
-        location: `${hotel.city || ""}, ${hotel.state || ""}`.replace(
-          /,\s*$/,
-          "",
-        ),
+        location: `${hotel.city || ""}, ${
+          hotel.state || ""
+        }`.replace(/,\s*$/, ""),
       },
 
       roomDetails: {
         name: roomDetails.name,
         price: roomPrice,
         bed: roomDetails.bed || "",
-        guests: Number(roomDetails.guests || bookingGuests),
+        guests: includedGuests,
         meal: roomDetails.meal || "",
-        cancellation: roomDetails.cancellation || "",
+        cancellation:
+          roomDetails.cancellation || "",
       },
 
       checkIn: startDate,
@@ -216,18 +302,14 @@ const createHotelBooking = async (req, res) => {
       },
 
       roomTotal: calculatedRoomTotal,
-      taxes: bookingTaxes,
+      taxes: calculatedTaxes,
       totalAmount: calculatedTotalAmount,
 
-      paymentMethod: paymentMethod || "upi",
+      paymentMethod: paymentMethod || "razorpay",
 
       paymentStatus: "pending",
       bookingStatus: "pending",
     });
-
-    // ==========================================
-    // RESPONSE
-    // ==========================================
 
     return res.status(201).json({
       success: true,
@@ -235,7 +317,10 @@ const createHotelBooking = async (req, res) => {
       booking,
     });
   } catch (error) {
-    console.error("Create Hotel Booking Error:", error);
+    console.error(
+      "Create Hotel Booking Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -245,19 +330,36 @@ const createHotelBooking = async (req, res) => {
   }
 };
 
-//get all hotel bookings
+// ======================================================
+// GET ALL HOTEL BOOKINGS - ADMIN
+// ======================================================
 
 const getAllHotelBookings = async (req, res) => {
   try {
-    const bookings = await HotelBooking.find().sort({ createdAt: -1 });
+    const bookings = await HotelBooking.find()
+      .populate(
+        "user",
+        "fullName email mobileNumber"
+      )
+      .populate(
+        "hotel",
+        "hotelName city state country image"
+      )
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
-      message: "Hotel bookings fetched successfully",
+      message:
+        "All hotel bookings fetched successfully",
+      count: bookings.length,
       bookings,
     });
   } catch (error) {
-    console.error("Get All Hotel Booking Error:", error);
+    console.error(
+      "Get All Hotel Bookings Admin Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -266,10 +368,24 @@ const getAllHotelBookings = async (req, res) => {
   }
 };
 
-//get hotel bookins by id
-const getHotelBookingByBookingId = async (req, res) => {
+// ======================================================
+// GET HOTEL BOOKING BY BOOKING ID - USER
+// ======================================================
+
+const getHotelBookingByBookingId = async (
+  req,
+  res
+) => {
   try {
+    const userId = req.user?.userId;
     const { bookingId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
 
     if (!bookingId) {
       return res.status(400).json({
@@ -278,7 +394,11 @@ const getHotelBookingByBookingId = async (req, res) => {
       });
     }
 
-    const booking = await HotelBooking.findOne({ bookingId });
+    const booking = await HotelBooking.findOne({
+      bookingId,
+      user: userId,
+    });
+
     if (!booking) {
       return res.status(404).json({
         success: false,
@@ -292,7 +412,11 @@ const getHotelBookingByBookingId = async (req, res) => {
       booking,
     });
   } catch (error) {
-    console.error("Get Hotel Booking Error:", error);
+    console.error(
+      "Get Hotel Booking Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -301,11 +425,21 @@ const getHotelBookingByBookingId = async (req, res) => {
   }
 };
 
-//update hotel booking
+// ======================================================
+// UPDATE HOTEL BOOKING - USER
+// ======================================================
 
 const updateHotelBooking = async (req, res) => {
   try {
+    const userId = req.user?.userId;
     const { bookingId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
 
     if (!bookingId) {
       return res.status(400).json({
@@ -314,7 +448,10 @@ const updateHotelBooking = async (req, res) => {
       });
     }
 
-    const booking = await HotelBooking.findOne({ bookingId });
+    const booking = await HotelBooking.findOne({
+      bookingId,
+      user: userId,
+    });
 
     if (!booking) {
       return res.status(404).json({
@@ -330,17 +467,19 @@ const updateHotelBooking = async (req, res) => {
       guests,
       roomDetails,
       guestDetails,
-      taxes,
-      totalAmount,
       paymentMethod,
-      paymentStatus,
-      bookingStatus,
     } = req.body;
+
+    // ==================================================
+    // DATES
+    // ==================================================
 
     if (checkIn !== undefined) {
       const newCheckIn = new Date(checkIn);
 
-      if (Number.isNaN(newCheckIn.getTime())) {
+      if (
+        Number.isNaN(newCheckIn.getTime())
+      ) {
         return res.status(400).json({
           success: false,
           message: "Invalid check-in date",
@@ -353,7 +492,9 @@ const updateHotelBooking = async (req, res) => {
     if (checkOut !== undefined) {
       const newCheckOut = new Date(checkOut);
 
-      if (Number.isNaN(newCheckOut.getTime())) {
+      if (
+        Number.isNaN(newCheckOut.getTime())
+      ) {
         return res.status(400).json({
           success: false,
           message: "Invalid check-out date",
@@ -363,19 +504,27 @@ const updateHotelBooking = async (req, res) => {
       booking.checkOut = newCheckOut;
     }
 
-    if (booking.checkIn && booking.checkOut) {
-      if (booking.checkOut <= booking.checkIn) {
-        return res.status(400).json({
-          success: false,
-          message: "Check-out date must be after check-in date",
-        });
-      }
+    if (
+      booking.checkIn >= booking.checkOut
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Check-out date must be after check-in date",
+      });
     }
+
+    // ==================================================
+    // NIGHTS
+    // ==================================================
 
     if (nights !== undefined) {
       const bookingNights = Number(nights);
 
-      if (!Number.isInteger(bookingNights) || bookingNights < 1) {
+      if (
+        !Number.isInteger(bookingNights) ||
+        bookingNights < 1
+      ) {
         return res.status(400).json({
           success: false,
           message: "Nights must be at least 1",
@@ -385,10 +534,17 @@ const updateHotelBooking = async (req, res) => {
       booking.nights = bookingNights;
     }
 
+    // ==================================================
+    // GUESTS
+    // ==================================================
+
     if (guests !== undefined) {
       const bookingGuests = Number(guests);
 
-      if (!Number.isInteger(bookingGuests) || bookingGuests < 1) {
+      if (
+        !Number.isInteger(bookingGuests) ||
+        bookingGuests < 1
+      ) {
         return res.status(400).json({
           success: false,
           message: "Guests must be at least 1",
@@ -398,114 +554,149 @@ const updateHotelBooking = async (req, res) => {
       booking.guests = bookingGuests;
     }
 
+    // ==================================================
+    // ROOM DETAILS
+    // ==================================================
+
     if (roomDetails !== undefined) {
       if (roomDetails.name !== undefined) {
-        booking.roomDetails.name = roomDetails.name;
+        booking.roomDetails.name =
+          roomDetails.name;
       }
 
       if (roomDetails.price !== undefined) {
-        const roomPrice = Number(roomDetails.price);
+        const roomPrice = Number(
+          roomDetails.price
+        );
 
-        if (Number.isNaN(roomPrice) || roomPrice < 0) {
+        if (
+          Number.isNaN(roomPrice) ||
+          roomPrice < 0
+        ) {
           return res.status(400).json({
             success: false,
             message: "Invalid room price",
           });
         }
 
-        booking.roomDetails.price = roomPrice;
+        booking.roomDetails.price =
+          roomPrice;
       }
 
       if (roomDetails.bed !== undefined) {
-        booking.roomDetails.bed = roomDetails.bed;
+        booking.roomDetails.bed =
+          roomDetails.bed;
       }
 
       if (roomDetails.guests !== undefined) {
-        booking.roomDetails.guests = Number(roomDetails.guests);
+        const roomGuests = Number(
+          roomDetails.guests
+        );
+
+        if (
+          !Number.isInteger(roomGuests) ||
+          roomGuests < 1
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid room guest capacity",
+          });
+        }
+
+        booking.roomDetails.guests =
+          roomGuests;
       }
 
       if (roomDetails.meal !== undefined) {
-        booking.roomDetails.meal = roomDetails.meal;
+        booking.roomDetails.meal =
+          roomDetails.meal;
       }
 
-      if (roomDetails.cancellation !== undefined) {
-        booking.roomDetails.cancellation = roomDetails.cancellation;
+      if (
+        roomDetails.cancellation !== undefined
+      ) {
+        booking.roomDetails.cancellation =
+          roomDetails.cancellation;
       }
     }
 
+    // ==================================================
+    // GUEST DETAILS
+    // ==================================================
+
     if (guestDetails !== undefined) {
-      if (guestDetails.firstName !== undefined) {
-        booking.guestDetails.firstName = guestDetails.firstName;
+      if (
+        guestDetails.firstName !== undefined
+      ) {
+        booking.guestDetails.firstName =
+          guestDetails.firstName.trim();
       }
 
-      if (guestDetails.lastName !== undefined) {
-        booking.guestDetails.lastName = guestDetails.lastName;
+      if (
+        guestDetails.lastName !== undefined
+      ) {
+        booking.guestDetails.lastName =
+          guestDetails.lastName.trim();
       }
 
       if (guestDetails.email !== undefined) {
-        booking.guestDetails.email = guestDetails.email.toLowerCase();
+        booking.guestDetails.email =
+          guestDetails.email
+            .trim()
+            .toLowerCase();
       }
 
-      if (guestDetails.countryCode !== undefined) {
-        booking.guestDetails.countryCode = guestDetails.countryCode;
+      if (
+        guestDetails.countryCode !== undefined
+      ) {
+        booking.guestDetails.countryCode =
+          guestDetails.countryCode;
       }
 
       if (guestDetails.mobile !== undefined) {
-        booking.guestDetails.mobile = guestDetails.mobile;
+        booking.guestDetails.mobile =
+          guestDetails.mobile.trim();
       }
 
-      if (guestDetails.specialRequest !== undefined) {
-        booking.guestDetails.specialRequest = guestDetails.specialRequest;
+      if (
+        guestDetails.specialRequest !==
+        undefined
+      ) {
+        booking.guestDetails.specialRequest =
+          guestDetails.specialRequest;
       }
     }
 
-    if (taxes !== undefined) {
-      const bookingTaxes = Number(taxes);
-
-      if (Number.isNaN(bookingTaxes) || bookingTaxes < 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid taxes",
-        });
-      }
-
-      booking.taxes = bookingTaxes;
-    }
-
-    if (totalAmount !== undefined) {
-      const bookingTotal = Number(totalAmount);
-
-      if (Number.isNaN(bookingTotal) || bookingTotal < 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid total amount",
-        });
-      }
-
-      booking.totalAmount = bookingTotal;
-    }
+    // ==================================================
+    // PAYMENT METHOD
+    // ==================================================
 
     if (paymentMethod !== undefined) {
-      booking.paymentMethod = paymentMethod;
-    }
+      if (paymentMethod !== "razorpay") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Only Razorpay payment is supported",
+        });
+      }
 
-    if (paymentStatus !== undefined) {
-      booking.paymentStatus = paymentStatus;
-    }
-
-    if (bookingStatus !== undefined) {
-      booking.bookingStatus = bookingStatus;
+      booking.paymentMethod = "razorpay";
     }
 
     await booking.save();
 
     return res.status(200).json({
       success: true,
-      message: "Hotel booking updated successfully",
+      message:
+        "Hotel booking updated successfully",
       booking,
     });
   } catch (error) {
-    console.error("Update Hotel Booking Error:", error);
+    console.error(
+      "Update Hotel Booking Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -515,10 +706,21 @@ const updateHotelBooking = async (req, res) => {
   }
 };
 
-//cancel hotel booking
+// ======================================================
+// CANCEL HOTEL BOOKING - USER
+// ======================================================
+
 const cancelHotelBooking = async (req, res) => {
   try {
+    const userId = req.user?.userId;
     const { bookingId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User authentication required",
+      });
+    }
 
     if (!bookingId) {
       return res.status(400).json({
@@ -527,7 +729,10 @@ const cancelHotelBooking = async (req, res) => {
       });
     }
 
-    const booking = await HotelBooking.findOne({ bookingId });
+    const booking = await HotelBooking.findOne({
+      bookingId,
+      user: userId,
+    });
 
     if (!booking) {
       return res.status(404).json({
@@ -536,17 +741,23 @@ const cancelHotelBooking = async (req, res) => {
       });
     }
 
-    if (booking.bookingStatus === "cancelled") {
+    if (
+      booking.bookingStatus === "cancelled"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Hotel booking is already cancelled",
+        message:
+          "Hotel booking is already cancelled",
       });
     }
 
-    if (booking.bookingStatus === "completed") {
+    if (
+      booking.bookingStatus === "completed"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Completed booking cannot be cancelled",
+        message:
+          "Completed booking cannot be cancelled",
       });
     }
 
@@ -556,11 +767,15 @@ const cancelHotelBooking = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Hotel booking cancelled successfully",
+      message:
+        "Hotel booking cancelled successfully",
       booking,
     });
   } catch (error) {
-    console.error("Cancel Hotel Booking Error:", error);
+    console.error(
+      "Cancel Hotel Booking Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -570,12 +785,17 @@ const cancelHotelBooking = async (req, res) => {
   }
 };
 
-// Delete hotel booking
-const deleteHotelBooking = async (req, res) => {
+// ======================================================
+// CANCEL HOTEL BOOKING - ADMIN
+// ======================================================
+
+const adminCancelHotelBooking = async (
+  req,
+  res
+) => {
   try {
     const { bookingId } = req.params;
 
-    // Check booking ID
     if (!bookingId) {
       return res.status(400).json({
         success: false,
@@ -583,8 +803,9 @@ const deleteHotelBooking = async (req, res) => {
       });
     }
 
-    // Find booking
-    const booking = await HotelBooking.findOne({ bookingId });
+    const booking = await HotelBooking.findOne({
+      bookingId,
+    });
 
     if (!booking) {
       return res.status(404).json({
@@ -593,23 +814,47 @@ const deleteHotelBooking = async (req, res) => {
       });
     }
 
-    // Prevent deleting completed booking
-    if (booking.bookingStatus === "completed") {
+    // Already cancelled
+    if (
+      booking.bookingStatus === "cancelled"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Completed booking cannot be deleted",
+        message:
+          "Hotel booking is already cancelled",
       });
     }
 
-    // Delete booking
-    await HotelBooking.findOneAndDelete({ bookingId });
+    // Completed booking
+    if (
+      booking.bookingStatus === "completed"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Completed booking cannot be cancelled",
+      });
+    }
+
+    // ==================================================
+    // CANCEL BOOKING
+    // ==================================================
+
+    booking.bookingStatus = "cancelled";
+
+    await booking.save();
 
     return res.status(200).json({
       success: true,
-      message: "Hotel booking deleted successfully",
+      message:
+        "Hotel booking cancelled successfully by admin",
+      booking,
     });
   } catch (error) {
-    console.error("Delete Hotel Booking Error:", error);
+    console.error(
+      "Admin Cancel Hotel Booking Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -619,29 +864,16 @@ const deleteHotelBooking = async (req, res) => {
   }
 };
 
-// ==========================================
-// CREATE HOTEL RAZORPAY ORDER
-// ==========================================
+// ======================================================
+// DELETE HOTEL BOOKING - ADMIN
+// ======================================================
 
-const createHotelRazorpayOrder = async (req, res) => {
+const deleteHotelBooking = async (
+  req,
+  res
+) => {
   try {
-    const userId = req.user?.userId;
     const { bookingId } = req.params;
-
-    // ==========================================
-    // USER ID CHECK
-    // ==========================================
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "User ID not found in token",
-      });
-    }
-
-    // ==========================================
-    // BOOKING ID CHECK
-    // ==========================================
 
     if (!bookingId) {
       return res.status(400).json({
@@ -650,9 +882,76 @@ const createHotelRazorpayOrder = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // FIND HOTEL BOOKING
-    // ==========================================
+    const booking = await HotelBooking.findOne({
+      bookingId,
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Hotel booking not found",
+      });
+    }
+
+    if (
+      booking.bookingStatus === "completed"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Completed booking cannot be deleted",
+      });
+    }
+
+    await HotelBooking.findOneAndDelete({
+      bookingId,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Hotel booking deleted successfully",
+    });
+  } catch (error) {
+    console.error(
+      "Delete Hotel Booking Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// ======================================================
+// CREATE HOTEL RAZORPAY ORDER
+// ======================================================
+
+const createHotelRazorpayOrder = async (
+  req,
+  res
+) => {
+  try {
+    const userId = req.user?.userId;
+    const { bookingId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "User ID not found in token",
+      });
+    }
+
+    if (!bookingId) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking ID is required",
+      });
+    }
 
     const booking = await HotelBooking.findOne({
       bookingId,
@@ -666,22 +965,29 @@ const createHotelRazorpayOrder = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // CANCELLED BOOKING CHECK
-    // ==========================================
-
-    if (booking.bookingStatus === "cancelled") {
+    if (
+      booking.bookingStatus === "cancelled"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Cancelled booking cannot be paid",
+        message:
+          "Cancelled booking cannot be paid",
       });
     }
 
-    // ==========================================
-    // AMOUNT FROM DATABASE
-    // ==========================================
+    if (
+      booking.paymentStatus === "paid"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This booking has already been paid",
+      });
+    }
 
-    const totalAmount = Number(booking.totalAmount);
+    const totalAmount = Number(
+      booking.totalAmount
+    );
 
     if (!totalAmount || totalAmount <= 0) {
       return res.status(400).json({
@@ -690,110 +996,166 @@ const createHotelRazorpayOrder = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // CONVERT INR TO PAISE
-    // ==========================================
+    // ==================================================
+    // CHECK EXISTING PAYMENT
+    // ==================================================
 
-    const amountInPaise = Math.round(totalAmount * 100);
-
-    // ==========================================
-    // CREATE RAZORPAY ORDER
-    // ==========================================
-
-    const razorpayOrder = await razorpay.orders.create({
-      amount: amountInPaise,
-      currency: "INR",
-      receipt: booking.bookingId,
-      notes: {
-        bookingId: booking.bookingId,
+    const existingPayment =
+      await Payment.findOne({
+        booking: booking._id,
+        user: userId,
         bookingType: "Hotel",
-        userId: userId.toString(),
-      },
-    });
+        status: {
+          $in: ["Created", "Pending"],
+        },
+      }).sort({ createdAt: -1 });
 
-    // ==========================================
-    // CREATE PAYMENT RECORD
-    // ==========================================
+    if (existingPayment) {
+      return res.status(200).json({
+        success: true,
+        message:
+          "Existing Razorpay order found",
+
+        razorpayKey:
+          process.env.RAZORPAY_KEY_ID,
+
+        order: {
+          id: existingPayment.razorpayOrderId,
+          amount: Math.round(
+            totalAmount * 100
+          ),
+          currency:
+            existingPayment.currency,
+          receipt: booking.bookingId,
+        },
+
+        payment: {
+          id: existingPayment._id,
+          bookingId:
+            existingPayment.bookingId,
+          amount:
+            existingPayment.amount,
+          status:
+            existingPayment.status,
+        },
+
+        booking,
+      });
+    }
+
+    // ==================================================
+    // INR TO PAISE
+    // ==================================================
+
+    const amountInPaise = Math.round(
+      totalAmount * 100
+    );
+
+    // ==================================================
+    // CREATE RAZORPAY ORDER
+    // ==================================================
+
+    const razorpayOrder =
+      await razorpay.orders.create({
+        amount: amountInPaise,
+        currency: "INR",
+        receipt: booking.bookingId,
+
+        notes: {
+          bookingId: booking.bookingId,
+          bookingType: "Hotel",
+          userId: userId.toString(),
+        },
+      });
+
+    // ==================================================
+    // CREATE PAYMENT
+    // ==================================================
 
     const payment = await Payment.create({
       user: userId,
       booking: booking._id,
       bookingId: booking.bookingId,
       bookingType: "Hotel",
-      razorpayOrderId: razorpayOrder.id,
+
+      razorpayOrderId:
+        razorpayOrder.id,
+
       amount: totalAmount,
+
       currency: "INR",
+
       status: "Created",
     });
 
-    // ==========================================
-    // RESPONSE
-    // ==========================================
-
     return res.status(201).json({
       success: true,
-      message: "Hotel Razorpay order created successfully",
+      message:
+        "Hotel Razorpay order created successfully",
 
-      // Only PUBLIC Razorpay Key ID
-      razorpayKey: process.env.RAZORPAY_KEY_ID,
+      razorpayKey:
+        process.env.RAZORPAY_KEY_ID,
 
       order: {
         id: razorpayOrder.id,
         amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        receipt: razorpayOrder.receipt,
+        currency:
+          razorpayOrder.currency,
+        receipt:
+          razorpayOrder.receipt,
       },
 
       payment: {
         id: payment._id,
-        bookingId: payment.bookingId,
+        bookingId:
+          payment.bookingId,
         amount: payment.amount,
-        status: payment.status,
+        status:
+          payment.status,
       },
 
       booking,
     });
   } catch (error) {
-    console.error("Create Hotel Razorpay Order Error:", error);
+    console.error(
+      "Create Hotel Razorpay Order Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Failed to create hotel Razorpay order",
+      message:
+        "Failed to create hotel Razorpay order",
       error: error.message,
     });
   }
 };
 
-// ==========================================
+// ======================================================
 // VERIFY HOTEL RAZORPAY PAYMENT
-// ==========================================
+// ======================================================
 
-// ==========================================
-// VERIFY HOTEL RAZORPAY PAYMENT
-// ==========================================
-
-const verifyHotelRazorpayPayment = async (req, res) => {
+const verifyHotelRazorpayPayment = async (
+  req,
+  res
+) => {
   try {
     const userId = req.user?.userId;
     const { bookingId } = req.params;
 
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
-      req.body;
-
-    // ==========================================
-    // USER ID CHECK
-    // ==========================================
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    } = req.body;
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "User ID not found in token",
+        message:
+          "User ID not found in token",
       });
     }
-
-    // ==========================================
-    // BOOKING ID CHECK
-    // ==========================================
 
     if (!bookingId) {
       return res.status(400).json({
@@ -802,11 +1164,11 @@ const verifyHotelRazorpayPayment = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // RAZORPAY FIELDS CHECK
-    // ==========================================
-
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    if (
+      !razorpay_order_id ||
+      !razorpay_payment_id ||
+      !razorpay_signature
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -814,10 +1176,6 @@ const verifyHotelRazorpayPayment = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // FIND HOTEL BOOKING
-    // ==========================================
-
     const booking = await HotelBooking.findOne({
       bookingId,
       user: userId,
@@ -830,26 +1188,22 @@ const verifyHotelRazorpayPayment = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // CANCELLED BOOKING CHECK
-    // ==========================================
-
-    if (booking.bookingStatus === "cancelled") {
+    if (
+      booking.bookingStatus === "cancelled"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Cancelled booking cannot be paid",
+        message:
+          "Cancelled booking cannot be paid",
       });
     }
-
-    // ==========================================
-    // FIND PAYMENT RECORD
-    // ==========================================
 
     const payment = await Payment.findOne({
       booking: booking._id,
       user: userId,
       bookingType: "Hotel",
-      razorpayOrderId: razorpay_order_id,
+      razorpayOrderId:
+        razorpay_order_id,
     });
 
     if (!payment) {
@@ -859,149 +1213,185 @@ const verifyHotelRazorpayPayment = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // IDEMPOTENT PAYMENT CHECK
-    // ==========================================
+    // ==================================================
+    // AMOUNT CHECK
+    // ==================================================
+
+    if (
+      Number(payment.amount) !==
+      Number(booking.totalAmount)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment amount mismatch",
+      });
+    }
+
+    // ==================================================
+    // IDEMPOTENCY
+    // ==================================================
 
     if (payment.status === "Paid") {
-      // Same payment already processed
-      // by webhook or previous verify request
-      if (payment.razorpayPaymentId === razorpay_payment_id) {
+      if (
+        payment.razorpayPaymentId ===
+        razorpay_payment_id
+      ) {
         return res.status(200).json({
           success: true,
-          message: "Hotel payment already completed successfully",
+          message:
+            "Hotel payment already completed successfully",
 
           booking: {
             id: booking._id,
-            bookingId: booking.bookingId,
-            paymentStatus: booking.paymentStatus,
-            bookingStatus: booking.bookingStatus,
+            bookingId:
+              booking.bookingId,
+            paymentStatus:
+              booking.paymentStatus,
+            bookingStatus:
+              booking.bookingStatus,
           },
 
           payment: {
             id: payment._id,
-            razorpayOrderId: payment.razorpayOrderId,
-            razorpayPaymentId: payment.razorpayPaymentId,
+            razorpayOrderId:
+              payment.razorpayOrderId,
+            razorpayPaymentId:
+              payment.razorpayPaymentId,
             status: payment.status,
             paidAt: payment.paidAt,
           },
         });
       }
 
-      // Different payment ID for
-      // an already paid order
       return res.status(400).json({
         success: false,
-        message: "This payment order has already been completed",
+        message:
+          "This payment order has already been completed",
       });
     }
 
-    // ==========================================
-    // GENERATE RAZORPAY SIGNATURE
-    // ==========================================
+    // ==================================================
+    // SIGNATURE
+    // ==================================================
 
-    const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest("hex");
+    const generatedSignature =
+      crypto
+        .createHmac(
+          "sha256",
+          process.env.RAZORPAY_KEY_SECRET
+        )
+        .update(
+          `${razorpay_order_id}|${razorpay_payment_id}`
+        )
+        .digest("hex");
 
-    // ==========================================
-    // VERIFY SIGNATURE
-    // ==========================================
-
-    if (generatedSignature !== razorpay_signature) {
+    if (
+      generatedSignature !==
+      razorpay_signature
+    ) {
       payment.status = "Failed";
-      payment.failureReason = "Invalid Razorpay signature";
+      payment.failureReason =
+        "Invalid Razorpay signature";
 
       await payment.save();
 
       return res.status(400).json({
         success: false,
-        message: "Invalid Razorpay payment signature",
+        message:
+          "Invalid Razorpay payment signature",
       });
     }
 
-    // ==========================================
-    // PAYMENT VERIFIED
-    // ==========================================
+    // ==================================================
+    // PAYMENT SUCCESS
+    // ==================================================
 
-    payment.razorpayPaymentId = razorpay_payment_id;
+    payment.razorpayPaymentId =
+      razorpay_payment_id;
 
-    payment.razorpaySignature = razorpay_signature;
+    payment.razorpaySignature =
+      razorpay_signature;
 
     payment.status = "Paid";
     payment.paidAt = new Date();
+    payment.failureReason = undefined;
 
     await payment.save();
 
-    // ==========================================
-    // UPDATE HOTEL BOOKING
-    // ==========================================
+    // ==================================================
+    // BOOKING CONFIRM
+    // ==================================================
 
     booking.paymentStatus = "paid";
     booking.bookingStatus = "confirmed";
 
     await booking.save();
 
-    // ==========================================
-    // SUCCESS RESPONSE
-    // ==========================================
-
     return res.status(200).json({
       success: true,
-      message: "Hotel Razorpay payment verified successfully",
+      message:
+        "Hotel Razorpay payment verified successfully",
 
       booking: {
         id: booking._id,
-        bookingId: booking.bookingId,
-        paymentStatus: booking.paymentStatus,
-        bookingStatus: booking.bookingStatus,
+        bookingId:
+          booking.bookingId,
+        paymentStatus:
+          booking.paymentStatus,
+        bookingStatus:
+          booking.bookingStatus,
       },
 
       payment: {
         id: payment._id,
-        razorpayOrderId: payment.razorpayOrderId,
-        razorpayPaymentId: payment.razorpayPaymentId,
+        razorpayOrderId:
+          payment.razorpayOrderId,
+        razorpayPaymentId:
+          payment.razorpayPaymentId,
         status: payment.status,
         paidAt: payment.paidAt,
       },
     });
   } catch (error) {
-    console.error("Verify Hotel Razorpay Payment Error:", error);
+    console.error(
+      "Verify Hotel Razorpay Payment Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Failed to verify hotel Razorpay payment",
+      message:
+        "Failed to verify hotel Razorpay payment",
       error: error.message,
     });
   }
 };
 
-// ==========================================
-// HANDLE HOTEL RAZORPAY PAYMENT FAILURE
-// ==========================================
+// ======================================================
+// HANDLE HOTEL PAYMENT FAILURE
+// ======================================================
 
-const handleHotelPaymentFailure = async (req, res) => {
+const handleHotelPaymentFailure = async (
+  req,
+  res
+) => {
   try {
     const userId = req.user?.userId;
     const { bookingId } = req.params;
 
-    const { razorpay_payment_id, razorpay_order_id, reason } = req.body;
-
-    // ==========================================
-    // USER ID CHECK
-    // ==========================================
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
+      reason,
+    } = req.body;
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "User ID not found in token",
+        message:
+          "User ID not found in token",
       });
     }
-
-    // ==========================================
-    // BOOKING ID CHECK
-    // ==========================================
 
     if (!bookingId) {
       return res.status(400).json({
@@ -1010,10 +1400,6 @@ const handleHotelPaymentFailure = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // FIND HOTEL BOOKING
-    // ==========================================
-
     const booking = await HotelBooking.findOne({
       bookingId,
       user: userId,
@@ -1026,26 +1412,30 @@ const handleHotelPaymentFailure = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // ALREADY PAID CHECK
-    // ==========================================
-
-    if (booking.paymentStatus === "paid") {
+    if (
+      booking.paymentStatus === "paid"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Paid booking cannot be marked as failed",
+        message:
+          "Paid booking cannot be marked as failed",
       });
     }
 
-    // ==========================================
-    // FIND PAYMENT RECORD
-    // ==========================================
+    if (!razorpay_order_id) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Razorpay order ID is required",
+      });
+    }
 
     const payment = await Payment.findOne({
       booking: booking._id,
       user: userId,
       bookingType: "Hotel",
-      razorpayOrderId: razorpay_order_id,
+      razorpayOrderId:
+        razorpay_order_id,
     });
 
     if (!payment) {
@@ -1055,147 +1445,185 @@ const handleHotelPaymentFailure = async (req, res) => {
       });
     }
 
-    // ==========================================
-    // ALREADY PAID PAYMENT CHECK
-    // ==========================================
-
     if (payment.status === "Paid") {
       return res.status(400).json({
         success: false,
-        message: "Paid payment cannot be marked as failed",
+        message:
+          "Paid payment cannot be marked as failed",
       });
     }
 
-    // ==========================================
-    // UPDATE PAYMENT
-    // ==========================================
-
     payment.razorpayPaymentId =
-      razorpay_payment_id || payment.razorpayPaymentId;
+      razorpay_payment_id ||
+      payment.razorpayPaymentId;
 
     payment.status = "Failed";
 
-    payment.failureReason = reason || "Razorpay payment failed";
+    payment.failureReason =
+      reason || "Razorpay payment failed";
 
     await payment.save();
-
-    // ==========================================
-    // UPDATE HOTEL BOOKING
-    // ==========================================
 
     booking.paymentStatus = "failed";
     booking.bookingStatus = "pending";
 
     await booking.save();
 
-    // ==========================================
-    // SUCCESS RESPONSE
-    // ==========================================
-
     return res.status(200).json({
       success: true,
-      message: "Hotel payment failure recorded successfully",
+      message:
+        "Hotel payment failure recorded successfully",
 
       booking: {
         id: booking._id,
-        bookingId: booking.bookingId,
-        paymentStatus: booking.paymentStatus,
-        bookingStatus: booking.bookingStatus,
+        bookingId:
+          booking.bookingId,
+        paymentStatus:
+          booking.paymentStatus,
+        bookingStatus:
+          booking.bookingStatus,
       },
 
       payment: {
         id: payment._id,
-        razorpayOrderId: payment.razorpayOrderId,
-        razorpayPaymentId: payment.razorpayPaymentId,
+        razorpayOrderId:
+          payment.razorpayOrderId,
+        razorpayPaymentId:
+          payment.razorpayPaymentId,
         status: payment.status,
-        failureReason: payment.failureReason,
+        failureReason:
+          payment.failureReason,
       },
     });
   } catch (error) {
-    console.error("Hotel Payment Failure Error:", error);
+    console.error(
+      "Hotel Payment Failure Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Failed to record hotel payment failure",
+      message:
+        "Failed to record hotel payment failure",
       error: error.message,
     });
   }
 };
 
-const handleHotelPaymentWebhook = async (req, res) => {
+// ======================================================
+// RAZORPAY WEBHOOK
+// ======================================================
+
+const handleHotelPaymentWebhook = async (
+  req,
+  res
+) => {
   try {
-    const webhookSignature = req.headers["x-razorpay-signature"];
+    const webhookSignature =
+      req.headers["x-razorpay-signature"];
 
     if (!webhookSignature) {
       return res.status(400).json({
         success: false,
-        message: "Razorpay webhook signature missing",
+        message:
+          "Razorpay webhook signature missing",
       });
     }
 
-    // Verify Razorpay webhook signature
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
-      .update(req.body)
-      .digest("hex");
+    const expectedSignature =
+      crypto
+        .createHmac(
+          "sha256",
+          process.env.RAZORPAY_WEBHOOK_SECRET
+        )
+        .update(req.body)
+        .digest("hex");
 
-    if (expectedSignature !== webhookSignature) {
+    if (
+      expectedSignature !==
+      webhookSignature
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Invalid Razorpay webhook signature",
+        message:
+          "Invalid Razorpay webhook signature",
       });
     }
 
-    // Raw body ko JSON me convert karo
-    const eventData = JSON.parse(req.body.toString());
+    const eventData = JSON.parse(
+      req.body.toString()
+    );
 
     const event = eventData.event;
 
-    console.log("Hotel Razorpay Webhook Event:", event);
+    console.log(
+      "Hotel Razorpay Webhook Event:",
+      event
+    );
 
-    // ------------------------------------------------
+    // ==================================================
     // PAYMENT FAILED
-    // ------------------------------------------------
+    // ==================================================
 
     if (event === "payment.failed") {
-      const paymentEntity = eventData.payload?.payment?.entity;
+      const paymentEntity =
+        eventData.payload?.payment?.entity;
 
       if (!paymentEntity) {
         return res.status(400).json({
           success: false,
-          message: "Payment data not found",
+          message:
+            "Payment data not found",
         });
       }
 
-      const razorpayOrderId = paymentEntity.order_id;
-      const razorpayPaymentId = paymentEntity.id;
+      const razorpayOrderId =
+        paymentEntity.order_id;
+
+      const razorpayPaymentId =
+        paymentEntity.id;
 
       const failureReason =
         paymentEntity.error_description ||
         paymentEntity.error_reason ||
         "Razorpay payment failed";
 
-      const payment = await Payment.findOne({
-        razorpayOrderId,
-        bookingType: "Hotel",
-      });
+      const payment =
+        await Payment.findOne({
+          razorpayOrderId,
+          bookingType: "Hotel",
+        });
 
       if (!payment) {
-        console.log("Hotel payment record not found:", razorpayOrderId);
-
         return res.status(200).json({
           success: true,
-          message: "Webhook received, payment record not found",
+          message:
+            "Webhook received, payment record not found",
         });
       }
 
-      payment.razorpayPaymentId = razorpayPaymentId;
+      if (payment.status === "Paid") {
+        return res.status(200).json({
+          success: true,
+          message:
+            "Payment already marked as paid",
+        });
+      }
+
+      payment.razorpayPaymentId =
+        razorpayPaymentId;
+
       payment.status = "Failed";
-      payment.failureReason = failureReason;
+
+      payment.failureReason =
+        failureReason;
 
       await payment.save();
 
-      const booking = await HotelBooking.findById(payment.booking);
+      const booking =
+        await HotelBooking.findById(
+          payment.booking
+        );
 
       if (booking) {
         booking.paymentStatus = "failed";
@@ -1203,49 +1631,99 @@ const handleHotelPaymentWebhook = async (req, res) => {
 
         await booking.save();
       }
-
-      console.log("Hotel payment marked as Failed:", razorpayPaymentId);
     }
 
-    // ------------------------------------------------
+    // ==================================================
     // PAYMENT CAPTURED
-    // ------------------------------------------------
+    // ==================================================
 
     if (event === "payment.captured") {
-      const paymentEntity = eventData.payload?.payment?.entity;
+      const paymentEntity =
+        eventData.payload?.payment?.entity;
 
       if (!paymentEntity) {
         return res.status(400).json({
           success: false,
-          message: "Payment data not found",
+          message:
+            "Payment data not found",
         });
       }
 
-      const razorpayOrderId = paymentEntity.order_id;
-      const razorpayPaymentId = paymentEntity.id;
+      const razorpayOrderId =
+        paymentEntity.order_id;
 
-      const payment = await Payment.findOne({
-        razorpayOrderId,
-        bookingType: "Hotel",
-      });
+      const razorpayPaymentId =
+        paymentEntity.id;
+
+      const payment =
+        await Payment.findOne({
+          razorpayOrderId,
+          bookingType: "Hotel",
+        });
 
       if (!payment) {
-        console.log("Hotel payment record not found:", razorpayOrderId);
-
         return res.status(200).json({
           success: true,
-          message: "Webhook received, payment record not found",
+          message:
+            "Webhook received, payment record not found",
         });
       }
 
-      payment.razorpayPaymentId = razorpayPaymentId;
+      if (payment.status === "Paid") {
+        return res.status(200).json({
+          success: true,
+          message:
+            "Payment already processed",
+        });
+      }
+
+      // ==================================================
+      // AMOUNT CHECK
+      // ==================================================
+
+      const webhookAmount =
+        Number(paymentEntity.amount);
+
+      const expectedAmount =
+        Math.round(
+          Number(payment.amount) * 100
+        );
+
+      if (
+        webhookAmount !== expectedAmount
+      ) {
+        console.error(
+          "Hotel Razorpay webhook amount mismatch",
+          {
+            expectedAmount,
+            webhookAmount,
+            razorpayOrderId,
+          }
+        );
+
+        return res.status(400).json({
+          success: false,
+          message:
+            "Webhook payment amount mismatch",
+        });
+      }
+
+      payment.razorpayPaymentId =
+        razorpayPaymentId;
+
       payment.status = "Paid";
+
       payment.paidAt = new Date();
-      payment.failureReason = undefined;
+
+      payment.failureReason =
+        undefined;
 
       await payment.save();
 
-      const booking = await HotelBooking.findById(payment.booking);
+      const booking =
+        await HotelBooking.findById(
+          payment.booking
+        );
 
       if (booking) {
         booking.paymentStatus = "paid";
@@ -1253,33 +1731,45 @@ const handleHotelPaymentWebhook = async (req, res) => {
 
         await booking.save();
       }
-
-      console.log("Hotel payment marked as Paid:", razorpayPaymentId);
     }
 
     return res.status(200).json({
       success: true,
-      message: "Hotel webhook processed successfully",
+      message:
+        "Hotel webhook processed successfully",
     });
   } catch (error) {
-    console.error("Hotel Payment Webhook Error:", error);
+    console.error(
+      "Hotel Payment Webhook Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Hotel webhook processing failed",
+      message:
+        "Hotel webhook processing failed",
       error: error.message,
     });
   }
 };
 
+// ======================================================
+// EXPORTS
+// ======================================================
+
 module.exports = {
+  // User
   createHotelBooking,
   getHotelBookingByBookingId,
-  getAllHotelBookings,
   updateHotelBooking,
   cancelHotelBooking,
+
+  // Admin
+  getAllHotelBookings,
+  adminCancelHotelBooking,
   deleteHotelBooking,
-  //razorpay
+
+  // Razorpay
   createHotelRazorpayOrder,
   verifyHotelRazorpayPayment,
   handleHotelPaymentFailure,

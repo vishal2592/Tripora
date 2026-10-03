@@ -1,4 +1,3 @@
-
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "../api";
 
@@ -26,7 +25,80 @@ export const createHotelBooking = createAsyncThunk(
 );
 
 // =========================================================
-// GET ALL HOTEL BOOKINGS
+// CREATE HOTEL RAZORPAY ORDER
+// =========================================================
+
+export const createHotelRazorpayOrder = createAsyncThunk(
+  "/hotel-bookings/createRazorpayOrder",
+  async (bookingId, { rejectWithValue }) => {
+    try {
+      const response = await api.post(
+        `/hotel-bookings/${bookingId}/order`
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Razorpay order could not be created"
+      );
+    }
+  }
+);
+
+// =========================================================
+// VERIFY HOTEL RAZORPAY PAYMENT
+// =========================================================
+
+export const verifyHotelRazorpayPayment = createAsyncThunk(
+  "/hotel-bookings/verifyRazorpayPayment",
+  async ({ bookingId, paymentData }, { rejectWithValue }) => {
+    try {
+      const response = await api.post(
+        `/hotel-bookings/${bookingId}/verify`,
+        paymentData
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Payment verification failed"
+      );
+    }
+  }
+);
+
+// =========================================================
+// HANDLE HOTEL PAYMENT FAILURE
+// =========================================================
+
+export const handleHotelPaymentFailure = createAsyncThunk(
+  "/hotel-bookings/paymentFailure",
+  async (paymentData, { rejectWithValue }) => {
+    try {
+      const {
+        bookingId,
+        ...failureData
+      } = paymentData;
+
+      const response = await api.post(
+        `/hotel-bookings/${bookingId}/failure`,
+        failureData
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Payment failure could not be processed"
+      );
+    }
+  }
+);
+
+// =========================================================
+// GET ALL HOTEL BOOKINGS - USER
 // =========================================================
 
 export const getAllBooking = createAsyncThunk(
@@ -42,6 +114,80 @@ export const getAllBooking = createAsyncThunk(
       return rejectWithValue(
         error.response?.data?.message ||
           "All booking data could not be fetched"
+      );
+    }
+  }
+);
+
+// =========================================================
+// GET ALL HOTEL BOOKINGS - ADMIN
+// =========================================================
+
+export const getAllHotelBookings = createAsyncThunk(
+  "/hotel-bookings/admin/getAll",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get(
+        "/hotel-bookings/admin/all"
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "All hotel bookings could not be fetched"
+      );
+    }
+  }
+);
+
+// =========================================================
+// ADMIN CANCEL HOTEL BOOKING
+// =========================================================
+
+export const adminCancelHotelBooking = createAsyncThunk(
+  "/hotel-bookings/admin/cancel",
+  async (
+    { bookingId, cancellationReason },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.put(
+        `/hotel-bookings/admin/${bookingId}/cancel`,
+        {
+          cancellationReason:
+            cancellationReason ||
+            "Cancelled by admin",
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to cancel hotel booking"
+      );
+    }
+  }
+);
+
+// =========================================================
+// ADMIN DELETE HOTEL BOOKING
+// =========================================================
+
+export const adminDeleteHotelBooking = createAsyncThunk(
+  "/hotel-bookings/admin/delete",
+  async (bookingId, { rejectWithValue }) => {
+    try {
+      const response = await api.delete(
+        `/hotel-bookings/admin/${bookingId}`
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to delete hotel booking"
       );
     }
   }
@@ -96,7 +242,7 @@ export const updateHotelBooking = createAsyncThunk(
 );
 
 // =========================================================
-// CANCEL HOTEL BOOKING
+// CANCEL HOTEL BOOKING - USER
 // =========================================================
 
 export const cancelBooking = createAsyncThunk(
@@ -134,9 +280,17 @@ const initialState = {
   // All bookings
   bookings: [],
 
+  // Total count
+  count: 0,
+
+  // Razorpay order
+  razorpayOrder: null,
+
+  // Razorpay payment
+  payment: null,
+
   // =======================================================
   // TEMPORARY BOOKING DATA
-  // Used between Hotel Details → Hotel Booking page
   // =======================================================
 
   selectedHotel: null,
@@ -200,7 +354,11 @@ const bookingSlice = createSlice({
     // =======================================================
 
     setBookingDates: (state, action) => {
-      const { checkIn, checkOut, nights } = action.payload;
+      const {
+        checkIn,
+        checkOut,
+        nights,
+      } = action.payload;
 
       state.checkIn = checkIn;
       state.checkOut = checkOut;
@@ -350,6 +508,9 @@ const bookingSlice = createSlice({
       state.totalAmount = 0;
 
       state.paymentMethod = "upi";
+
+      state.razorpayOrder = null;
+      state.payment = null;
     },
 
     // =======================================================
@@ -369,11 +530,11 @@ const bookingSlice = createSlice({
   // =========================================================
 
   extraReducers: (builder) => {
-    // =======================================================
-    // CREATE BOOKING
-    // =======================================================
-
     builder
+
+      // =====================================================
+      // CREATE BOOKING
+      // =====================================================
 
       .addCase(
         createHotelBooking.pending,
@@ -411,13 +572,148 @@ const bookingSlice = createSlice({
             action.payload ||
             "Booking creation failed";
         }
-      );
+      )
 
-    // =======================================================
-    // GET ALL BOOKINGS
-    // =======================================================
+      // =====================================================
+      // CREATE RAZORPAY ORDER
+      // =====================================================
 
-    builder
+      .addCase(
+        createHotelRazorpayOrder.pending,
+        (state) => {
+          state.loading = true;
+          state.error = null;
+          state.message = "";
+        }
+      )
+
+      .addCase(
+        createHotelRazorpayOrder.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.success = true;
+          state.error = null;
+
+          state.message =
+            action.payload.message || "";
+
+          state.razorpayOrder =
+            action.payload.order || null;
+
+          state.payment =
+            action.payload.payment || null;
+
+          if (action.payload.booking) {
+            state.booking =
+              action.payload.booking;
+          }
+        }
+      )
+
+      .addCase(
+        createHotelRazorpayOrder.rejected,
+        (state, action) => {
+          state.loading = false;
+          state.success = false;
+
+          state.error =
+            action.payload ||
+            "Razorpay order creation failed";
+        }
+      )
+
+      // =====================================================
+      // VERIFY RAZORPAY PAYMENT
+      // =====================================================
+
+      .addCase(
+        verifyHotelRazorpayPayment.pending,
+        (state) => {
+          state.loading = true;
+          state.error = null;
+          state.message = "";
+        }
+      )
+
+      .addCase(
+        verifyHotelRazorpayPayment.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.success = true;
+          state.error = null;
+
+          state.message =
+            action.payload.message || "";
+
+          state.payment =
+            action.payload.payment ||
+            state.payment;
+
+          state.booking =
+            action.payload.booking ||
+            state.booking;
+        }
+      )
+
+      .addCase(
+        verifyHotelRazorpayPayment.rejected,
+        (state, action) => {
+          state.loading = false;
+          state.success = false;
+
+          state.error =
+            action.payload ||
+            "Payment verification failed";
+        }
+      )
+
+      // =====================================================
+      // PAYMENT FAILURE
+      // =====================================================
+
+      .addCase(
+        handleHotelPaymentFailure.pending,
+        (state) => {
+          state.loading = true;
+          state.error = null;
+        }
+      )
+
+      .addCase(
+        handleHotelPaymentFailure.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.success = false;
+
+          state.message =
+            action.payload.message || "";
+
+          state.payment =
+            action.payload.payment ||
+            state.payment;
+
+          state.booking =
+            action.payload.booking ||
+            state.booking;
+
+          state.error = null;
+        }
+      )
+
+      .addCase(
+        handleHotelPaymentFailure.rejected,
+        (state, action) => {
+          state.loading = false;
+
+          state.error =
+            action.payload ||
+            "Payment failure handling failed";
+        }
+      )
+
+      // =====================================================
+      // GET ALL BOOKINGS - USER
+      // =====================================================
 
       .addCase(
         getAllBooking.pending,
@@ -437,6 +733,11 @@ const bookingSlice = createSlice({
           state.bookings =
             action.payload.bookings || [];
 
+          state.count =
+            action.payload.count ||
+            action.payload.bookings?.length ||
+            0;
+
           state.message =
             action.payload.message || "";
 
@@ -454,13 +755,169 @@ const bookingSlice = createSlice({
             action.payload ||
             "Failed to fetch bookings";
         }
-      );
+      )
 
-    // =======================================================
-    // GET SINGLE BOOKING
-    // =======================================================
+      // =====================================================
+      // GET ALL HOTEL BOOKINGS - ADMIN
+      // =====================================================
 
-    builder
+      .addCase(
+        getAllHotelBookings.pending,
+        (state) => {
+          state.loading = true;
+          state.success = false;
+          state.error = null;
+          state.message = "";
+        }
+      )
+
+      .addCase(
+        getAllHotelBookings.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.success = true;
+          state.error = null;
+
+          state.bookings =
+            action.payload.bookings || [];
+
+          state.count =
+            action.payload.count ||
+            action.payload.bookings?.length ||
+            0;
+
+          state.message =
+            action.payload.message || "";
+        }
+      )
+
+      .addCase(
+        getAllHotelBookings.rejected,
+        (state, action) => {
+          state.loading = false;
+          state.success = false;
+
+          state.error =
+            action.payload ||
+            "Failed to fetch hotel bookings";
+        }
+      )
+
+      // =====================================================
+      // ADMIN CANCEL HOTEL BOOKING
+      // =====================================================
+
+      .addCase(
+        adminCancelHotelBooking.pending,
+        (state) => {
+          state.loading = true;
+          state.success = false;
+          state.error = null;
+          state.message = "";
+        }
+      )
+
+      .addCase(
+        adminCancelHotelBooking.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.success = true;
+          state.error = null;
+
+          state.message =
+            action.payload.message ||
+            "Hotel booking cancelled successfully";
+
+          const updatedBooking =
+            action.payload.booking;
+
+          if (updatedBooking) {
+            state.booking = updatedBooking;
+
+            state.bookings =
+              state.bookings.map((item) =>
+                item.bookingId ===
+                updatedBooking.bookingId
+                  ? updatedBooking
+                  : item
+              );
+          }
+        }
+      )
+
+      .addCase(
+        adminCancelHotelBooking.rejected,
+        (state, action) => {
+          state.loading = false;
+          state.success = false;
+
+          state.error =
+            action.payload ||
+            "Failed to cancel hotel booking";
+        }
+      )
+
+      // =====================================================
+      // ADMIN DELETE HOTEL BOOKING
+      // =====================================================
+
+      .addCase(
+        adminDeleteHotelBooking.pending,
+        (state) => {
+          state.loading = true;
+          state.success = false;
+          state.error = null;
+          state.message = "";
+        }
+      )
+
+      .addCase(
+        adminDeleteHotelBooking.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.success = true;
+          state.error = null;
+
+          state.message =
+            action.payload.message ||
+            "Hotel booking deleted successfully";
+
+          // Backend can return deleted booking
+          const deletedBooking =
+            action.payload.booking;
+
+          if (deletedBooking?.bookingId) {
+            state.bookings =
+              state.bookings.filter(
+                (item) =>
+                  item.bookingId !==
+                  deletedBooking.bookingId
+              );
+          } else {
+            // If backend only returns success/message,
+            // refresh should be done from component.
+          }
+
+          state.count =
+            state.bookings.length;
+        }
+      )
+
+      .addCase(
+        adminDeleteHotelBooking.rejected,
+        (state, action) => {
+          state.loading = false;
+          state.success = false;
+
+          state.error =
+            action.payload ||
+            "Failed to delete hotel booking";
+        }
+      )
+
+      // =====================================================
+      // GET SINGLE BOOKING
+      // =====================================================
 
       .addCase(
         getSingleBookingById.pending,
@@ -497,13 +954,11 @@ const bookingSlice = createSlice({
             action.payload ||
             "Failed to fetch booking";
         }
-      );
+      )
 
-    // =======================================================
-    // UPDATE BOOKING
-    // =======================================================
-
-    builder
+      // =====================================================
+      // UPDATE BOOKING
+      // =====================================================
 
       .addCase(
         updateHotelBooking.pending,
@@ -541,13 +996,11 @@ const bookingSlice = createSlice({
             action.payload ||
             "Booking update failed";
         }
-      );
+      )
 
-    // =======================================================
-    // CANCEL BOOKING
-    // =======================================================
-
-    builder
+      // =====================================================
+      // CANCEL BOOKING - USER
+      // =====================================================
 
       .addCase(
         cancelBooking.pending,
@@ -573,7 +1026,6 @@ const bookingSlice = createSlice({
 
           state.error = null;
 
-          // Update booking in bookings list
           if (action.payload.booking) {
             const updatedBooking =
               action.payload.booking;

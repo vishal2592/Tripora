@@ -44,26 +44,29 @@ const PackageBooking = () => {
   };
 
   /*
-   * HTML date input ke liye YYYY-MM-DD format required hai.
+   * =========================================================
+   * DATE HELPER
+   * =========================================================
    */
+
   const getValidTravelDate = (date) => {
     if (!date) {
       return "";
     }
 
-    // Already valid YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return date;
     }
 
-    // Try parsing other date formats
     const parsedDate = new Date(date);
 
     if (!Number.isNaN(parsedDate.getTime())) {
       const year = parsedDate.getFullYear();
+
       const month = String(
         parsedDate.getMonth() + 1
       ).padStart(2, "0");
+
       const day = String(
         parsedDate.getDate()
       ).padStart(2, "0");
@@ -82,20 +85,34 @@ const PackageBooking = () => {
     initialTravelDate
   );
 
+  /*
+   * =========================================================
+   * TRAVELLERS
+   * =========================================================
+   */
+
   const [travellers, setTravellers] = useState({
     adults: Math.max(
       1,
       Number(initialTravellers.adults) || 2
     ),
+
     children: Math.max(
       0,
       Number(initialTravellers.children) || 0
     ),
+
     infants: Math.max(
       0,
       Number(initialTravellers.infants) || 0
     ),
   });
+
+  /*
+   * =========================================================
+   * PRIMARY TRAVELLER
+   * =========================================================
+   */
 
   const [formData, setFormData] = useState({
     title: "Mr",
@@ -110,35 +127,50 @@ const PackageBooking = () => {
   });
 
   /*
-   * Additional travellers
-   *
-   * Primary traveller ko passengers[0] banaya jayega.
-   * Baaki travellers ke details yahan collect honge.
+   * =========================================================
+   * ADDITIONAL PASSENGERS
+   * =========================================================
    */
+
   const [additionalPassengers, setAdditionalPassengers] =
     useState([]);
 
   const [agreeTerms, setAgreeTerms] = useState(false);
+
   const [errors, setErrors] = useState({});
 
   /*
-   * Fallback package
-   *
-   * NOTE:
-   * Backend booking ke liye actual MongoDB _id required hai.
-   * `id: 1` sirf UI fallback hai, API ke liye valid nahi hai.
+   * =========================================================
+   * FALLBACK PACKAGE
+   * =========================================================
    */
+
   const fallbackPackage = {
     id: id || 1,
+
     title: "Dubai Premium Escape",
+
+    name: "Dubai Premium Escape",
+
     destination: "Dubai, UAE",
+
+    location: "Dubai, UAE",
+
+    country: "UAE",
+
     duration: "5 Days / 4 Nights",
+
     image:
       "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80",
+
     price: 34999,
+
     oldPrice: 44999,
+
     rating: 4.8,
+
     reviews: 324,
+
     includes: [
       "Flights",
       "4 Star Hotel",
@@ -151,8 +183,11 @@ const PackageBooking = () => {
     packageData || fallbackPackage;
 
   /*
-   * Different package structures handle
+   * =========================================================
+   * PACKAGE DATA NORMALIZATION
+   * =========================================================
    */
+
   const packagePrice = Number(
     packageItem.price ||
       packageItem.currentPrice ||
@@ -170,24 +205,53 @@ const PackageBooking = () => {
   const packageTitle =
     packageItem.title ||
     packageItem.name ||
-    "Dubai Premium Escape";
+    fallbackPackage.title;
+
+  /*
+   * IMPORTANT
+   *
+   * Destination ko multiple possible fields se read
+   * kar rahe hain.
+   */
 
   const packageDestination =
     packageItem.destination ||
     packageItem.location ||
-    "Dubai, UAE";
+    packageItem.city ||
+    packageItem.place ||
+    fallbackPackage.destination;
+
+  const packageCountry =
+    packageItem.country ||
+    packageItem.countryName ||
+    "UAE";
 
   const packageDuration =
     packageItem.duration ||
-    "5 Days / 4 Nights";
+    fallbackPackage.duration;
 
   /*
-   * Pricing
+   * =========================================================
+   * REAL BACKEND PACKAGE ID
+   * =========================================================
    */
+
+  const backendPackageId =
+    packageItem?._id ||
+    packageItem?.id;
+
+  /*
+   * =========================================================
+   * PRICING
+   * =========================================================
+   */
+
   const adultPrice = packagePrice;
+
   const childPrice = Math.round(
     packagePrice * 0.7
   );
+
   const infantPrice = Math.round(
     packagePrice * 0.25
   );
@@ -223,18 +287,18 @@ const PackageBooking = () => {
     travellers.infants;
 
   /*
-   * Additional traveller count
-   *
-   * Primary traveller already exists in formData.
-   * Therefore additional passengers = totalTravellers - 1.
+   * Primary traveller already exists.
    */
+
   const additionalTravellerCount =
     Math.max(totalTravellers - 1, 0);
 
   /*
-   * Jab traveller count increase/decrease ho,
-   * additional passenger fields ko sync karo.
+   * =========================================================
+   * SYNC ADDITIONAL PASSENGERS
+   * =========================================================
    */
+
   useEffect(() => {
     setAdditionalPassengers((prev) => {
       const requiredCount =
@@ -245,9 +309,7 @@ const PackageBooking = () => {
       }
 
       if (prev.length < requiredCount) {
-        const newPassengers = [
-          ...prev,
-        ];
+        const newPassengers = [...prev];
 
         while (
           newPassengers.length <
@@ -263,13 +325,19 @@ const PackageBooking = () => {
         return newPassengers;
       }
 
-      return prev.slice(0, requiredCount);
+      return prev.slice(
+        0,
+        requiredCount
+      );
     });
   }, [additionalTravellerCount]);
 
   /*
-   * Update traveller count
+   * =========================================================
+   * UPDATE TRAVELLER
+   * =========================================================
    */
+
   const updateTraveller = (
     type,
     action
@@ -295,8 +363,9 @@ const PackageBooking = () => {
       }
 
       /*
-       * Infants adults se zyada nahi ho sakte.
+       * Infants cannot be more than adults.
        */
+
       if (
         type === "infants" &&
         nextValue > prev.adults
@@ -312,8 +381,11 @@ const PackageBooking = () => {
   };
 
   /*
-   * Input handler
+   * =========================================================
+   * INPUT HANDLER
+   * =========================================================
    */
+
   const handleChange = (e) => {
     const {
       name,
@@ -332,8 +404,11 @@ const PackageBooking = () => {
   };
 
   /*
-   * Additional passenger change
+   * =========================================================
+   * ADDITIONAL PASSENGER CHANGE
+   * =========================================================
    */
+
   const handleAdditionalPassengerChange = (
     index,
     field,
@@ -341,13 +416,17 @@ const PackageBooking = () => {
   ) => {
     setAdditionalPassengers(
       (prev) =>
-        prev.map((passenger, passengerIndex) =>
-          passengerIndex === index
-            ? {
-                ...passenger,
-                [field]: value,
-              }
-            : passenger
+        prev.map(
+          (
+            passenger,
+            passengerIndex
+          ) =>
+            passengerIndex === index
+              ? {
+                  ...passenger,
+                  [field]: value,
+                }
+              : passenger
         )
     );
 
@@ -359,8 +438,11 @@ const PackageBooking = () => {
   };
 
   /*
-   * MongoDB ObjectId validation
+   * =========================================================
+   * OBJECT ID VALIDATION
+   * =========================================================
    */
+
   const isValidObjectId = (value) => {
     return /^[a-fA-F0-9]{24}$/.test(
       String(value || "")
@@ -368,15 +450,11 @@ const PackageBooking = () => {
   };
 
   /*
-   * Get actual package MongoDB _id
+   * =========================================================
+   * VALIDATION
+   * =========================================================
    */
-  const backendPackageId =
-    packageItem?._id ||
-    packageItem?.id;
 
-  /*
-   * Validation
-   */
   const validateForm = () => {
     const newErrors = {};
 
@@ -436,6 +514,7 @@ const PackageBooking = () => {
     /*
      * Backend packageId MongoDB ObjectId expect karta hai.
      */
+
     if (
       !isValidObjectId(
         backendPackageId
@@ -446,10 +525,28 @@ const PackageBooking = () => {
     }
 
     /*
-     * Additional passengers validate karo.
+     * Destination check
      */
+
+    if (
+      !packageDestination ||
+      !String(
+        packageDestination
+      ).trim()
+    ) {
+      newErrors.packageDestination =
+        "Package destination is missing.";
+    }
+
+    /*
+     * Additional passengers
+     */
+
     additionalPassengers.forEach(
-      (passenger, index) => {
+      (
+        passenger,
+        index
+      ) => {
         if (
           !passenger.fullName.trim()
         ) {
@@ -462,7 +559,9 @@ const PackageBooking = () => {
         if (
           passenger.age === "" ||
           Number.isNaN(
-            Number(passenger.age)
+            Number(
+              passenger.age
+            )
           )
         ) {
           newErrors[
@@ -470,7 +569,9 @@ const PackageBooking = () => {
           ] =
             "Age is required";
         } else if (
-          Number(passenger.age) < 0
+          Number(
+            passenger.age
+          ) < 0
         ) {
           newErrors[
             `passenger_${index}_age`
@@ -501,15 +602,55 @@ const PackageBooking = () => {
   };
 
   /*
-   * Continue to payment
-   *
-   * IMPORTANT:
-   * Yahan fake TRP ID generate nahi hogi.
-   *
-   * Pehle backend booking create hogi.
-   * Backend MongoDB `_id` return karega.
-   * Payment page ke URL mein wahi `_id` jayegi.
+   * =========================================================
+   * CALCULATE AGE
+   * =========================================================
    */
+
+  const calculateAge = (
+    dateOfBirth
+  ) => {
+    if (!dateOfBirth) {
+      return 0;
+    }
+
+    const birthDate =
+      new Date(dateOfBirth);
+
+    const today =
+      new Date();
+
+    let age =
+      today.getFullYear() -
+      birthDate.getFullYear();
+
+    const monthDifference =
+      today.getMonth() -
+      birthDate.getMonth();
+
+    if (
+      monthDifference < 0 ||
+      (
+        monthDifference === 0 &&
+        today.getDate() <
+          birthDate.getDate()
+      )
+    ) {
+      age--;
+    }
+
+    return Math.max(
+      0,
+      age
+    );
+  };
+
+  /*
+   * =========================================================
+   * CONTINUE TO PAYMENT
+   * =========================================================
+   */
+
   const handleContinue = async () => {
     if (createLoading) {
       return;
@@ -521,34 +662,47 @@ const PackageBooking = () => {
 
     try {
       /*
-       * Primary passenger
+       * =====================================================
+       * PRIMARY PASSENGER
+       * =====================================================
        */
+
       const primaryPassenger = {
         fullName:
           `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
-        age: calculateAge(formData.dob),
-        gender: formData.gender,
+
+        age: calculateAge(
+          formData.dob
+        ),
+
+        gender:
+          formData.gender,
+
         email:
           formData.email.trim(),
+
         mobileNumber:
           `${formData.countryCode}${formData.mobile.trim()}`,
       };
 
       /*
-       * Backend passengers array
-       *
-       * First passenger = primary traveller
-       * Remaining = additional travellers
+       * =====================================================
+       * ALL PASSENGERS
+       * =====================================================
        */
+
       const passengers = [
         primaryPassenger,
+
         ...additionalPassengers.map(
           (passenger) => ({
             fullName:
               passenger.fullName.trim(),
+
             age: Number(
               passenger.age
             ),
+
             gender:
               passenger.gender,
           })
@@ -558,6 +712,7 @@ const PackageBooking = () => {
       /*
        * Safety check
        */
+
       if (
         passengers.length !==
         totalTravellers
@@ -572,29 +727,107 @@ const PackageBooking = () => {
       }
 
       /*
-       * Create real booking
+       * =====================================================
+       * IMPORTANT FIX
+       *
+       * Backend PackageBooking schema requires:
+       *
+       * packageDetails.destination
+       *
+       * Isliye package details explicitly payload mein
+       * send kar rahe hain.
+       * =====================================================
        */
+
+      const packageDetails = {
+        name:
+          packageTitle,
+
+        destination:
+          String(
+            packageDestination
+          ).trim(),
+
+        country:
+          packageCountry,
+
+        duration:
+          packageDuration,
+
+        image:
+          packageImage,
+      };
+
+      /*
+       * Debug
+       *
+       * Browser console mein exact payload check kar sakte
+       * hain.
+       */
+
+      console.log(
+        "PACKAGE BOOKING PAYLOAD:",
+        {
+          packageId:
+            backendPackageId,
+
+          packageDetails,
+
+          travelDate,
+
+          adults:
+            travellers.adults,
+
+          children:
+            travellers.children,
+
+          infants:
+            travellers.infants,
+
+          passengers,
+        }
+      );
+
+      /*
+       * =====================================================
+       * CREATE REAL BOOKING
+       * =====================================================
+       */
+
       const result = await dispatch(
         createPackageBooking({
           packageId:
             backendPackageId,
+
+          /*
+           * FIXED
+           */
+          packageDetails,
+
           travelDate,
+
           adults:
             travellers.adults,
+
           children:
             travellers.children,
+
           infants:
             travellers.infants,
+
           passengers,
         })
       ).unwrap();
 
+      /*
+       * =====================================================
+       * GET CREATED BOOKING
+       * =====================================================
+       */
+
       const booking =
         result?.booking;
 
-      /*
-       * Backend se MongoDB _id zaroor milna chahiye.
-       */
       if (!booking?._id) {
         throw new Error(
           "Booking was created but booking ID was not returned."
@@ -602,14 +835,11 @@ const PackageBooking = () => {
       }
 
       /*
-       * IMPORTANT:
-       *
-       * URL:
-       * /package-payment/MONGODB_OBJECT_ID
-       *
-       * NOT:
-       * /package-payment/TRP12345678
+       * =====================================================
+       * PAYMENT PAGE
+       * =====================================================
        */
+
       navigate(
         `/package-payment/${booking._id}`,
         {
@@ -635,13 +865,13 @@ const PackageBooking = () => {
               booking.pricing,
 
             /*
-             * API ke liye MongoDB ID
+             * MongoDB ID
              */
             bookingId:
               booking._id,
 
             /*
-             * UI/display ke liye human readable ID
+             * Human-readable booking ID
              */
             displayBookingId:
               booking.bookingId,
@@ -650,21 +880,21 @@ const PackageBooking = () => {
              * Existing payment page compatibility
              */
             packageSubtotal:
-              booking.pricing?.subtotal ||
+              booking.pricing?.subtotal ??
               packageSubtotal,
 
             taxes:
-              booking.pricing?.taxes ||
+              booking.pricing?.taxes ??
               taxes,
 
             convenienceFee:
               booking.pricing
-                ?.convenienceFee ||
+                ?.convenienceFee ??
               convenienceFee,
 
             totalAmount:
               booking.pricing
-                ?.totalAmount ||
+                ?.totalAmount ??
               totalAmount,
           },
         }
@@ -675,54 +905,33 @@ const PackageBooking = () => {
         error
       );
 
+      /*
+       * Redux Toolkit unwrap() se backend error
+       * string/object dono aa sakta hai.
+       */
+
+      const backendMessage =
+        error?.message ||
+        error?.error ||
+        error?.response?.data?.message ||
+        error?.response?.data?.error;
+
       setErrors((prev) => ({
         ...prev,
+
         submit:
-          error?.message ||
+          backendMessage ||
           "Failed to create booking. Please try again.",
       }));
     }
   };
 
   /*
-   * Calculate age from DOB
+   * =========================================================
+   * FORMAT PRICE
+   * =========================================================
    */
-  const calculateAge = (
-    dateOfBirth
-  ) => {
-    if (!dateOfBirth) {
-      return 0;
-    }
 
-    const birthDate =
-      new Date(dateOfBirth);
-
-    const today =
-      new Date();
-
-    let age =
-      today.getFullYear() -
-      birthDate.getFullYear();
-
-    const monthDifference =
-      today.getMonth() -
-      birthDate.getMonth();
-
-    if (
-      monthDifference < 0 ||
-      (monthDifference === 0 &&
-        today.getDate() <
-          birthDate.getDate())
-    ) {
-      age--;
-    }
-
-    return Math.max(0, age);
-  };
-
-  /*
-   * Format money
-   */
   const formatPrice = (value) =>
     Number(value).toLocaleString(
       "en-IN"
@@ -733,6 +942,7 @@ const PackageBooking = () => {
       {/* =====================================================
           HEADER
       ====================================================== */}
+
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <button
@@ -775,6 +985,7 @@ const PackageBooking = () => {
       {/* =====================================================
           PROGRESS
       ====================================================== */}
+
       <div className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
           <div className="mx-auto flex max-w-2xl items-center justify-center">
@@ -818,8 +1029,10 @@ const PackageBooking = () => {
       {/* =====================================================
           MAIN
       ====================================================== */}
+
       <main className="mx-auto w-full max-w-7xl px-4 py-5 pb-28 sm:px-6 sm:py-4 lg:px-8 lg:pb-10">
         {/* Breadcrumb */}
+
         <div className="mb-3 flex items-center gap-1.5 overflow-hidden text-[10px] font-semibold text-slate-400 sm:text-xs">
           <button
             type="button"
@@ -851,6 +1064,7 @@ const PackageBooking = () => {
         </div>
 
         {/* Heading */}
+
         <div className="mb-4">
           <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-blue-600">
             Almost there
@@ -867,6 +1081,7 @@ const PackageBooking = () => {
         </div>
 
         {/* Submit error */}
+
         {errors.submit && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
             {errors.submit}
@@ -874,6 +1089,7 @@ const PackageBooking = () => {
         )}
 
         {/* Passenger error */}
+
         {errors.passengers && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
             {errors.passengers}
@@ -881,21 +1097,33 @@ const PackageBooking = () => {
         )}
 
         {/* Package ID error */}
+
         {errors.packageId && (
           <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
             {errors.packageId}
           </div>
         )}
 
+        {/* Destination error */}
+
+        {errors.packageDestination && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
+            {errors.packageDestination}
+          </div>
+        )}
+
         {/* =================================================
             GRID
         ================================================== */}
+
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
           {/* =================================================
               LEFT
           ================================================== */}
+
           <div className="space-y-5">
             {/* Package Summary */}
+
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="p-4 sm:p-5">
                 <div className="flex flex-col gap-4 sm:flex-row">
@@ -948,6 +1176,7 @@ const PackageBooking = () => {
             </section>
 
             {/* Travel Details */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -967,7 +1196,6 @@ const PackageBooking = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Travel Date */}
                 <div>
                   <label className="mb-1.5 block text-[10px] font-bold text-slate-600 sm:text-xs">
                     Travel Date
@@ -990,10 +1218,13 @@ const PackageBooking = () => {
                           e.target.value
                         );
 
-                        setErrors((prev) => ({
-                          ...prev,
-                          travelDate: "",
-                        }));
+                        setErrors(
+                          (prev) => ({
+                            ...prev,
+                            travelDate:
+                              "",
+                          })
+                        );
                       }}
                       className={`h-11 w-full rounded-xl border bg-white pl-9 pr-3 text-xs font-semibold text-slate-700 outline-none transition focus:ring-2 ${
                         errors.travelDate
@@ -1010,7 +1241,6 @@ const PackageBooking = () => {
                   )}
                 </div>
 
-                {/* Total Traveller */}
                 <div>
                   <label className="mb-1.5 block text-[10px] font-bold text-slate-600 sm:text-xs">
                     Total Travellers
@@ -1033,7 +1263,6 @@ const PackageBooking = () => {
                 </div>
               </div>
 
-              {/* Traveller Counters */}
               <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <TravellerCounter
                   title="Adults"
@@ -1110,6 +1339,7 @@ const PackageBooking = () => {
             </section>
 
             {/* Primary Traveller */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="mb-5 flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -1129,7 +1359,6 @@ const PackageBooking = () => {
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {/* Title */}
                 <FormField
                   label="Title"
                   required
@@ -1170,7 +1399,6 @@ const PackageBooking = () => {
                   </div>
                 </FormField>
 
-                {/* First Name */}
                 <FormField
                   label="First Name"
                   required
@@ -1196,7 +1424,6 @@ const PackageBooking = () => {
                   />
                 </FormField>
 
-                {/* Last Name */}
                 <FormField
                   label="Last Name"
                   required
@@ -1222,7 +1449,6 @@ const PackageBooking = () => {
                   />
                 </FormField>
 
-                {/* DOB */}
                 <FormField
                   label="Date of Birth"
                   required
@@ -1245,7 +1471,6 @@ const PackageBooking = () => {
                   />
                 </FormField>
 
-                {/* Gender */}
                 <FormField
                   label="Gender"
                   required
@@ -1294,9 +1519,8 @@ const PackageBooking = () => {
               </div>
             </section>
 
-            {/* =================================================
-                ADDITIONAL TRAVELLERS
-            ================================================== */}
+            {/* Additional Travellers */}
+
             {additionalTravellerCount >
               0 && (
               <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
@@ -1334,7 +1558,6 @@ const PackageBooking = () => {
                         </div>
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                          {/* Full Name */}
                           <FormField
                             label="Full Name"
                             required
@@ -1371,7 +1594,6 @@ const PackageBooking = () => {
                             />
                           </FormField>
 
-                          {/* Age */}
                           <FormField
                             label="Age"
                             required
@@ -1409,7 +1631,6 @@ const PackageBooking = () => {
                             />
                           </FormField>
 
-                          {/* Gender */}
                           <FormField
                             label="Gender"
                             required
@@ -1475,6 +1696,7 @@ const PackageBooking = () => {
             )}
 
             {/* Contact Details */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="mb-5 flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -1584,6 +1806,7 @@ const PackageBooking = () => {
             </section>
 
             {/* Special Request */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="mb-3 flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
@@ -1616,6 +1839,7 @@ const PackageBooking = () => {
             </section>
 
             {/* Terms */}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <label className="flex cursor-pointer items-start gap-3">
                 <input
@@ -1672,6 +1896,7 @@ const PackageBooking = () => {
           {/* =================================================
               RIGHT SUMMARY
           ================================================== */}
+
           <aside className="lg:sticky lg:top-24 lg:h-fit">
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="relative h-44 overflow-hidden">
@@ -1796,6 +2021,7 @@ const PackageBooking = () => {
                 </div>
 
                 {/* Desktop Continue */}
+
                 <button
                   type="button"
                   onClick={
@@ -1832,6 +2058,7 @@ const PackageBooking = () => {
       {/* =====================================================
           MOBILE BOTTOM BAR
       ====================================================== */}
+
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white p-3 shadow-[0_-5px_20px_rgba(15,23,42,0.08)] sm:hidden">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
@@ -1902,12 +2129,8 @@ const TravellerCounter = ({
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={
-            onMinus
-          }
-          disabled={
-            disableMinus
-          }
+          onClick={onMinus}
+          disabled={disableMinus}
           className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-blue-200 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Minus size={13} />
@@ -1919,9 +2142,7 @@ const TravellerCounter = ({
 
         <button
           type="button"
-          onClick={
-            onPlus
-          }
+          onClick={onPlus}
           className="flex h-7 w-7 items-center justify-center rounded-lg border border-blue-100 bg-blue-50 text-blue-600 transition hover:bg-blue-100"
         >
           <Plus size={13} />

@@ -12,11 +12,10 @@ const hotelBookingSchema = new mongoose.Schema(
 
     // User who made the booking
     user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
-
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "User",
+  required: true,
+},
     // Hotel reference
     hotel: {
       type: mongoose.Schema.Types.ObjectId,
@@ -156,10 +155,10 @@ const hotelBookingSchema = new mongoose.Schema(
 
     // Payment
     paymentMethod: {
-      type: String,
-      enum: ["upi", "card", "netbanking", "wallet"],
-      default: "upi",
-    },
+  type: String,
+  enum: ["razorpay", "upi", "card", "netbanking", "wallet"],
+  default: "razorpay",
+},
 
     paymentStatus: {
       type: String,
