@@ -5,8 +5,10 @@ const {
   getMyPackageBooking,
   getSinglePackageBooking,
   cancelPackageBooking,
+  deletePackageBooking,
 } = require("../controllers/packageBooking.controller");
 
+const adminAuth = require("../middleware/adminAuth.middleware");
 const authMiddleware = require("../middleware/auth.middleware");
 //get all package booking route
 router.get("/", authMiddleware, getMyPackageBooking);
@@ -16,5 +18,8 @@ router.get("/:id", authMiddleware, getSinglePackageBooking);
 router.post("/", authMiddleware, createPackageBooking);
 // Cancel package booking
 router.put("/:id/cancel", authMiddleware, cancelPackageBooking);
+//deletePackageBookin route
+
+router.delete("/:id", adminAuth, deletePackageBooking);
 
 module.exports = router;
