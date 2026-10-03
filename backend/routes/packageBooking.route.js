@@ -20,6 +20,6 @@ router.post("/", authMiddleware, createPackageBooking);
 router.put("/:id/cancel", authMiddleware, cancelPackageBooking);
 //deletePackageBookin route
 
-router.delete("/:id", adminAuth, deletePackageBooking);
+router.delete("/admin/:id", adminAuth, deletePackageBooking);
 
 module.exports = router;
