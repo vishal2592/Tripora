@@ -1,5 +1,8 @@
+
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+
 import {
   Bell,
   ChevronDown,
@@ -12,6 +15,18 @@ const AdminNavbar = ({ setIsSidebarOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ============================================
+  // GET ADMIN DATA FROM REDUX
+  // ============================================
+
+  const { admin } = useSelector(
+    (state) => state.admin
+  );
+
+  // ============================================
+  // PAGE TITLE
+  // ============================================
+
   const getPageTitle = () => {
     const path = location.pathname;
 
@@ -20,24 +35,48 @@ const AdminNavbar = ({ setIsSidebarOpen }) => {
     if (path.includes("/flights")) return "Flights";
     if (path.includes("/hotels")) return "Hotels";
     if (path.includes("/packages")) return "Packages";
-    if (path.includes("/destinations")) return "Destinations";
+    if (path.includes("/destinations"))
+      return "Destinations";
     if (path.includes("/offers")) return "Offers & Deals";
     if (path.includes("/users")) return "Users";
     if (path.includes("/payments")) return "Payments";
     if (path.includes("/reviews")) return "Reviews";
     if (path.includes("/content")) return "Content";
     if (path.includes("/settings")) return "Settings";
-    if (path.includes("/profile")) return "Admin Profile";
+    if (
+      path.includes("/adminprofile") ||
+      path.includes("/profile")
+    ) {
+      return "Admin Profile";
+    }
 
     return "Admin Panel";
   };
 
+  // ============================================
+  // ADMIN DISPLAY NAME
+  // ============================================
+
+  const adminName =
+    admin?.name ||
+    admin?.fullName ||
+    admin?.username ||
+    "Admin";
+
+  const adminRole =
+    admin?.role ||
+    "Administrator";
+
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="flex h-[68px] items-center justify-between px-4 sm:px-5 lg:px-6">
+
         {/* ================= LEFT ================= */}
+
         <div className="flex min-w-0 items-center gap-3">
+
           {/* Mobile Menu */}
+
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}
@@ -59,8 +98,11 @@ const AdminNavbar = ({ setIsSidebarOpen }) => {
         </div>
 
         {/* ================= RIGHT ================= */}
+
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+
           {/* Search */}
+
           <button
             type="button"
             className="hidden h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 sm:flex"
@@ -70,6 +112,7 @@ const AdminNavbar = ({ setIsSidebarOpen }) => {
           </button>
 
           {/* Notification */}
+
           <button
             type="button"
             className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50"
@@ -81,25 +124,33 @@ const AdminNavbar = ({ setIsSidebarOpen }) => {
           </button>
 
           {/* Divider */}
+
           <div className="hidden h-8 w-px bg-slate-200 sm:block" />
 
           {/* Admin Profile */}
+
           <button
             type="button"
-            onClick={() => navigate("/admin/profile")}
+            onClick={() =>
+              navigate("/admin/adminprofile")
+            }
             className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition hover:bg-slate-50"
           >
+            {/* Avatar */}
+
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
               <UserRound size={17} />
             </div>
 
+            {/* Name + Role */}
+
             <div className="hidden text-left md:block">
-              <p className="text-xs font-extrabold text-slate-900">
-                Admin
+              <p className="max-w-[120px] truncate text-xs font-extrabold text-slate-900">
+                {adminName}
               </p>
 
-              <p className="text-[9px] font-medium text-slate-400">
-                Administrator
+              <p className="max-w-[120px] truncate text-[9px] font-medium capitalize text-slate-400">
+                {adminRole}
               </p>
             </div>
 
@@ -115,3 +166,4 @@ const AdminNavbar = ({ setIsSidebarOpen }) => {
 };
 
 export default AdminNavbar;
+

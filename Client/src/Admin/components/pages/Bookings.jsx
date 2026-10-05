@@ -1391,7 +1391,7 @@ console.log("HOTEL BOOKINGS:", hotelBookings);
 
         {/* HEADER */}
 
-        <div className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mb-4 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
           <div>
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-blue-600">
@@ -1458,7 +1458,7 @@ console.log("HOTEL BOOKINGS:", hotelBookings);
 
         {/* STATS */}
 
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-2 xl:grid-cols-4">
 
           {/* TOTAL */}
 
@@ -2683,7 +2683,7 @@ console.log("HOTEL BOOKINGS:", hotelBookings);
 
               {/* TITLE */}
 
-              <div className="mb-6 flex gap-4">
+              <div className="mb-4 flex gap-4">
 
                 <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
 

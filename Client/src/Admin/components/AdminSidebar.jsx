@@ -1,5 +1,8 @@
-import React from "react";
+
+import React, { useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+
 import {
   BarChart3,
   Building2,
@@ -21,11 +24,39 @@ import {
   X,
 } from "lucide-react";
 
+import {
+  getAdminProfile,
+  logoutAdmin,
+} from "../../redux/slicer/adminSlice";
+
 const AdminSidebar = ({
   isSidebarOpen,
   setIsSidebarOpen,
 }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  // ============================================
+  // GET ADMIN DATA FROM REDUX
+  // ============================================
+
+  const { admin, token } = useSelector(
+    (state) => state.admin
+  );
+
+  // ============================================
+  // GET ADMIN PROFILE
+  // ============================================
+
+  useEffect(() => {
+    if (token && !admin) {
+      dispatch(getAdminProfile());
+    }
+  }, [dispatch, token, admin]);
+
+  // ============================================
+  // MENU
+  // ============================================
 
   const mainMenu = [
     {
@@ -102,18 +133,29 @@ const AdminSidebar = ({
     },
   ];
 
+  // ============================================
+  // CLOSE SIDEBAR AFTER NAVIGATION
+  // ============================================
+
   const handleNavigation = () => {
     setIsSidebarOpen(false);
   };
 
+  // ============================================
+  // LOGOUT
+  // ============================================
+
   const handleLogout = () => {
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminUser");
+    dispatch(logoutAdmin());
 
     setIsSidebarOpen(false);
 
-    navigate("/admin/login");
+    navigate("/admin/adminlogin");
   };
+
+  // ============================================
+  // MENU ITEM CLASS
+  // ============================================
 
   const menuItemClass = ({ isActive }) =>
     `group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-bold transition ${
@@ -131,6 +173,7 @@ const AdminSidebar = ({
       }`}
     >
       {/* ================= LOGO ================= */}
+
       <div className="flex h-[68px] shrink-0 items-center justify-between border-b border-slate-100 px-4">
         <button
           type="button"
@@ -157,6 +200,7 @@ const AdminSidebar = ({
         </button>
 
         {/* Mobile Close */}
+
         <button
           type="button"
           onClick={() => setIsSidebarOpen(false)}
@@ -168,6 +212,7 @@ const AdminSidebar = ({
       </div>
 
       {/* ================= ADMIN PROFILE MINI CARD ================= */}
+
       <div className="px-3 pt-4">
         <div className="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
@@ -176,7 +221,10 @@ const AdminSidebar = ({
 
           <div className="min-w-0">
             <p className="truncate text-xs font-extrabold text-slate-900">
-              Administrator
+              {admin?.name ||
+                admin?.fullName ||
+                admin?.username ||
+                "Administrator"}
             </p>
 
             <div className="mt-0.5 flex items-center gap-1.5">
@@ -191,8 +239,10 @@ const AdminSidebar = ({
       </div>
 
       {/* ================= MENU ================= */}
+
       <div className="scrollbar-thin flex-1 overflow-y-auto px-3 py-4">
         {/* Main */}
+
         <p className="mb-2 px-3 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">
           Main Menu
         </p>
@@ -237,6 +287,7 @@ const AdminSidebar = ({
         </nav>
 
         {/* Management */}
+
         <p className="mb-2 mt-6 px-3 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">
           Management
         </p>
@@ -280,6 +331,7 @@ const AdminSidebar = ({
         </nav>
 
         {/* System */}
+
         <p className="mb-2 mt-6 px-3 text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">
           System
         </p>
@@ -324,6 +376,7 @@ const AdminSidebar = ({
       </div>
 
       {/* ================= LOGOUT ================= */}
+
       <div className="shrink-0 border-t border-slate-100 p-3">
         <button
           type="button"
@@ -350,3 +403,4 @@ const AdminSidebar = ({
 };
 
 export default AdminSidebar;
+

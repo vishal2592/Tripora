@@ -26,6 +26,7 @@ import { getAllUsers } from "../../../redux/slicer/adminUserSlice";
 import { getAllHotelBookings } from "../../../redux/slicer/hotelBookingSlice";
 import { getAllPackageBookings } from "../../../redux/slicer/packageBookingSlice";
 import { getAllOffers } from "../../../redux/slicer/offferSlice";
+import { Link } from "react-router-dom";
 
 // =====================================================
 // HELPERS
@@ -1499,6 +1500,7 @@ function Dashboard() {
               )}
             </div>
 
+            <Link to='/admin/adminusers'>
             <button
               type="button"
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-2.5 text-xs font-black text-slate-600 transition hover:bg-slate-50"
@@ -1506,6 +1508,7 @@ function Dashboard() {
               View All Users
               <ArrowUpRight size={15} />
             </button>
+            </Link>
           </div>
 
           {/* Quick Actions */}
@@ -1552,13 +1555,13 @@ function Dashboard() {
               })}
             </div>
 
-            <button
+            {/* <button
               type="button"
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-xs font-black text-white shadow-sm transition hover:bg-blue-700 active:bg-blue-800"
             >
               <Plus size={16} />
               Add New Item
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
