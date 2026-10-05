@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -148,7 +149,7 @@ const Packages = () => {
 
   /* =========================================================
      NORMALIZE BACKEND DATA
-========================================================= */
+  ========================================================= */
 
   const normalizedPackages = useMemo(() => {
     if (!Array.isArray(packages)) {
@@ -167,23 +168,6 @@ const Packages = () => {
       /* -------------------------------------------------------
          DESTINATION
       ------------------------------------------------------- */
-
-      /*
-        Backend can return destination in two forms:
-
-        1. Old/string format:
-        destination: "Bali"
-
-        2. Current/populated format:
-        destination: {
-          _id: "...",
-          name: "Bali",
-          country: "India",
-          region: "Middle East",
-          destinationType: "Domestic",
-          image: "..."
-        }
-      */
 
       const destinationName =
         item.destination &&
@@ -273,13 +257,6 @@ const Packages = () => {
          IMAGE
       ------------------------------------------------------- */
 
-      /*
-        Package image has priority.
-
-        If package image is not available,
-        destination image will be used.
-      */
-
       const image =
         item.image ||
         (Array.isArray(item.images) && item.images.length > 0
@@ -294,6 +271,35 @@ const Packages = () => {
       const days = Number(item.days || 0);
       const nights = Number(item.nights || 0);
 
+      /* -------------------------------------------------------
+         HOTEL
+         
+         Backend can return:
+         
+         hotel: "Hotel Stay"
+         
+         OR:
+         
+         hotel: {
+           _id,
+           hotelName,
+           propertyType,
+           starRating,
+           reviews,
+           city,
+           country,
+           address,
+           price,
+           image,
+           images
+         }
+      ------------------------------------------------------- */
+
+      const hotelName =
+        item.hotel && typeof item.hotel === "object"
+          ? item.hotel.hotelName || "Hotel Stay"
+          : item.hotel || "Hotel Stay";
+
       return {
         ...item,
 
@@ -303,17 +309,9 @@ const Packages = () => {
         /* Basic information */
         title: item.name || item.title || "Holiday Package",
 
-        /*
-          IMPORTANT:
-          destination is now always a string.
-          This prevents:
-          destination.toLowerCase is not a function
-        */
+        /* Destination */
         destination: destinationName,
 
-        /*
-          Extra destination information
-        */
         destinationCountry,
 
         destinationRegion,
@@ -351,8 +349,14 @@ const Packages = () => {
 
         category,
 
-        /* Hotel / meal */
-        hotel: item.hotel || "Hotel Stay",
+        /* -------------------------------------------------------
+           FIXED HOTEL VALUE
+           
+           IMPORTANT:
+           React cannot render an object directly.
+           We convert populated hotel object into hotelName.
+        ------------------------------------------------------- */
+        hotel: hotelName,
 
         meals: item.meals || "As per package",
 
@@ -405,11 +409,6 @@ const Packages = () => {
 
           price: item.price,
 
-          /*
-            Use destination image first for
-            Popular Destinations.
-            Package image remains fallback.
-          */
           image:
             item.destinationImage ||
             item.image ||
@@ -496,9 +495,7 @@ const Packages = () => {
   const filteredPackages = useMemo(() => {
     let result = [...normalizedPackages];
 
-    /* -------------------------------------------------------
-       DESTINATION SEARCH
-    ------------------------------------------------------- */
+    /* DESTINATION SEARCH */
 
     if (searchData.destination.trim()) {
       const search = searchData.destination.toLowerCase();
@@ -517,25 +514,19 @@ const Packages = () => {
       );
     }
 
-    /* -------------------------------------------------------
-       TRAVEL TYPE
-    ------------------------------------------------------- */
+    /* TRAVEL TYPE */
 
     if (activeType !== "All") {
       result = result.filter((item) => item.type === activeType);
     }
 
-    /* -------------------------------------------------------
-       PRICE
-    ------------------------------------------------------- */
+    /* PRICE */
 
     if (priceRange) {
       result = result.filter((item) => item.price <= priceRange);
     }
 
-    /* -------------------------------------------------------
-       DURATION
-    ------------------------------------------------------- */
+    /* DURATION */
 
     if (selectedDuration.length > 0) {
       result = result.filter((item) =>
@@ -557,9 +548,7 @@ const Packages = () => {
       );
     }
 
-    /* -------------------------------------------------------
-       CATEGORY
-    ------------------------------------------------------- */
+    /* CATEGORY */
 
     if (selectedCategories.length > 0) {
       result = result.filter((item) =>
@@ -567,9 +556,7 @@ const Packages = () => {
       );
     }
 
-    /* -------------------------------------------------------
-       RATING
-    ------------------------------------------------------- */
+    /* RATING */
 
     if (selectedRatings.length > 0) {
       result = result.filter((item) =>
@@ -579,9 +566,7 @@ const Packages = () => {
       );
     }
 
-    /* -------------------------------------------------------
-       SORT
-    ------------------------------------------------------- */
+    /* SORT */
 
     if (activeSort === "price-low") {
       result.sort((a, b) => a.price - b.price);
@@ -2030,15 +2015,19 @@ const Packages = () => {
                       <option value="">
                         Select budget
                       </option>
+
                       <option value="under-20k">
                         Under ₹20K
                       </option>
+
                       <option value="20-40k">
                         ₹20K - ₹40K
                       </option>
+
                       <option value="40-60k">
                         ₹40K - ₹60K
                       </option>
+
                       <option value="60k-plus">
                         ₹60K+
                       </option>
@@ -2072,15 +2061,19 @@ const Packages = () => {
                       <option value="">
                         Select duration
                       </option>
+
                       <option value="3-4">
                         3 - 4 Days
                       </option>
+
                       <option value="5-6">
                         5 - 6 Days
                       </option>
+
                       <option value="7-8">
                         7 - 8 Days
                       </option>
+
                       <option value="9-plus">
                         9+ Days
                       </option>
@@ -2380,3 +2373,5 @@ const Packages = () => {
 };
 
 export default Packages;
+
+

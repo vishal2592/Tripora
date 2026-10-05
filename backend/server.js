@@ -47,6 +47,13 @@ app.use("/api/package-bookings", packageBookingRoutes);
 app.use("/api/package-payments", packagePaymentRoutes);
 app.use("/api/offers", offerRoutes);
 app.use("/api/payments", paymentRoutes);
+// const path = require("path");
+
+// app.use(express.static(path.join(__dirname, "../client/dist")));
+
+// app.get("*", (req, res) => {
+//   res.sendFile(path.join(__dirname, "../client/dist/index.html"));
+// });
 //test route
 app.get("/", (req, res) => {
   res.json({

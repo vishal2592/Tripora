@@ -1446,7 +1446,7 @@ const HotelBookingCard = ({
 
             <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
 
-              <button
+              {/* <button
                 type="button"
                 onClick={
                   onViewDetails
@@ -1457,7 +1457,7 @@ const HotelBookingCard = ({
                 <ArrowRight
                   size={14}
                 />
-              </button>
+              </button> */}
 
               {booking.status ===
                 "confirmed" && (
