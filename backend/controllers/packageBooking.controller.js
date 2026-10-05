@@ -638,6 +638,79 @@ const adminCancelPackageBooking = async (req, res) => {
 };
 
 // =====================================================
+// DELETE PACKAGE BOOKING - ADMIN
+// =====================================================
+
+const deletePackageBooking = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+
+    // Check user
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "User ID not found in token",
+      });
+    }
+
+    // Validate booking ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID",
+      });
+    }
+
+    // Find booking belonging to logged-in user
+    const booking = await PackageBooking.findOne({
+      _id: id,
+      user: userId,
+    });
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Package booking not found",
+      });
+    }
+
+    // Prevent deleting completed booking
+    if (booking.bookingStatus === "Completed") {
+      return res.status(400).json({
+        success: false,
+        message: "Completed booking cannot be deleted",
+      });
+    }
+
+    // Decrease package booking count
+    if (booking.package) {
+      await Package.findByIdAndUpdate(booking.package, {
+        $inc: {
+          bookings: -1,
+        },
+      });
+    }
+
+    // Delete booking
+    await PackageBooking.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Package booking deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete Package Booking Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete package booking",
+      error: error.message,
+    });
+  }
+};
+
+// =====================================================
 // EXPORT
 // =====================================================
 
@@ -648,4 +721,5 @@ module.exports = {
   cancelPackageBooking,
   adminCancelPackageBooking,
   getallbookings,
+  deletePackageBooking,
 };
