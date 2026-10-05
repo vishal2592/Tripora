@@ -7,6 +7,7 @@ const {
   getSinglePackageBooking,
   cancelPackageBooking,
   adminCancelPackageBooking,
+  // deletePackageBooking,
 } = require("../controllers/packageBooking.controller");
 
 const adminAuth = require("../middleware/adminAuth.middleware");
@@ -20,6 +21,8 @@ router.post("/", authMiddleware, createPackageBooking);
 // Cancel package booking
 router.put("/:id/cancel", authMiddleware, cancelPackageBooking);
 
-router.delete("/admin/:id", adminAuth, deletePackageBooking);
+// router.delete("/admin/:id", adminAuth, deletePackageBooking);
+
+router.put("/:id/cancel", adminAuth, adminCancelPackageBooking);
 
 module.exports = router;
